@@ -1,0 +1,13 @@
+{
+  "name": "api-controller-errores-softland",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Tooling raiz (git hooks) para los proyectos backend y frontend",
+  "scripts": {
+    "prepare": "husky"
+  },
+  "devDependencies": {
+    "husky": "^9.1.7",
+    "lint-staged": "^17.3.0"
+  }
+}

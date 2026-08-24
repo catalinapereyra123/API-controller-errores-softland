@@ -1,0 +1,9 @@
+set -e
+
+echo "Backend: lint + format check"
+npm --prefix backend run lint:check
+npm --prefix backend run format:check
+
+echo "Frontend: lint + format check"
+npm --prefix frontend run lint
+npm --prefix frontend run format:check
