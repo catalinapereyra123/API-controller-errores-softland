@@ -1,37 +1,24 @@
-import type { ButtonHTMLAttributes } from 'react'
+import type { ButtonHTMLAttributes, CSSProperties } from 'react'
 import { cn } from '../utils/cn'
 
-type ButtonColor = 'primary' | 'success' | 'warning' | 'error' | 'info' | 'gray'
-type ButtonSize = 'sm' | 'md' | 'lg'
-
-type ButtonProps = {
+interface ButtonProps extends Omit<
+  ButtonHTMLAttributes<HTMLButtonElement>,
+  'color' | 'style'
+> {
   text: string
-  color?: ButtonColor
-  size?: ButtonSize
-} & Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'color'>
-
-const colorClasses: Record<ButtonColor, string> = {
-  primary: 'bg-primary-default text-gray-white',
-  success: 'bg-status-success text-gray-white',
-  warning: 'bg-status-warning text-gray-darkest',
-  error: 'bg-status-error text-gray-white',
-  info: 'bg-status-info text-gray-white',
-  gray: 'bg-gray-dark text-gray-white',
+  color: string
+  size?: CSSProperties
 }
 
-const sizeClasses: Record<ButtonSize, string> = {
-  sm: 'text-bodySmall px-sm py-xs',
-  md: 'text-body px-md py-sm',
-  lg: 'text-bodyLarge px-lg py-sm',
-}
-
-function Button({ text, color = 'primary', size = 'md', className, ...props }: ButtonProps) {
+function Button({ text, color, size, className, ...props }: ButtonProps) {
   return (
     <button
+      type="button"
+      style={{ backgroundColor: color, ...size }}
       className={cn(
-        'rounded-md font-medium transition hover:brightness-90 active:brightness-95 disabled:cursor-not-allowed disabled:opacity-50',
-        colorClasses[color],
-        sizeClasses[size],
+        'inline-flex items-center justify-center rounded-md font-medium text-white transition-opacity hover:opacity-90',
+        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-default focus-visible:ring-offset-2',
+        'disabled:pointer-events-none disabled:opacity-50',
         className,
       )}
       {...props}
