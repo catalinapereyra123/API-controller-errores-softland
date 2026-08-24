@@ -79,7 +79,9 @@ const weightByStyle: Record<TypeStyleKey, keyof typeof fontWeight> = {
 
 export const textStyles = Object.fromEntries(
   (Object.keys(fontSize) as TypeStyleKey[]).map((key) => {
-    const tracking = (letterSpacing as Partial<Record<TypeStyleKey, string>>)[key]
+    const tracking = (letterSpacing as Partial<Record<TypeStyleKey, string>>)[
+      key
+    ]
     return [
       key,
       {
@@ -93,7 +95,13 @@ export const textStyles = Object.fromEntries(
   }),
 ) as Record<
   TypeStyleKey,
-  { fontFamily: string; fontSize: string; lineHeight: string; fontWeight: string; letterSpacing?: string }
+  {
+    fontFamily: string
+    fontSize: string
+    lineHeight: string
+    fontWeight: string
+    letterSpacing?: string
+  }
 >
 
 export type FontFamily = typeof fontFamily
