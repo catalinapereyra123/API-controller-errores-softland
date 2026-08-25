@@ -1,10 +1,10 @@
 export const colors = {
   primary: {
-    lightest: '#f5f3ff',
-    light: '#ddd6fe',
-    default: '#7c3aed',
-    dark: '#5b21b6',
-    darkest: '#2e1065',
+    lightest: '#ecfdf5',
+    light: '#bbf7d0',
+    default: '#16a34a',
+    dark: '#15803d',
+    darkest: '#052e16',
   },
 
   background: {

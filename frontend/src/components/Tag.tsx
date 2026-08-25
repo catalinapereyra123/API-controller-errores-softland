@@ -83,4 +83,14 @@ export function ResueltoTag() {
   )
 }
 
+export function AsignadoTag() {
+  return (
+    <Tag
+      text="Asignado"
+      color={colors.label.blue.text}
+      backgroundColor={colors.label.blue.background}
+    />
+  )
+}
+
 export default Tag

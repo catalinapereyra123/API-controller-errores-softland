@@ -14,6 +14,9 @@ interface StatCardProps extends HTMLAttributes<HTMLDivElement> {
   valueColor: string
   backgroundColor: string
   trend?: StatCardTrend
+  icon?: ReactNode
+  iconColor?: string
+  iconBackground?: string
 }
 
 function StatCard({
@@ -23,6 +26,9 @@ function StatCard({
   valueColor,
   backgroundColor,
   trend,
+  icon,
+  iconColor,
+  iconBackground,
   className,
   ...props
 }: StatCardProps) {
@@ -35,12 +41,22 @@ function StatCard({
       )}
       {...props}
     >
-      <span
-        style={{ color: labelColor }}
-        className="text-caption font-bold tracking-wide uppercase"
-      >
-        {label}
-      </span>
+      <div className="flex items-center gap-sm">
+        {icon && (
+          <span
+            style={{ color: iconColor, backgroundColor: iconBackground }}
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full"
+          >
+            {icon}
+          </span>
+        )}
+        <span
+          style={{ color: labelColor }}
+          className="text-caption font-bold tracking-wide uppercase"
+        >
+          {label}
+        </span>
+      </div>
 
       <span style={{ color: valueColor }} className="text-display font-bold">
         {value}
@@ -51,7 +67,9 @@ function StatCard({
           style={{ color: trend.color }}
           className="inline-flex items-center gap-xs text-body font-semibold"
         >
-          <span aria-hidden>{trend.direction === 'down' ? '▼' : '▲'}</span>
+          {trend.direction && (
+            <span aria-hidden>{trend.direction === 'down' ? '▼' : '▲'}</span>
+          )}
           {trend.text}
         </span>
       )}
