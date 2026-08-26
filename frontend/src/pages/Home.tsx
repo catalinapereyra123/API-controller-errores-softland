@@ -1,12 +1,15 @@
 import { useState } from 'react'
 import Button from '../components/Button'
+import ChevronButton from '../components/ChevronButton'
 import {
   AlertTriangleIcon,
+  ChevronRightIcon,
   ClockIcon,
   HistoryIcon,
   HomeIcon,
   InboxIcon,
   PanelLeftIcon,
+  RefreshIcon,
   TrendingUpIcon,
   UserIcon,
   UsersIcon,
@@ -26,8 +29,9 @@ import {
   ResueltoTag,
 } from '../components/Tag'
 import { useHomeData } from '../hooks/useHomeData'
-import { colors, spacing } from '../styles'
+import { colors, fontFamily, fontWeight, spacing, textStyles } from '../styles'
 import type { Empresa, ErrorEstado, ErrorPrioritario } from '../types'
+import { cn } from '../utils/cn'
 import {
   formatElapsedSince,
   formatMinutes,
@@ -54,8 +58,8 @@ function ResponsableIndicator({ asignado }: { asignado: boolean }) {
 
   return (
     <span
-      style={{ color }}
-      className="inline-flex items-center gap-xs text-bodySmall font-bold whitespace-nowrap"
+      style={{ ...textStyles.bodySmall, fontWeight: fontWeight.bold, color }}
+      className="inline-flex items-center gap-xs whitespace-nowrap"
     >
       <span
         className="h-1.5 w-1.5 rounded-full"
@@ -78,40 +82,47 @@ function ErrorRow({
   return (
     <div
       style={{ borderColor: colors.background.border }}
-      className="grid grid-cols-[120px_110px_1fr_140px_80px_90px] items-center gap-md border-b px-lg py-md last:border-b-0"
+      className="grid grid-cols-[120px_110px_1fr_140px_80px_56px] items-center gap-md border-b px-lg py-md last:border-b-0"
     >
       <EstadoTag />
       <span
-        style={{ color: colors.gray.medium }}
-        className="font-mono text-bodySmall font-semibold"
+        style={{
+          ...textStyles.bodySmall,
+          fontFamily: fontFamily.mono.join(', '),
+          fontWeight: fontWeight.semibold,
+          color: colors.gray.medium,
+        }}
       >
         {error.codigo}
       </span>
       <div className="flex min-w-0 flex-col gap-xxs">
         <span
-          style={{ color: colors.gray.darkest }}
-          className="truncate text-body font-bold"
+          style={{
+            ...textStyles.body,
+            fontWeight: fontWeight.bold,
+            color: colors.gray.darkest,
+          }}
+          className="truncate"
         >
           {empresaLabel(empresas, error.empresaId)} · {error.modulo}
         </span>
         <span
-          style={{ color: colors.gray.medium }}
-          className="truncate text-bodySmall"
+          style={{ ...textStyles.bodySmall, color: colors.gray.medium }}
+          className="truncate"
         >
           {error.descripcion}
         </span>
       </div>
       <ResponsableIndicator asignado={error.responsableId !== null} />
-      <span style={{ color: colors.gray.medium }} className="text-bodySmall">
+      <span style={{ ...textStyles.bodySmall, color: colors.gray.medium }}>
         {formatElapsedSince(error.abiertoDesde)}
       </span>
-      <button
-        type="button"
-        style={{ color: colors.primary.dark }}
-        className="inline-flex items-center justify-end gap-xs text-bodySmall font-bold transition-opacity hover:opacity-80"
-      >
-        Abrir <span aria-hidden>→</span>
-      </button>
+      <ChevronButton
+        color={colors.primary.dark}
+        borderColor={colors.background.border}
+        aria-label={`Abrir ${error.codigo}`}
+        className="justify-self-end"
+      />
     </div>
   )
 }
@@ -225,35 +236,39 @@ function Home() {
                 <PanelLeftIcon className="h-5 w-5" />
               </button>
               <div className="flex flex-col gap-xxs">
-                <h1
-                  style={{ color: colors.gray.darkest }}
-                  className="text-h1 font-bold"
-                >
+                <h1 style={{ ...textStyles.h1, color: colors.gray.darkest }}>
                   Hola, {data?.currentUser.nombre.split(' ')[0] ?? '...'}
                 </h1>
-                <p style={{ color: colors.gray.medium }} className="text-body">
+                <p style={{ ...textStyles.body, color: colors.gray.medium }}>
                   {formatTodayEs()} — Así está la operación de errores hoy.
                 </p>
               </div>
             </div>
             <Button
-              text={loading ? 'Actualizando…' : '↻ Actualizar'}
+              text=""
               color={colors.primary.default}
               onClick={refetch}
               disabled={loading}
-              size={{ padding: `${spacing.sm} ${spacing.lg}` }}
-              className="text-bodySmall"
+              aria-label={loading ? 'Actualizando…' : 'Actualizar'}
+              icon={
+                <RefreshIcon
+                  className={cn('h-5 w-5', loading && 'animate-spin')}
+                />
+              }
+              size={{ padding: spacing.sm }}
             />
           </div>
 
           {error && (
             <div
               style={{
+                ...textStyles.bodySmall,
+                fontWeight: fontWeight.semibold,
                 backgroundColor: colors.label.red.background,
                 color: colors.label.red.text,
                 borderColor: colors.label.red.outline,
               }}
-              className="flex items-center justify-between gap-md rounded-xl border px-lg py-md text-bodySmall font-semibold"
+              className="flex items-center justify-between gap-md rounded-xl border px-lg py-md"
             >
               {error}
               <button type="button" className="underline" onClick={refetch}>
@@ -366,7 +381,7 @@ function Home() {
               actionText="Ver bandeja completa →"
               actionColor={colors.primary.dark}
               rows={4}
-              columns={5}
+              columns={7}
               backgroundColor={colors.background.surface}
               titleColor={colors.gray.darkest}
               subtitleColor={colors.gray.medium}
@@ -384,25 +399,36 @@ function Home() {
               >
                 <div className="flex flex-col gap-xxs">
                   <span
-                    style={{ color: colors.gray.darkest }}
-                    className="text-h3 font-bold"
+                    style={{
+                      ...textStyles.h3,
+                      fontWeight: fontWeight.bold,
+                      color: colors.gray.darkest,
+                    }}
                   >
                     Requiere atención inmediata
                   </span>
                   <span
-                    style={{ color: colors.gray.medium }}
-                    className="text-bodySmall"
+                    style={{
+                      ...textStyles.bodySmall,
+                      color: colors.gray.medium,
+                    }}
                   >
                     Errores sin asignar o abiertos hace más de 2 horas
                   </span>
                 </div>
-                <button
-                  type="button"
-                  style={{ color: colors.primary.dark }}
-                  className="inline-flex shrink-0 items-center gap-xs text-bodySmall font-bold transition-opacity hover:opacity-80"
-                >
-                  Ver bandeja completa <span aria-hidden>→</span>
-                </button>
+                <Button
+                  text="Ver bandeja completa"
+                  color={colors.primary.default}
+                  variant="outline"
+                  icon={<InboxIcon className="h-4 w-4" />}
+                  trailingIcon={<ChevronRightIcon className="h-4 w-4" />}
+                  size={{
+                    padding: `${spacing.sm} ${spacing.lg}`,
+                    ...textStyles.bodySmall,
+                    fontWeight: fontWeight.bold,
+                  }}
+                  className="shrink-0"
+                />
               </div>
 
               <div>

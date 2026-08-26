@@ -98,3 +98,20 @@ export function PanelLeftIcon(props: SVGProps<SVGSVGElement>) {
     </BaseIcon>
   )
 }
+
+export function ChevronRightIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <BaseIcon {...props}>
+      <path d="M9 5.5 15.5 12 9 18.5" />
+    </BaseIcon>
+  )
+}
+
+export function RefreshIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <BaseIcon {...props}>
+      <path d="M20 12a8 8 0 1 1-2.34-5.66" />
+      <path d="M20 4v5h-5" />
+    </BaseIcon>
+  )
+}
