@@ -9,3 +9,9 @@ export async function getCurrentUser(): Promise<Usuario> {
   return usuario
   // return api<Usuario>('/users/me')
 }
+
+export async function getUsuarios(): Promise<Usuario[]> {
+  await mockDelay()
+  return usuariosMock
+  // return api<Usuario[]>('/users')
+}

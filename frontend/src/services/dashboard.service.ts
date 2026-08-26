@@ -3,7 +3,7 @@ import {
   erroresPrioritariosMock,
 } from '../mocks/dashboard.mock'
 import { mockDelay } from './mockDelay'
-import type { DashboardStats, ErrorPrioritario } from '../types'
+import type { DashboardStats, ErrorTransaccion } from '../types'
 
 export async function getDashboardStats(): Promise<DashboardStats> {
   await mockDelay()
@@ -11,7 +11,7 @@ export async function getDashboardStats(): Promise<DashboardStats> {
   // return api<DashboardStats>('/dashboard/stats')
 }
 
-export async function getErroresPrioritarios(): Promise<ErrorPrioritario[]> {
+export async function getErroresPrioritarios(): Promise<ErrorTransaccion[]> {
   await mockDelay(350)
   return erroresPrioritariosMock
   // return api<ErrorPrioritario[]>('/errores/prioritarios')

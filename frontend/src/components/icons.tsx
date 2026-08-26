@@ -115,3 +115,21 @@ export function RefreshIcon(props: SVGProps<SVGSVGElement>) {
     </BaseIcon>
   )
 }
+
+export function SearchIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <BaseIcon {...props}>
+      <circle cx="10.5" cy="10.5" r="6.5" />
+      <path d="m20 20-4.35-4.35" />
+    </BaseIcon>
+  )
+}
+
+export function PlusIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <BaseIcon {...props}>
+      <path d="M12 5v14" />
+      <path d="M5 12h14" />
+    </BaseIcon>
+  )
+}

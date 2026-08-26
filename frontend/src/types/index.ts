@@ -1,6 +1,8 @@
 export type ErrorEstado =
   'ERROR' | 'PENDIENTE' | 'ASIGNADO' | 'EN_PROGRESO' | 'CORREGIDO' | 'RESUELTO'
 
+export type AppPage = 'home' | 'bandeja'
+
 export interface Empresa {
   id: string
   nombre: string
@@ -13,7 +15,7 @@ export interface Usuario {
   avatarIniciales: string
 }
 
-export interface ErrorPrioritario {
+export interface ErrorTransaccion {
   id: string
   codigo: string
   estado: ErrorEstado
@@ -22,6 +24,7 @@ export interface ErrorPrioritario {
   descripcion: string
   responsableId: string | null
   abiertoDesde: string
+  intentos: number
 }
 
 export interface DashboardStats {

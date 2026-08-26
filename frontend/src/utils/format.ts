@@ -8,9 +8,21 @@ export function formatMinutes(totalMinutes: number): string {
   return `${hours}h ${rest}m`
 }
 
+export function minutesSince(isoDate: string): number {
+  return (Date.now() - new Date(isoDate).getTime()) / 60_000
+}
+
 export function formatElapsedSince(isoDate: string): string {
-  const diffMinutes = (Date.now() - new Date(isoDate).getTime()) / 60_000
-  return formatMinutes(diffMinutes)
+  return formatMinutes(minutesSince(isoDate))
+}
+
+export function formatDetectedAt(isoDate: string): string {
+  const date = new Date(isoDate)
+  const day = String(date.getDate()).padStart(2, '0')
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const hours = String(date.getHours()).padStart(2, '0')
+  const minutes = String(date.getMinutes()).padStart(2, '0')
+  return `${day}/${month} ${hours}:${minutes}`
 }
 
 export function formatTodayEs(date: Date = new Date()): string {

@@ -14,41 +14,23 @@ import {
   UserIcon,
   UsersIcon,
 } from '../components/icons'
-import Sidebar, { type SidebarSection } from '../components/Sidebar'
+import Sidebar, {
+  type SidebarNavItem,
+  type SidebarSection,
+} from '../components/Sidebar'
 import StatCard from '../components/StatCard'
 import Table from '../components/Table'
-import {
-  AsignadoTag,
-  CorregidoTag,
-  EnProgresoTag,
-  ErrorTag,
-  PendienteTag,
-  ResueltoTag,
-} from '../components/Tag'
+import { estadoTagByEstado } from '../constants/estados'
 import { useHomeData } from '../hooks/useHomeData'
 import { colors, fontFamily, fontWeight, spacing, textStyles } from '../styles'
-import type { Empresa, ErrorEstado, ErrorPrioritario } from '../types'
+import type { AppPage, Empresa, ErrorTransaccion } from '../types'
 import { cn } from '../utils/cn'
 import {
   formatElapsedSince,
   formatMinutes,
   formatTodayEs,
 } from '../utils/format'
-
-const estadoTagByEstado: Record<ErrorEstado, () => React.JSX.Element> = {
-  ERROR: ErrorTag,
-  PENDIENTE: PendienteTag,
-  ASIGNADO: AsignadoTag,
-  EN_PROGRESO: EnProgresoTag,
-  CORREGIDO: CorregidoTag,
-  RESUELTO: ResueltoTag,
-}
-
-function empresaLabel(empresas: Empresa[], empresaId: string) {
-  return (
-    empresas.find((empresa) => empresa.id === empresaId)?.nombre ?? empresaId
-  )
-}
+import { empresaLabel } from '../utils/labels'
 
 function ResponsableIndicator({ asignado }: { asignado: boolean }) {
   const color = asignado ? colors.status.success : colors.status.error
@@ -71,7 +53,7 @@ function ErrorRow({
   error,
   empresas,
 }: {
-  error: ErrorPrioritario
+  error: ErrorTransaccion
   empresas: Empresa[]
 }) {
   const EstadoTag = estadoTagByEstado[error.estado]
@@ -79,7 +61,7 @@ function ErrorRow({
   return (
     <div
       style={{ borderColor: colors.background.border }}
-      className="grid grid-cols-[120px_110px_1fr_140px_80px_56px] items-center gap-md border-b px-lg py-md last:border-b-0"
+      className="grid grid-cols-[110px_110px_1fr_1fr_140px_90px_56px] items-center gap-md border-b px-lg py-md last:border-b-0"
     >
       <EstadoTag />
       <span
@@ -92,24 +74,22 @@ function ErrorRow({
       >
         {error.codigo}
       </span>
-      <div className="flex min-w-0 flex-col gap-xxs">
-        <span
-          style={{
-            ...textStyles.body,
-            fontWeight: fontWeight.bold,
-            color: colors.gray.darkest,
-          }}
-          className="truncate"
-        >
-          {empresaLabel(empresas, error.empresaId)} · {error.modulo}
-        </span>
-        <span
-          style={{ ...textStyles.bodySmall, color: colors.gray.medium }}
-          className="truncate"
-        >
-          {error.descripcion}
-        </span>
-      </div>
+      <span
+        style={{
+          ...textStyles.body,
+          fontWeight: fontWeight.bold,
+          color: colors.gray.darkest,
+        }}
+        className="truncate"
+      >
+        {empresaLabel(empresas, error.empresaId)}
+      </span>
+      <span
+        style={{ ...textStyles.bodySmall, color: colors.gray.medium }}
+        className="truncate"
+      >
+        {error.modulo}
+      </span>
       <ResponsableIndicator asignado={error.responsableId !== null} />
       <span style={{ ...textStyles.bodySmall, color: colors.gray.medium }}>
         {formatElapsedSince(error.abiertoDesde)}
@@ -124,10 +104,10 @@ function ErrorRow({
   )
 }
 
-function Home() {
+function Home({ onNavigate }: { onNavigate: (page: AppPage) => void }) {
   const { data, loading, error, refetch } = useHomeData()
-  const [activeNavItem, setActiveNavItem] = useState('inicio')
   const [sidebarOpen, setSidebarOpen] = useState(true)
+  const [activeNavItem, setActiveNavItem] = useState('inicio')
 
   const sections: SidebarSection[] = [
     {
@@ -159,6 +139,13 @@ function Home() {
     },
   ]
 
+  function handleSelectNavItem(item: SidebarNavItem) {
+    const id = item.id ?? item.label
+    setActiveNavItem(id)
+    if (id === 'inicio') onNavigate('home')
+    if (id === 'bandeja') onNavigate('bandeja')
+  }
+
   return (
     <div
       style={{ backgroundColor: colors.background.page }}
@@ -186,7 +173,7 @@ function Home() {
           itemActiveColor={colors.primary.dark}
           itemActiveBackground={colors.primary.lightest}
           activeItem={activeNavItem}
-          onItemSelect={(item) => setActiveNavItem(item.id ?? item.label)}
+          onItemSelect={handleSelectNavItem}
           sections={sections}
           user={
             data
@@ -404,6 +391,7 @@ function Home() {
                   text="Ver bandeja completa"
                   color={colors.primary.default}
                   variant="outline"
+                  onClick={() => onNavigate('bandeja')}
                   icon={<InboxIcon className="h-4 w-4" />}
                   trailingIcon={<ChevronRightIcon className="h-4 w-4" />}
                   size={{

@@ -11,6 +11,8 @@ interface DropdownProps {
   text: string
   options: DropdownOption[]
   color: string
+  textColor?: string
+  backgroundColor?: string
   value?: string
   onChange?: (value: string) => void
   size?: CSSProperties
@@ -21,6 +23,8 @@ function Dropdown({
   text,
   options,
   color,
+  textColor,
+  backgroundColor,
   value,
   onChange,
   size,
@@ -58,7 +62,12 @@ function Dropdown({
       <button
         type="button"
         onClick={() => setOpen((prev) => !prev)}
-        style={{ borderColor: color, color, ...size }}
+        style={{
+          borderColor: color,
+          color: textColor ?? color,
+          backgroundColor,
+          ...size,
+        }}
         className="inline-flex items-center gap-sm rounded-md border px-md py-sm text-body font-medium"
       >
         {selected?.label ?? text}

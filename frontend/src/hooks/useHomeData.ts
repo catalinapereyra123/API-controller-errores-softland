@@ -8,7 +8,7 @@ import { getCurrentUser } from '../services/usuarios.service'
 import type {
   DashboardStats,
   Empresa,
-  ErrorPrioritario,
+  ErrorTransaccion,
   Usuario,
 } from '../types'
 
@@ -16,7 +16,7 @@ interface HomeData {
   currentUser: Usuario
   empresas: Empresa[]
   stats: DashboardStats
-  erroresPrioritarios: ErrorPrioritario[]
+  erroresPrioritarios: ErrorTransaccion[]
 }
 
 interface UseHomeDataResult {

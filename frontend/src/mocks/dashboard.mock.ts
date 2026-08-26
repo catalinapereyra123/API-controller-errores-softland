@@ -1,4 +1,4 @@
-import type { DashboardStats, ErrorPrioritario } from '../types'
+import type { DashboardStats, ErrorTransaccion } from '../types'
 
 export const dashboardStatsMock: DashboardStats = {
   erroresAbiertos: 37,
@@ -15,7 +15,7 @@ export const dashboardStatsMock: DashboardStats = {
 const minutesAgo = (minutes: number) =>
   new Date(Date.now() - minutes * 60_000).toISOString()
 
-export const erroresPrioritariosMock: ErrorPrioritario[] = [
+export const erroresPrioritariosMock: ErrorTransaccion[] = [
   {
     id: '1',
     codigo: 'VIS-29904',
@@ -25,6 +25,7 @@ export const erroresPrioritariosMock: ErrorPrioritario[] = [
     descripcion: 'Importe factura no coincide con ítems',
     responsableId: null,
     abiertoDesde: minutesAgo(134),
+    intentos: 1,
   },
   {
     id: '2',
@@ -35,6 +36,7 @@ export const erroresPrioritariosMock: ErrorPrioritario[] = [
     descripcion: 'Cliente inexistente en cabecera',
     responsableId: null,
     abiertoDesde: minutesAgo(182),
+    intentos: 0,
   },
   {
     id: '3',
@@ -45,6 +47,7 @@ export const erroresPrioritariosMock: ErrorPrioritario[] = [
     descripcion: 'ERRMSG vacío — sin detalle disponible',
     responsableId: 'martin-lopez',
     abiertoDesde: minutesAgo(340),
+    intentos: 1,
   },
   {
     id: '4',
@@ -55,5 +58,6 @@ export const erroresPrioritariosMock: ErrorPrioritario[] = [
     descripcion: 'Proveedor bloqueado por retención',
     responsableId: null,
     abiertoDesde: minutesAgo(378),
+    intentos: 2,
   },
 ]

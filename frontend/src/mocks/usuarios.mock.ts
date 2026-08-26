@@ -14,6 +14,18 @@ export const usuariosMock: Usuario[] = [
     rol: 'Soporte funcional',
     avatarIniciales: 'ML',
   },
+  {
+    id: 'catalina-ruiz',
+    nombre: 'Catalina Ruiz',
+    rol: 'Soporte funcional',
+    avatarIniciales: 'CR',
+  },
+  {
+    id: 'juan-perez',
+    nombre: 'Juan Pérez',
+    rol: 'Soporte funcional',
+    avatarIniciales: 'JP',
+  },
 ]
 
 // Usuario con la sesión activa (vendrá de GET /users/me una vez exista auth).
