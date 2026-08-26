@@ -14,10 +14,7 @@ import {
   UserIcon,
   UsersIcon,
 } from '../components/icons'
-import Sidebar, {
-  type SidebarNavItem,
-  type SidebarSection,
-} from '../components/Sidebar'
+import Sidebar, { type SidebarSection } from '../components/Sidebar'
 import StatCard from '../components/StatCard'
 import Table from '../components/Table'
 import {
@@ -159,19 +156,6 @@ function Home() {
           label: 'Historial',
         },
       ],
-    },
-    {
-      title: 'Empresas',
-      items: (data?.empresas ?? []).map<SidebarNavItem>((empresa) => ({
-        id: `empresa-${empresa.id}`,
-        label: empresa.nombre,
-        icon: (
-          <span
-            className="h-2 w-2 rounded-full"
-            style={{ backgroundColor: colors.gray.default }}
-          />
-        ),
-      })),
     },
   ]
 
