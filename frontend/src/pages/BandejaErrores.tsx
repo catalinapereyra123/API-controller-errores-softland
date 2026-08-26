@@ -16,6 +16,7 @@ import Sidebar, {
   type SidebarSection,
 } from '../components/Sidebar'
 import Table from '../components/Table'
+import { cn } from '../utils/cn'
 import {
   estadoLabels,
   estadoOrder,
@@ -28,7 +29,7 @@ import { empresaLabel, usuarioNombre } from '../utils/labels'
 import { formatDetectedAt, formatElapsedSince } from '../utils/format'
 
 const BANDEJA_GRID_COLS =
-  'grid-cols-[150px_100px_1fr_1fr_130px_110px_90px_80px_56px]'
+  'grid-cols-[150px_100px_minmax(120px,1fr)_minmax(110px,1fr)_minmax(130px,1fr)_minmax(110px,1fr)_minmax(90px,1fr)_80px_56px]'
 
 const BANDEJA_COLUMNS = [
   'Estado',
@@ -56,7 +57,7 @@ function BandejaTableHeader() {
             fontWeight: fontWeight.semibold,
             color: colors.gray.medium,
           }}
-          className="uppercase"
+          className={cn('uppercase', label === 'Intentos' && 'text-center')}
         >
           {label}
         </span>
@@ -140,7 +141,10 @@ function BandejaRow({
           ? '—'
           : formatElapsedSince(error.abiertoDesde)}
       </span>
-      <span style={{ ...textStyles.bodySmall, color: colors.gray.medium }}>
+      <span
+        style={{ ...textStyles.bodySmall, color: colors.gray.medium }}
+        className="text-center"
+      >
         {error.intentos}
       </span>
       <ChevronButton

@@ -61,7 +61,7 @@ function ErrorRow({
   return (
     <div
       style={{ borderColor: colors.background.border }}
-      className="grid grid-cols-[110px_110px_1fr_1fr_140px_90px_56px] items-center gap-md border-b px-lg py-md last:border-b-0"
+      className="grid grid-cols-[110px_110px_minmax(120px,1fr)_minmax(110px,1fr)_minmax(140px,1fr)_minmax(90px,1fr)_56px] items-center gap-md border-b px-lg py-md last:border-b-0"
     >
       <EstadoTag />
       <span
