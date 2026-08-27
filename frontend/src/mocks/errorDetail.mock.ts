@@ -89,5 +89,26 @@ export const errorDetailMock: ErrorDetalle = {
       detalle: 'Por Catalina Ruiz',
       tipo: 'observacion',
     },
+    {
+      id: 't4',
+      hora: '11:52',
+      titulo: 'Reproceso ejecutado',
+      detalle: 'Finalizó en estado B',
+      tipo: 'reproceso',
+    },
+    {
+      id: 't5',
+      hora: '12:15',
+      titulo: 'Reasignado a Martín López',
+      detalle: 'Por Catalina Ruiz',
+      tipo: 'asignacion',
+    },
+    {
+      id: 't6',
+      hora: '12:40',
+      titulo: 'Observación agregada',
+      detalle: 'Por Martín López',
+      tipo: 'observacion',
+    },
   ],
 }

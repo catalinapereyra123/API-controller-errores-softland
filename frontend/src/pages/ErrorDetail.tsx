@@ -280,12 +280,20 @@ function ErrorDetail({ onNavigate }: { onNavigate: (page: AppPage) => void }) {
               )}
 
               {tab === 'historial' && (
-                <Card className="flex items-center justify-center py-xxl">
+                <Card>
                   <span
-                    style={{ ...textStyles.body, color: colors.gray.medium }}
+                    style={{ ...textStyles.h3, color: colors.gray.darkest }}
+                    className="mb-lg block"
                   >
-                    El historial completo se mostrará acá.
+                    Trazabilidad completa
                   </span>
+                  <Timeline
+                    items={trazabilidadToTimelineItems(detalle.trazabilidad)}
+                    connectorColor={colors.background.border}
+                    timeColor={colors.gray.default}
+                    titleColor={colors.gray.darkest}
+                    descriptionColor={colors.gray.medium}
+                  />
                 </Card>
               )}
 
@@ -582,7 +590,7 @@ function ErrorDetail({ onNavigate }: { onNavigate: (page: AppPage) => void }) {
                     <CollapsibleCard title="Trazabilidad">
                       <Timeline
                         items={trazabilidadToTimelineItems(
-                          detalle.trazabilidad,
+                          detalle.trazabilidad.slice(-3),
                         )}
                         connectorColor={colors.background.border}
                         timeColor={colors.gray.default}
