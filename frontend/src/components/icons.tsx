@@ -133,3 +133,65 @@ export function PlusIcon(props: SVGProps<SVGSVGElement>) {
     </BaseIcon>
   )
 }
+
+export function ArrowLeftIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <BaseIcon {...props}>
+      <path d="M20 12H4" />
+      <path d="m10 6-6 6 6 6" />
+    </BaseIcon>
+  )
+}
+
+export function ChevronDownIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <BaseIcon {...props}>
+      <path d="m5.5 9 6.5 6.5L18.5 9" />
+    </BaseIcon>
+  )
+}
+
+export function CheckCircleIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <BaseIcon {...props}>
+      <circle cx="12" cy="12" r="8.5" />
+      <path d="m8.5 12 2.5 2.5 4.5-5" />
+    </BaseIcon>
+  )
+}
+
+export function BellIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <BaseIcon {...props}>
+      <path d="M6 9a6 6 0 0 1 12 0c0 4 1.5 5.5 1.5 5.5h-15S6 13 6 9Z" />
+      <path d="M10 18.5a2 2 0 0 0 4 0" />
+    </BaseIcon>
+  )
+}
+
+export function MessageIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <BaseIcon {...props}>
+      <path d="M20 15a2 2 0 0 1-2 2H8l-4 4V6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2Z" />
+    </BaseIcon>
+  )
+}
+
+export function SendIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <BaseIcon {...props}>
+      <path d="M21 4 3 11l7 2.5L12.5 21 21 4Z" />
+      <path d="m10 14 4-4" />
+    </BaseIcon>
+  )
+}
+
+export function ExternalLinkIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <BaseIcon {...props}>
+      <path d="M14 5h5v5" />
+      <path d="M19 5 10 14" />
+      <path d="M18 14v4a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h4" />
+    </BaseIcon>
+  )
+}

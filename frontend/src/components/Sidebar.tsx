@@ -1,4 +1,5 @@
-import type { AnchorHTMLAttributes, CSSProperties, ReactNode } from 'react'
+import type { CSSProperties, ReactNode } from 'react'
+import { HistoryIcon, HomeIcon, InboxIcon } from './icons'
 import { cn } from '../utils/cn'
 
 export interface SidebarBadge {
@@ -7,19 +8,28 @@ export interface SidebarBadge {
   backgroundColor: string
 }
 
+export type SidebarItemId = 'inicio' | 'bandeja' | 'historial'
+
 export interface SidebarNavItem {
-  id?: string
+  id: SidebarItemId
   icon: ReactNode
   label: string
-  badge?: SidebarBadge
-  href?: AnchorHTMLAttributes<HTMLAnchorElement>['href']
-  onClick?: () => void
 }
 
-export interface SidebarSection {
-  title: string
-  items: SidebarNavItem[]
-}
+// Navegación fija de la app. Vive acá para no repetirla en cada page.
+const SIDEBAR_ITEMS: SidebarNavItem[] = [
+  { id: 'inicio', icon: <HomeIcon className="h-5 w-5" />, label: 'Inicio' },
+  {
+    id: 'bandeja',
+    icon: <InboxIcon className="h-5 w-5" />,
+    label: 'Bandeja de errores',
+  },
+  {
+    id: 'historial',
+    icon: <HistoryIcon className="h-5 w-5" />,
+    label: 'Historial',
+  },
+]
 
 export interface SidebarUser {
   name: string
@@ -44,8 +54,9 @@ interface SidebarProps {
   itemHoverBackground: string
   itemActiveColor: string
   itemActiveBackground: string
-  sections: SidebarSection[]
-  activeItem?: string
+  /** Badges opcionales por id de item (ej. pendientes en "bandeja"). */
+  badges?: Partial<Record<SidebarItemId, SidebarBadge>>
+  activeItem?: SidebarItemId
   onItemSelect?: (item: SidebarNavItem) => void
   user?: SidebarUser
   className?: string
@@ -66,7 +77,7 @@ function Sidebar({
   itemHoverBackground,
   itemActiveColor,
   itemActiveBackground,
-  sections,
+  badges,
   activeItem,
   onItemSelect,
   user,
@@ -101,68 +112,65 @@ function Sidebar({
       </div>
 
       <nav className="flex flex-1 flex-col gap-lg overflow-y-auto">
-        {sections.map((section) => (
-          <div key={section.title} className="flex flex-col gap-xs">
-            <span
-              style={{ color: sectionTitleColor }}
-              className="px-sm text-caption font-bold tracking-wide uppercase"
-            >
-              {section.title}
-            </span>
+        <div className="flex flex-col gap-xs">
+          <span
+            style={{ color: sectionTitleColor }}
+            className="px-sm text-caption font-bold tracking-wide uppercase"
+          >
+            Principal
+          </span>
 
-            <ul className="flex flex-col gap-xxs">
-              {section.items.map((item) => {
-                const itemId = item.id ?? item.label
-                const isActive = itemId === activeItem
+          <ul className="flex flex-col gap-xxs">
+            {SIDEBAR_ITEMS.map((item) => {
+              const isActive = item.id === activeItem
+              const badge = badges?.[item.id]
 
-                return (
-                  <li key={itemId}>
-                    <a
-                      href={item.href ?? '#'}
-                      onClick={(event) => {
-                        if (!item.href) event.preventDefault()
-                        item.onClick?.()
-                        onItemSelect?.(item)
-                      }}
-                      style={
-                        {
-                          color: isActive ? itemActiveColor : itemColor,
-                          backgroundColor: isActive
-                            ? itemActiveBackground
-                            : 'transparent',
-                          '--item-hover-bg': itemHoverBackground,
-                        } as CSSProperties
-                      }
-                      className={cn(
-                        'flex items-center gap-sm rounded-lg px-sm py-sm text-body font-semibold transition-colors',
-                        !isActive && 'hover:bg-[var(--item-hover-bg)]',
-                      )}
+              return (
+                <li key={item.id}>
+                  <a
+                    href="#"
+                    onClick={(event) => {
+                      event.preventDefault()
+                      onItemSelect?.(item)
+                    }}
+                    style={
+                      {
+                        color: isActive ? itemActiveColor : itemColor,
+                        backgroundColor: isActive
+                          ? itemActiveBackground
+                          : 'transparent',
+                        '--item-hover-bg': itemHoverBackground,
+                      } as CSSProperties
+                    }
+                    className={cn(
+                      'flex items-center gap-sm rounded-lg px-sm py-sm text-body font-semibold transition-colors',
+                      !isActive && 'hover:bg-[var(--item-hover-bg)]',
+                    )}
+                  >
+                    <span
+                      aria-hidden
+                      className="flex h-5 w-5 shrink-0 items-center justify-center"
                     >
+                      {item.icon}
+                    </span>
+                    <span className="flex-1 truncate">{item.label}</span>
+                    {badge && (
                       <span
-                        aria-hidden
-                        className="flex h-5 w-5 shrink-0 items-center justify-center"
+                        style={{
+                          color: badge.color,
+                          backgroundColor: badge.backgroundColor,
+                        }}
+                        className="rounded-full px-xs py-xxs text-caption font-bold"
                       >
-                        {item.icon}
+                        {badge.text}
                       </span>
-                      <span className="flex-1 truncate">{item.label}</span>
-                      {item.badge && (
-                        <span
-                          style={{
-                            color: item.badge.color,
-                            backgroundColor: item.badge.backgroundColor,
-                          }}
-                          className="rounded-full px-xs py-xxs text-caption font-bold"
-                        >
-                          {item.badge.text}
-                        </span>
-                      )}
-                    </a>
-                  </li>
-                )
-              })}
-            </ul>
-          </div>
-        ))}
+                    )}
+                  </a>
+                </li>
+              )
+            })}
+          </ul>
+        </div>
       </nav>
 
       {user && (

@@ -25,6 +25,14 @@ export function formatDetectedAt(isoDate: string): string {
   return `${day}/${month} ${hours}:${minutes}`
 }
 
+export function formatCurrency(amount: number): string {
+  return new Intl.NumberFormat('es-AR', {
+    style: 'currency',
+    currency: 'ARS',
+    minimumFractionDigits: 2,
+  }).format(amount)
+}
+
 export function formatTodayEs(date: Date = new Date()): string {
   const formatted = new Intl.DateTimeFormat('es-AR', {
     weekday: 'long',

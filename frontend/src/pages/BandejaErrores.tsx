@@ -2,18 +2,11 @@ import { useMemo, useState } from 'react'
 import Button from '../components/Button'
 import ChevronButton from '../components/ChevronButton'
 import Dropdown, { type DropdownOption } from '../components/Dropdown'
-import {
-  HistoryIcon,
-  HomeIcon,
-  InboxIcon,
-  PanelLeftIcon,
-  PlusIcon,
-  SearchIcon,
-} from '../components/icons'
+import { PanelLeftIcon, PlusIcon, SearchIcon } from '../components/icons'
 import Input from '../components/Input'
 import Sidebar, {
+  type SidebarItemId,
   type SidebarNavItem,
-  type SidebarSection,
 } from '../components/Sidebar'
 import Table from '../components/Table'
 import { cn } from '../utils/cn'
@@ -70,10 +63,12 @@ function BandejaRow({
   error,
   empresas,
   usuarios,
+  onOpen,
 }: {
   error: ErrorTransaccion
   empresas: Empresa[]
   usuarios: Usuario[]
+  onOpen: () => void
 }) {
   const EstadoTag = estadoTagByEstado[error.estado]
   const responsable = usuarioNombre(usuarios, error.responsableId)
@@ -151,6 +146,7 @@ function BandejaRow({
         color={colors.primary.dark}
         borderColor={colors.background.border}
         aria-label={`Abrir ${error.codigo}`}
+        onClick={onOpen}
         className="justify-self-end"
       />
     </div>
@@ -172,40 +168,10 @@ function BandejaErrores({
     setFilters,
   } = useBandejaErrores()
   const [sidebarOpen, setSidebarOpen] = useState(true)
-  const [activeNavItem, setActiveNavItem] = useState('bandeja')
-
-  const sections: SidebarSection[] = [
-    {
-      title: 'Principal',
-      items: [
-        {
-          id: 'inicio',
-          icon: <HomeIcon className="h-5 w-5" />,
-          label: 'Inicio',
-        },
-        {
-          id: 'bandeja',
-          icon: <InboxIcon className="h-5 w-5" />,
-          label: 'Bandeja de errores',
-          badge: data
-            ? {
-                text: String(data.bandejaPendientes),
-                color: colors.label.orange.text,
-                backgroundColor: colors.label.orange.background,
-              }
-            : undefined,
-        },
-        {
-          id: 'historial',
-          icon: <HistoryIcon className="h-5 w-5" />,
-          label: 'Historial',
-        },
-      ],
-    },
-  ]
+  const [activeNavItem, setActiveNavItem] = useState<SidebarItemId>('bandeja')
 
   function handleSelectNavItem(item: SidebarNavItem) {
-    const id = item.id ?? item.label
+    const id = item.id
     setActiveNavItem(id)
     if (id === 'inicio') onNavigate('home')
     if (id === 'bandeja') onNavigate('bandeja')
@@ -284,7 +250,17 @@ function BandejaErrores({
           itemActiveBackground={colors.primary.lightest}
           activeItem={activeNavItem}
           onItemSelect={handleSelectNavItem}
-          sections={sections}
+          badges={
+            data
+              ? {
+                  bandeja: {
+                    text: String(data.bandejaPendientes),
+                    color: colors.label.orange.text,
+                    backgroundColor: colors.label.orange.background,
+                  },
+                }
+              : undefined
+          }
           user={
             data
               ? {
@@ -451,6 +427,7 @@ function BandejaErrores({
                       error={item}
                       empresas={data.empresas}
                       usuarios={data.usuarios}
+                      onOpen={() => onNavigate('detalle')}
                     />
                   ))}
                 </div>

@@ -1,7 +1,7 @@
 export type ErrorEstado =
   'ERROR' | 'PENDIENTE' | 'ASIGNADO' | 'EN_PROGRESO' | 'CORREGIDO' | 'RESUELTO'
 
-export type AppPage = 'home' | 'bandeja'
+export type AppPage = 'home' | 'bandeja' | 'detalle'
 
 export interface Empresa {
   id: string
@@ -25,6 +25,54 @@ export interface ErrorTransaccion {
   responsableId: string | null
   abiertoDesde: string
   intentos: number
+}
+
+export interface ErrorObservacion {
+  id: string
+  autor: string
+  iniciales: string
+  hace: string
+  texto: string
+}
+
+export type TrazabilidadTipo =
+  'error' | 'asignacion' | 'observacion' | 'reproceso'
+
+export interface TrazabilidadEvento {
+  id: string
+  hora: string
+  titulo: string
+  detalle: string
+  tipo: TrazabilidadTipo
+}
+
+export interface ErrorDetalle {
+  id: string
+  codigo: string
+  estado: ErrorEstado
+  empresa: string
+  proceso: string
+  proveedorCodigo: string
+  detectadoEn: string
+  tiempoAbierto: string
+  intentos: number
+  mensajeSoftland: string
+  tablaSoftland: string
+  cabecera: {
+    proveedor: string
+    fechaComprobante: string
+    estadoActual: string
+    importeTotal: number
+    importeAplicado: number
+    diferencia: number
+  }
+  responsable: {
+    nombre: string
+    iniciales: string
+    asignadaHace: string
+  } | null
+  observaciones: ErrorObservacion[]
+  trazabilidad: TrazabilidadEvento[]
 }
 
 export interface DashboardStats {

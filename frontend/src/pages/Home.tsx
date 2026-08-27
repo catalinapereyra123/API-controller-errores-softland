@@ -5,8 +5,6 @@ import {
   AlertTriangleIcon,
   ChevronRightIcon,
   ClockIcon,
-  HistoryIcon,
-  HomeIcon,
   InboxIcon,
   PanelLeftIcon,
   RefreshIcon,
@@ -15,8 +13,8 @@ import {
   UsersIcon,
 } from '../components/icons'
 import Sidebar, {
+  type SidebarItemId,
   type SidebarNavItem,
-  type SidebarSection,
 } from '../components/Sidebar'
 import StatCard from '../components/StatCard'
 import Table from '../components/Table'
@@ -107,40 +105,10 @@ function ErrorRow({
 function Home({ onNavigate }: { onNavigate: (page: AppPage) => void }) {
   const { data, loading, error, refetch } = useHomeData()
   const [sidebarOpen, setSidebarOpen] = useState(true)
-  const [activeNavItem, setActiveNavItem] = useState('inicio')
-
-  const sections: SidebarSection[] = [
-    {
-      title: 'Principal',
-      items: [
-        {
-          id: 'inicio',
-          icon: <HomeIcon className="h-5 w-5" />,
-          label: 'Inicio',
-        },
-        {
-          id: 'bandeja',
-          icon: <InboxIcon className="h-5 w-5" />,
-          label: 'Bandeja de errores',
-          badge: data
-            ? {
-                text: String(data.stats.bandejaPendientes),
-                color: colors.label.orange.text,
-                backgroundColor: colors.label.orange.background,
-              }
-            : undefined,
-        },
-        {
-          id: 'historial',
-          icon: <HistoryIcon className="h-5 w-5" />,
-          label: 'Historial',
-        },
-      ],
-    },
-  ]
+  const [activeNavItem, setActiveNavItem] = useState<SidebarItemId>('inicio')
 
   function handleSelectNavItem(item: SidebarNavItem) {
-    const id = item.id ?? item.label
+    const id = item.id
     setActiveNavItem(id)
     if (id === 'inicio') onNavigate('home')
     if (id === 'bandeja') onNavigate('bandeja')
@@ -174,7 +142,17 @@ function Home({ onNavigate }: { onNavigate: (page: AppPage) => void }) {
           itemActiveBackground={colors.primary.lightest}
           activeItem={activeNavItem}
           onItemSelect={handleSelectNavItem}
-          sections={sections}
+          badges={
+            data
+              ? {
+                  bandeja: {
+                    text: String(data.stats.bandejaPendientes),
+                    color: colors.label.orange.text,
+                    backgroundColor: colors.label.orange.background,
+                  },
+                }
+              : undefined
+          }
           user={
             data
               ? {
