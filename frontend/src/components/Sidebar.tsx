@@ -2,12 +2,6 @@ import type { CSSProperties, ReactNode } from 'react'
 import { HistoryIcon, HomeIcon, InboxIcon } from './icons'
 import { cn } from '../utils/cn'
 
-export interface SidebarBadge {
-  text: string
-  color: string
-  backgroundColor: string
-}
-
 export type SidebarItemId = 'inicio' | 'bandeja' | 'historial'
 
 export interface SidebarNavItem {
@@ -54,8 +48,6 @@ interface SidebarProps {
   itemHoverBackground: string
   itemActiveColor: string
   itemActiveBackground: string
-  /** Badges opcionales por id de item (ej. pendientes en "bandeja"). */
-  badges?: Partial<Record<SidebarItemId, SidebarBadge>>
   activeItem?: SidebarItemId
   onItemSelect?: (item: SidebarNavItem) => void
   user?: SidebarUser
@@ -77,7 +69,6 @@ function Sidebar({
   itemHoverBackground,
   itemActiveColor,
   itemActiveBackground,
-  badges,
   activeItem,
   onItemSelect,
   user,
@@ -123,7 +114,6 @@ function Sidebar({
           <ul className="flex flex-col gap-xxs">
             {SIDEBAR_ITEMS.map((item) => {
               const isActive = item.id === activeItem
-              const badge = badges?.[item.id]
 
               return (
                 <li key={item.id}>
@@ -154,17 +144,6 @@ function Sidebar({
                       {item.icon}
                     </span>
                     <span className="flex-1 truncate">{item.label}</span>
-                    {badge && (
-                      <span
-                        style={{
-                          color: badge.color,
-                          backgroundColor: badge.backgroundColor,
-                        }}
-                        className="rounded-full px-xs py-xxs text-caption font-bold"
-                      >
-                        {badge.text}
-                      </span>
-                    )}
                   </a>
                 </li>
               )

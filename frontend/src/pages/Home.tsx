@@ -149,17 +149,6 @@ function Home({ onNavigate }: { onNavigate: (page: AppPage) => void }) {
           itemActiveBackground={colors.primary.lightest}
           activeItem={activeNavItem}
           onItemSelect={handleSelectNavItem}
-          badges={
-            data
-              ? {
-                  bandeja: {
-                    text: String(data.stats.bandejaPendientes),
-                    color: colors.label.orange.text,
-                    backgroundColor: colors.label.orange.background,
-                  },
-                }
-              : undefined
-          }
           user={
             data
               ? {

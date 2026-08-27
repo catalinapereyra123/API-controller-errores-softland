@@ -162,13 +162,6 @@ function ErrorDetail({ onNavigate }: { onNavigate: (page: AppPage) => void }) {
           itemActiveBackground={colors.primary.lightest}
           activeItem="bandeja"
           onItemSelect={handleSelectNavItem}
-          badges={{
-            bandeja: {
-              text: '12',
-              color: colors.label.orange.text,
-              backgroundColor: colors.label.orange.background,
-            },
-          }}
           user={
             data
               ? {

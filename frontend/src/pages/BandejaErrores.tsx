@@ -251,17 +251,6 @@ function BandejaErrores({
           itemActiveBackground={colors.primary.lightest}
           activeItem={activeNavItem}
           onItemSelect={handleSelectNavItem}
-          badges={
-            data
-              ? {
-                  bandeja: {
-                    text: String(data.bandejaPendientes),
-                    color: colors.label.orange.text,
-                    backgroundColor: colors.label.orange.background,
-                  },
-                }
-              : undefined
-          }
           user={
             data
               ? {
