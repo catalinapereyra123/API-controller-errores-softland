@@ -115,6 +115,7 @@ function Home({ onNavigate }: { onNavigate: (page: AppPage) => void }) {
     setActiveNavItem(id)
     if (id === 'inicio') onNavigate('home')
     if (id === 'bandeja') onNavigate('bandeja')
+    if (id === 'historial') onNavigate('historial')
   }
 
   return (

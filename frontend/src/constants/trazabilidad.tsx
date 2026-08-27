@@ -7,7 +7,11 @@ import {
 } from '../components/icons'
 import type { TimelineItem } from '../components/Timeline'
 import { colors } from '../styles'
-import type { TrazabilidadEvento, TrazabilidadTipo } from '../types'
+import type {
+  HistorialEvento,
+  TrazabilidadEvento,
+  TrazabilidadTipo,
+} from '../types'
 
 // Traduce el tipo de evento (dato del back) a su representación visual.
 // El componente Timeline es genérico y no conoce estos tipos de dominio.
@@ -51,6 +55,24 @@ export function trazabilidadToTimelineItems(
       time: evento.hora,
       title: evento.titulo,
       description: evento.detalle,
+    }
+  })
+}
+
+/** Adapta los eventos del historial (con código de error) a `Timeline`. */
+export function historialToTimelineItems(
+  eventos: HistorialEvento[],
+): TimelineItem[] {
+  return eventos.map((evento) => {
+    const estilo = estiloPorTipo[evento.tipo]
+    return {
+      id: evento.id,
+      icon: estilo.icon,
+      iconColor: estilo.color,
+      iconBackground: estilo.background,
+      time: evento.hora,
+      title: evento.titulo,
+      description: `${evento.codigo} · ${evento.empresa} · ${evento.usuario}`,
     }
   })
 }

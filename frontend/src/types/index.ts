@@ -1,7 +1,7 @@
 export type ErrorEstado =
   'ERROR' | 'PENDIENTE' | 'ASIGNADO' | 'EN_PROGRESO' | 'CORREGIDO' | 'RESUELTO'
 
-export type AppPage = 'home' | 'bandeja' | 'detalle'
+export type AppPage = 'home' | 'bandeja' | 'detalle' | 'historial'
 
 export interface Empresa {
   id: string
@@ -44,6 +44,32 @@ export interface TrazabilidadEvento {
   titulo: string
   detalle: string
   tipo: TrazabilidadTipo
+}
+
+export interface HistorialEvento {
+  id: string
+  hora: string
+  tipo: TrazabilidadTipo
+  titulo: string
+  codigo: string
+  empresa: string
+  usuario: string
+}
+
+export interface HistorialDia {
+  id: string
+  etiqueta: string
+  fecha: string
+  eventos: HistorialEvento[]
+}
+
+export interface HistorialResumen {
+  periodo: string
+  resueltos: number
+  reprocesos: number
+  observaciones: number
+  reasignaciones: number
+  dias: HistorialDia[]
 }
 
 export interface ErrorItem {

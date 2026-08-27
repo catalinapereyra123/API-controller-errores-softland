@@ -175,6 +175,7 @@ function BandejaErrores({
     setActiveNavItem(id)
     if (id === 'inicio') onNavigate('home')
     if (id === 'bandeja') onNavigate('bandeja')
+    if (id === 'historial') onNavigate('historial')
   }
 
   const modulos = useMemo(() => {

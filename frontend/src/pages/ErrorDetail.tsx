@@ -128,6 +128,7 @@ function ErrorDetail({ onNavigate }: { onNavigate: (page: AppPage) => void }) {
   function handleSelectNavItem(item: SidebarNavItem) {
     if (item.id === 'inicio') onNavigate('home')
     if (item.id === 'bandeja') onNavigate('bandeja')
+    if (item.id === 'historial') onNavigate('historial')
   }
 
   const detalle = data?.detalle
