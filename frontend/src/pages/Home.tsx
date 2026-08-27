@@ -196,7 +196,7 @@ function Home({ onNavigate }: { onNavigate: (page: AppPage) => void }) {
                   Hola, {data?.currentUser.nombre.split(' ')[0] ?? '...'}
                 </h1>
                 <p style={{ ...textStyles.body, color: colors.gray.medium }}>
-                  {formatTodayEs()} — Así está la operación de errores hoy.
+                  {formatTodayEs()}
                 </p>
               </div>
             </div>
