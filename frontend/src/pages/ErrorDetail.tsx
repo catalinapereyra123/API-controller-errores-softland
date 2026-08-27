@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react'
+import { useRef, useState, type ReactNode } from 'react'
 import Button from '../components/Button'
 import Card from '../components/Card'
 import ErrorActionsCard from '../components/ErrorActionsCard'
@@ -117,6 +117,12 @@ function ErrorDetail({ onNavigate }: { onNavigate: (page: AppPage) => void }) {
   const [tab, setTab] = useState('cabecera')
   const [comentario, setComentario] = useState('')
   const [estadosOpen, setEstadosOpen] = useState(false)
+  const tabsRef = useRef<HTMLDivElement>(null)
+
+  function irAHistorial() {
+    setTab('historial')
+    tabsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
 
   function handleSelectNavItem(item: SidebarNavItem) {
     if (item.id === 'inicio') onNavigate('home')
@@ -257,14 +263,16 @@ function ErrorDetail({ onNavigate }: { onNavigate: (page: AppPage) => void }) {
                 ]}
               />
 
-              <Tabs
-                items={TABS}
-                value={tab}
-                onChange={setTab}
-                activeColor={colors.primary.dark}
-                inactiveColor={colors.gray.medium}
-                dividerColor={colors.background.border}
-              />
+              <div ref={tabsRef} className="scroll-mt-xl">
+                <Tabs
+                  items={TABS}
+                  value={tab}
+                  onChange={setTab}
+                  activeColor={colors.primary.dark}
+                  inactiveColor={colors.gray.medium}
+                  dividerColor={colors.background.border}
+                />
+              </div>
 
               {tab !== 'cabecera' ? (
                 <Card className="flex items-center justify-center py-xxl">
@@ -580,6 +588,7 @@ function ErrorDetail({ onNavigate }: { onNavigate: (page: AppPage) => void }) {
                             text="Ver historial completo"
                             color={colors.primary.dark}
                             variant="text"
+                            onClick={irAHistorial}
                             trailingIcon={
                               <ExternalLinkIcon className="h-4 w-4" />
                             }
