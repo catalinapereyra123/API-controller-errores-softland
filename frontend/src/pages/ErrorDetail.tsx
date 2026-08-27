@@ -584,20 +584,22 @@ function ErrorDetail({ onNavigate }: { onNavigate: (page: AppPage) => void }) {
                         titleColor={colors.gray.darkest}
                         descriptionColor={colors.gray.medium}
                         footer={
-                          <Button
-                            text="Ver historial completo"
-                            color={colors.primary.dark}
-                            variant="text"
-                            onClick={irAHistorial}
-                            trailingIcon={
-                              <ExternalLinkIcon className="h-4 w-4" />
-                            }
-                            size={{
-                              ...textStyles.bodySmall,
-                              fontWeight: fontWeight.bold,
-                              padding: `${spacing.xs} 0`,
-                            }}
-                          />
+                          <div className="flex justify-end">
+                            <Button
+                              text="Ver historial completo"
+                              color={colors.primary.dark}
+                              variant="text"
+                              onClick={irAHistorial}
+                              trailingIcon={
+                                <ExternalLinkIcon className="h-4 w-4" />
+                              }
+                              size={{
+                                ...textStyles.bodySmall,
+                                fontWeight: fontWeight.bold,
+                                padding: `${spacing.xs} 0`,
+                              }}
+                            />
+                          </div>
                         }
                       />
                     </CollapsibleCard>
