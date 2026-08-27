@@ -3,6 +3,7 @@ import Button from '../components/Button'
 import ChevronButton from '../components/ChevronButton'
 import {
   AlertTriangleIcon,
+  CheckCircleIcon,
   ChevronRightIcon,
   ClockIcon,
   InboxIcon,
@@ -11,6 +12,7 @@ import {
   TrendingUpIcon,
   UserIcon,
   UsersIcon,
+  XCircleIcon,
 } from '../components/icons'
 import Sidebar, {
   type SidebarItemId,
@@ -38,10 +40,11 @@ function ResponsableIndicator({ asignado }: { asignado: boolean }) {
       style={{ ...textStyles.bodySmall, fontWeight: fontWeight.bold, color }}
       className="inline-flex items-center gap-xs whitespace-nowrap"
     >
-      <span
-        className="h-1.5 w-1.5 rounded-full"
-        style={{ backgroundColor: color }}
-      />
+      {asignado ? (
+        <CheckCircleIcon className="h-4 w-4" />
+      ) : (
+        <XCircleIcon className="h-4 w-4" />
+      )}
       {asignado ? 'Asignado' : 'Sin responsable'}
     </span>
   )
