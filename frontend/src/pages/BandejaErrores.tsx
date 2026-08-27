@@ -286,10 +286,6 @@ function BandejaErrores({
                 <h1 style={{ ...textStyles.h1, color: colors.gray.darkest }}>
                   Bandeja de errores
                 </h1>
-                <p style={{ ...textStyles.body, color: colors.gray.medium }}>
-                  {data ? data.totalAbiertos : '—'} transacciones con
-                  inconvenientes en Softland
-                </p>
               </div>
             </div>
             <Button
