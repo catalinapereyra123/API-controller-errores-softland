@@ -46,6 +46,16 @@ export interface TrazabilidadEvento {
   tipo: TrazabilidadTipo
 }
 
+export interface ErrorItem {
+  nroItem: number
+  articulo: string
+  descripcion: string
+  cantidad: number
+  precioUnitario: number
+  importe: number
+  tipo: string
+}
+
 export interface ErrorDetalle {
   id: string
   codigo: string
@@ -66,6 +76,7 @@ export interface ErrorDetalle {
     importeAplicado: number
     diferencia: number
   }
+  items: ErrorItem[]
   responsable: {
     nombre: string
     iniciales: string

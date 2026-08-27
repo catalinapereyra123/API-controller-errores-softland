@@ -329,7 +329,9 @@ function BandejaErrores({
             </div>
           )}
 
-          <div className="flex flex-wrap items-center gap-md">
+          <div
+            className={`flex flex-wrap items-center gap-md lg:grid ${BANDEJA_GRID_COLS} lg:items-center lg:gap-md lg:px-lg`}
+          >
             <Input
               icon={
                 <SearchIcon
@@ -340,10 +342,10 @@ function BandejaErrores({
               color={colors.gray.darkest}
               borderColor={colors.background.border}
               backgroundColor={colors.background.surface}
-              placeholder="Buscar por ID de transacción..."
+              placeholder="Buscar por ID..."
               value={filters.busqueda}
               onChange={(event) => setFilters({ busqueda: event.target.value })}
-              className="min-w-[240px] flex-1"
+              className="min-w-[220px] flex-1 lg:col-span-2 lg:w-full lg:flex-none"
             />
             <Dropdown
               text="Empresa: Todas"
@@ -364,15 +366,6 @@ function BandejaErrores({
               onChange={(value) => setFilters({ modulo: value })}
             />
             <Dropdown
-              text="Estado: Todos"
-              options={estadoOptions}
-              color={colors.background.border}
-              textColor={colors.gray.dark}
-              backgroundColor={colors.background.surface}
-              value={filters.estado}
-              onChange={(value) => setFilters({ estado: value })}
-            />
-            <Dropdown
               text="Responsable: Todos"
               options={responsableOptions}
               color={colors.background.border}
@@ -389,6 +382,15 @@ function BandejaErrores({
               backgroundColor={colors.background.surface}
               value={filters.periodo}
               onChange={(value) => setFilters({ periodo: value })}
+            />
+            <Dropdown
+              text="Estado: Todos"
+              options={estadoOptions}
+              color={colors.background.border}
+              textColor={colors.gray.dark}
+              backgroundColor={colors.background.surface}
+              value={filters.estado}
+              onChange={(value) => setFilters({ estado: value })}
             />
           </div>
 

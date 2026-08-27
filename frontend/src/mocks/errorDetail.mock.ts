@@ -22,6 +22,36 @@ export const errorDetailMock: ErrorDetalle = {
     importeAplicado: 1_196_300,
     diferencia: 52_200,
   },
+  // Ítems de la transacción (SAR_CORMVI / SAR_FCRMVI).
+  items: [
+    {
+      nroItem: 1,
+      articulo: 'AB1000',
+      descripcion: 'Flete terrestre — Ruta Norte',
+      cantidad: 1,
+      precioUnitario: 520_000,
+      importe: 520_000,
+      tipo: 'VT',
+    },
+    {
+      nroItem: 2,
+      articulo: 'AB1001',
+      descripcion: 'Estadía y peajes',
+      cantidad: 1,
+      precioUnitario: 476_300,
+      importe: 476_300,
+      tipo: 'VT',
+    },
+    {
+      nroItem: 3,
+      articulo: 'AB1002',
+      descripcion: 'Seguro de carga',
+      cantidad: 1,
+      precioUnitario: 252_200,
+      importe: 252_200,
+      tipo: 'VT',
+    },
+  ],
   responsable: {
     nombre: 'Catalina Ruiz',
     iniciales: 'CR',

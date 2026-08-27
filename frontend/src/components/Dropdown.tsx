@@ -58,7 +58,7 @@ function Dropdown({
   const selected = options.find((option) => option.value === value)
 
   return (
-    <div ref={containerRef} className={cn('relative inline-block', className)}>
+    <div ref={containerRef} className={cn('relative', className)}>
       <button
         type="button"
         onClick={() => setOpen((prev) => !prev)}
@@ -68,12 +68,12 @@ function Dropdown({
           backgroundColor,
           ...size,
         }}
-        className="inline-flex items-center gap-sm rounded-md border px-md py-sm text-body font-medium"
+        className="flex w-full items-center justify-between gap-sm rounded-md border px-md py-sm text-body font-medium"
       >
-        {selected?.label ?? text}
+        <span className="truncate">{selected?.label ?? text}</span>
         <span
           aria-hidden
-          className={cn('transition-transform', open && 'rotate-180')}
+          className={cn('shrink-0 transition-transform', open && 'rotate-180')}
         >
           ▾
         </span>

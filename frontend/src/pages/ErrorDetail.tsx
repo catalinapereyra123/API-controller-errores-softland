@@ -2,6 +2,7 @@ import { useRef, useState, type ReactNode } from 'react'
 import Button from '../components/Button'
 import Card from '../components/Card'
 import ErrorActionsCard from '../components/ErrorActionsCard'
+import ErrorItemsTable from '../components/ErrorItemsTable'
 import EstadosSoftlandModal from '../components/EstadosSoftlandModal'
 import InfoStrip from '../components/InfoStrip'
 import {
@@ -33,7 +34,7 @@ import { formatCurrency } from '../utils/format'
 
 const TABS: TabItem[] = [
   { id: 'cabecera', label: 'Cabecera' },
-  { id: 'items', label: 'Items' },
+  { id: 'detalle', label: 'Detalle' },
   { id: 'historial', label: 'Historial' },
 ]
 
@@ -274,17 +275,21 @@ function ErrorDetail({ onNavigate }: { onNavigate: (page: AppPage) => void }) {
                 />
               </div>
 
-              {tab !== 'cabecera' ? (
+              {tab === 'detalle' && (
+                <ErrorItemsTable items={detalle.items} />
+              )}
+
+              {tab === 'historial' && (
                 <Card className="flex items-center justify-center py-xxl">
                   <span
                     style={{ ...textStyles.body, color: colors.gray.medium }}
                   >
-                    {tab === 'items'
-                      ? 'Sin ítems para mostrar en esta transacción.'
-                      : 'El historial completo se mostrará acá.'}
+                    El historial completo se mostrará acá.
                   </span>
                 </Card>
-              ) : (
+              )}
+
+              {tab === 'cabecera' && (
                 <div className="grid gap-lg lg:grid-cols-[minmax(0,1fr)_320px]">
                   {/* Columna principal */}
                   <div className="flex flex-col gap-lg">
