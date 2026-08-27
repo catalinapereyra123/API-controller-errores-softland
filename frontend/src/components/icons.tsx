@@ -186,6 +186,25 @@ export function SendIcon(props: SVGProps<SVGSVGElement>) {
   )
 }
 
+export function InfoIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <BaseIcon {...props}>
+      <circle cx="12" cy="12" r="8.5" />
+      <path d="M12 11v5" />
+      <path d="M12 8h.01" />
+    </BaseIcon>
+  )
+}
+
+export function XIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <BaseIcon {...props}>
+      <path d="m6 6 12 12" />
+      <path d="M18 6 6 18" />
+    </BaseIcon>
+  )
+}
+
 export function ExternalLinkIcon(props: SVGProps<SVGSVGElement>) {
   return (
     <BaseIcon {...props}>

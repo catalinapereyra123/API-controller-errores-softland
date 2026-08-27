@@ -1,13 +1,15 @@
 import { useState, type ReactNode } from 'react'
 import Button from '../components/Button'
 import Card from '../components/Card'
+import ErrorActionsCard from '../components/ErrorActionsCard'
+import EstadosSoftlandModal from '../components/EstadosSoftlandModal'
 import InfoStrip from '../components/InfoStrip'
 import {
   ArrowLeftIcon,
   BellIcon,
-  CheckCircleIcon,
   ChevronDownIcon,
   ExternalLinkIcon,
+  InfoIcon,
   PanelLeftIcon,
   SendIcon,
 } from '../components/icons'
@@ -114,6 +116,7 @@ function ErrorDetail({ onNavigate }: { onNavigate: (page: AppPage) => void }) {
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [tab, setTab] = useState('cabecera')
   const [comentario, setComentario] = useState('')
+  const [estadosOpen, setEstadosOpen] = useState(false)
 
   function handleSelectNavItem(item: SidebarNavItem) {
     if (item.id === 'inicio') onNavigate('home')
@@ -476,6 +479,20 @@ function ErrorDetail({ onNavigate }: { onNavigate: (page: AppPage) => void }) {
 
                   {/* Columna lateral */}
                   <div className="flex flex-col gap-lg">
+                    <Button
+                      text="Ver posibles estados"
+                      color={colors.gray.default}
+                      variant="outline"
+                      icon={<InfoIcon className="h-4 w-4" />}
+                      onClick={() => setEstadosOpen(true)}
+                      size={{
+                        ...textStyles.bodySmall,
+                        fontWeight: fontWeight.semibold,
+                        padding: `${spacing.xs} ${spacing.md}`,
+                      }}
+                      className="self-start"
+                    />
+
                     <Card>
                       <span
                         style={{
@@ -547,38 +564,7 @@ function ErrorDetail({ onNavigate }: { onNavigate: (page: AppPage) => void }) {
                       </div>
                     </Card>
 
-                    <Card>
-                      <span
-                        style={{
-                          ...textStyles.h3,
-                          color: colors.gray.darkest,
-                        }}
-                      >
-                        Acciones
-                      </span>
-                      <Button
-                        text="Marcar como corregido"
-                        color={colors.primary.default}
-                        icon={<CheckCircleIcon className="h-4 w-4" />}
-                        size={{
-                          ...textStyles.body,
-                          fontWeight: fontWeight.bold,
-                          padding: `${spacing.md} ${spacing.lg}`,
-                        }}
-                        className="mt-md w-full"
-                      />
-                      <p
-                        style={{
-                          ...textStyles.caption,
-                          color: colors.gray.medium,
-                        }}
-                        className="mt-sm"
-                      >
-                        Al marcar como corregido, la transacción se reprocesa y
-                        vuelve a estado N. Si el reproceso finaliza en S, quedará
-                        resuelta. Si no, deberá corregirse nuevamente.
-                      </p>
-                    </Card>
+                    <ErrorActionsCard />
 
                     <CollapsibleCard title="Trazabilidad">
                       <Timeline
@@ -613,6 +599,11 @@ function ErrorDetail({ onNavigate }: { onNavigate: (page: AppPage) => void }) {
           )}
         </div>
       </main>
+
+      <EstadosSoftlandModal
+        open={estadosOpen}
+        onClose={() => setEstadosOpen(false)}
+      />
     </div>
   )
 }
