@@ -7,7 +7,6 @@ import EstadosSoftlandModal from '../components/EstadosSoftlandModal'
 import InfoStrip from '../components/InfoStrip'
 import {
   ArrowLeftIcon,
-  BellIcon,
   ChevronDownIcon,
   ExternalLinkIcon,
   InfoIcon,
@@ -569,21 +568,6 @@ function ErrorDetail({ onNavigate }: { onNavigate: (page: AppPage) => void }) {
                           Sin responsable asignado
                         </p>
                       )}
-
-                      <div className="mt-md flex items-center gap-xs">
-                        <BellIcon
-                          className="h-4 w-4"
-                          style={{ color: colors.gray.default }}
-                        />
-                        <span
-                          style={{
-                            ...textStyles.bodySmall,
-                            color: colors.gray.medium,
-                          }}
-                        >
-                          Notificar por correo al asignar
-                        </span>
-                      </div>
                     </Card>
 
                     <ErrorActionsCard />
