@@ -3,22 +3,19 @@ import Button from '../components/Button'
 import Card from '../components/Card'
 import InfoStrip from '../components/InfoStrip'
 import {
-  AlertTriangleIcon,
   ArrowLeftIcon,
   BellIcon,
   CheckCircleIcon,
   ChevronDownIcon,
   ExternalLinkIcon,
-  MessageIcon,
   PanelLeftIcon,
-  RefreshIcon,
   SendIcon,
-  UserIcon,
 } from '../components/icons'
 import Sidebar, { type SidebarNavItem } from '../components/Sidebar'
 import Tabs, { type TabItem } from '../components/Tabs'
-import Timeline, { type TimelineItem } from '../components/Timeline'
+import Timeline from '../components/Timeline'
 import { estadoTagByEstado } from '../constants/estados'
+import { trazabilidadToTimelineItems } from '../constants/trazabilidad'
 import { useErrorDetail } from '../hooks/useErrorDetail'
 import {
   colors,
@@ -28,7 +25,7 @@ import {
   spacing,
   textStyles,
 } from '../styles'
-import type { AppPage, TrazabilidadTipo } from '../types'
+import type { AppPage } from '../types'
 import { cn } from '../utils/cn'
 import { formatCurrency } from '../utils/format'
 
@@ -37,32 +34,6 @@ const TABS: TabItem[] = [
   { id: 'items', label: 'Items' },
   { id: 'historial', label: 'Historial' },
 ]
-
-const TRAZA_ICONO: Record<
-  TrazabilidadTipo,
-  { icon: ReactNode; color: string; background: string }
-> = {
-  error: {
-    icon: <AlertTriangleIcon className="h-4 w-4" />,
-    color: colors.label.red.text,
-    background: colors.label.red.background,
-  },
-  asignacion: {
-    icon: <UserIcon className="h-4 w-4" />,
-    color: colors.label.blue.text,
-    background: colors.label.blue.background,
-  },
-  observacion: {
-    icon: <MessageIcon className="h-4 w-4" />,
-    color: colors.label.purple.text,
-    background: colors.label.purple.background,
-  },
-  reproceso: {
-    icon: <RefreshIcon className="h-4 w-4" />,
-    color: colors.label.green.text,
-    background: colors.label.green.background,
-  },
-}
 
 function Avatar({ text }: { text: string }) {
   return (
@@ -611,19 +582,8 @@ function ErrorDetail({ onNavigate }: { onNavigate: (page: AppPage) => void }) {
 
                     <CollapsibleCard title="Trazabilidad">
                       <Timeline
-                        items={detalle.trazabilidad.map<TimelineItem>(
-                          (evento) => {
-                            const estilo = TRAZA_ICONO[evento.tipo]
-                            return {
-                              id: evento.id,
-                              icon: estilo.icon,
-                              iconColor: estilo.color,
-                              iconBackground: estilo.background,
-                              time: evento.hora,
-                              title: evento.titulo,
-                              description: evento.detalle,
-                            }
-                          },
+                        items={trazabilidadToTimelineItems(
+                          detalle.trazabilidad,
                         )}
                         connectorColor={colors.background.border}
                         timeColor={colors.gray.default}

@@ -50,9 +50,11 @@ function ResponsableIndicator({ asignado }: { asignado: boolean }) {
 function ErrorRow({
   error,
   empresas,
+  onOpen,
 }: {
   error: ErrorTransaccion
   empresas: Empresa[]
+  onOpen: () => void
 }) {
   const EstadoTag = estadoTagByEstado[error.estado]
 
@@ -96,6 +98,7 @@ function ErrorRow({
         color={colors.primary.dark}
         borderColor={colors.background.border}
         aria-label={`Abrir ${error.codigo}`}
+        onClick={onOpen}
         className="justify-self-end"
       />
     </div>
@@ -387,6 +390,7 @@ function Home({ onNavigate }: { onNavigate: (page: AppPage) => void }) {
                     key={item.id}
                     error={item}
                     empresas={data.empresas}
+                    onOpen={() => onNavigate('detalle')}
                   />
                 ))}
               </div>
