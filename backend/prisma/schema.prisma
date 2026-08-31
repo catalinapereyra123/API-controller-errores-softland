@@ -1,8 +1,6 @@
 // This is your Prisma schema file,
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
-// Get a free hosted Postgres database in seconds: `npx create-db`
-
 generator client {
   provider     = "prisma-client"
   output       = "../generated/prisma"
@@ -11,4 +9,133 @@ generator client {
 
 datasource db {
   provider = "postgresql"
+}
+
+/// Los 3 tipos de transacción que maneja el tablero.
+/// El texto que manda Softland ("1. Facturacion", "3. Compras", ...) se
+/// normaliza a este enum en la sincronización (ver errores.mapper.ts).
+enum Modulo {
+  FACTURACION
+  COMPRAS
+  COBRANZAS
+}
+
+/// Estado de gestión interno (workflow del equipo). Distinto del `statusSoftland`.
+/// n8n NO lo pisa: solo cambia por acciones de la app o por la conciliación
+/// del reproceso.
+enum EstadoApp {
+  ERROR // recién detectado, sin tocar
+  ASIGNADO // tiene responsable
+  EN_PROGRESO // alguien lo está mirando
+  REPROCESANDO // se corrigió y se mandó a reprocesar (Softland en 'N')
+  REQUIERE_CORRECCION // el reproceso no lo resolvió, volvió a fallar
+  RESUELTO // Softland lo procesó OK (status S) o ya no figura
+}
+
+model Empresa {
+  codigo        String             @id
+  nombre        String
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+  transacciones TransaccionError[]
+}
+
+/// Usuarios de la app (se crean al registrarse; el registro/login se implementa aparte).
+model Usuario {
+  id              String             @id @default(cuid())
+  nombre          String
+  rol             String             @default("Soporte funcional")
+  avatarIniciales String
+  esActual        Boolean            @default(false) // provisorio hasta que exista auth
+  createdAt       DateTime           @default(now())
+  asignaciones    TransaccionError[] @relation("responsable")
+  correcciones    TransaccionError[] @relation("corrige")
+}
+
+/// Un error de integración. La identidad viene de Softland (empresa+módulo+identi)
+/// pero el histórico funcional (estado, intentos, quién lo corrigió) es de esta DB.
+model TransaccionError {
+  id String @id @default(cuid())
+
+  // --- Origen (Softland, vía n8n /errores/sync) ---
+  empresa         Empresa   @relation(fields: [empresaCodigo], references: [codigo])
+  empresaCodigo   String
+  modulo          Modulo
+  moduloOrigen    String // texto crudo de Softland: "1. Facturacion"
+  identi          String // SAR_xxRMVH_IDENTI
+  cuenta          String?
+  fechaMovimiento DateTime?
+  statusSoftland  String // status crudo de Softland: E, X, D, B, N, S
+  errorMensaje    String?
+  archivoLog      String? // ruta c:\padron\... extraída del mensaje, si la hay
+
+  // --- Gestión (app) ---
+  estadoApp     EstadoApp @default(ERROR)
+  responsable   Usuario?  @relation("responsable", fields: [responsableId], references: [id])
+  responsableId String?
+  intentos      Int       @default(0)
+
+  // --- Reproceso ---
+  corregidoPor        Usuario?  @relation("corrige", fields: [corregidoPorId], references: [id])
+  corregidoPorId      String?
+  corregidoPorNombre  String? // snapshot del nombre (sobrevive si el usuario cambia / se borra)
+  fechaCorreccion     DateTime? // cuándo se mandó a reprocesar (Softland -> 'N')
+  reprocesoNotificadoAt DateTime? // n8n confirmó (200) el webhook; null + fechaCorreccion => reintentar
+  reprocesoDesaparecioAt DateTime? // ALARMA: estaba REPROCESANDO y dejó de figurar en el sync sin verificación
+
+  // --- Fechas / sync ---
+  fechaDeteccion       DateTime  @default(now())
+  fechaResolucion      DateTime?
+  ultimaDeteccion      DateTime  @default(now())
+  presenteEnUltimaSync Boolean   @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  observaciones     Observacion[]
+  eventos           EventoTrazabilidad[]
+  intentosReproceso ErrorIntento[]
+
+  // Clave natural del registro de origen: si vuelve a llegar el mismo
+  // (empresa, módulo, identi) se actualiza en vez de duplicarse.
+  @@unique([empresaCodigo, modulo, identi], name: "origenUnico")
+  @@index([empresaCodigo, modulo])
+  @@index([estadoApp])
+}
+
+/// Un intento de reproceso. Queda en esta DB aunque n8n se caiga o cambie.
+model ErrorIntento {
+  id            String           @id @default(cuid())
+  error         TransaccionError @relation(fields: [errorId], references: [id], onDelete: Cascade)
+  errorId       String
+  numeroIntento Int
+  statusAntes   String? // statusSoftland al momento de mandar a reprocesar
+  statusDespues String? // statusSoftland que devolvió la verificación (S, E, ...)
+  usuarioId     String? // quién lo mandó a reprocesar (id, sin FK: snapshot histórico)
+  usuarioNombre String?
+  observacion   String?
+  createdAt     DateTime         @default(now())
+  cerradoAt     DateTime? // cuándo se supo el resultado
+
+  @@index([errorId])
+}
+
+model Observacion {
+  id             String           @id @default(cuid())
+  transaccion    TransaccionError @relation(fields: [transaccionId], references: [id], onDelete: Cascade)
+  transaccionId  String
+  autor          String
+  autorIniciales String
+  texto          String
+  createdAt      DateTime         @default(now())
+}
+
+model EventoTrazabilidad {
+  id            String           @id @default(cuid())
+  transaccion   TransaccionError @relation(fields: [transaccionId], references: [id], onDelete: Cascade)
+  transaccionId String
+  tipo          String // error | asignacion | observacion | reproceso
+  titulo        String
+  detalle       String?
+  createdAt     DateTime         @default(now())
 }

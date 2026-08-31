@@ -1,98 +1,148 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# Backend · API Errores Softland
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+NestJS + Prisma (PostgreSQL). n8n orquesta a Softland; **esta DB es la fuente de
+verdad del histórico funcional** (estado, intentos, quién corrigió qué).
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
-
-## Description
-
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
-
-## Project setup
+## Puesta en marcha
 
 ```bash
-$ npm install
+npm install
+cp .env.example .env          # completar DATABASE_URL
+npx prisma generate
+npx prisma migrate dev --name init   # crea las tablas
+npm run start:dev
 ```
 
-## Compile and run the project
+Variables (`.env`):
+
+| Variable                   | Para qué                                                             |
+| -------------------------- | ------------------------------------------------------------------- |
+| `DATABASE_URL`             | Conexión Postgres (Prisma).                                         |
+| `PORT`                     | Puerto HTTP (default 3000).                                         |
+| `CORS_ORIGIN`              | Orígenes permitidos, coma-separado (ej. `http://localhost:5173`).   |
+| `INGEST_API_KEY`           | Clave que n8n manda en `x-api-key`. Vacío = endpoints n8n abiertos. |
+| `N8N_REPROCESO_WEBHOOK_URL` | Webhook de n8n para el flujo 2 (disparar el `UPDATE ... STATUS='N'`). |
+
+## Los 4 flujos de n8n
+
+```
+FLUJO 1 · SYNC          CRON 3h → traer errores de todas las empresas
+                        → POST /errores/sync  (array completo en 1 POST)
+
+FLUJO 2 · REPROCESAR    app: POST /errores/:id/reproceso
+                        → backend guarda REPROCESANDO + POST al webhook n8n
+                        → n8n switch por módulo → UPDATE SAR_xxRMVH SET STATUS='N'
+
+FLUJO 3 · PROCESAR      (2ª etapa) ejecutar USR_CO / USR_FC / USR_RC en Softland
+
+FLUJO 4 · VERIFICAR     n8n consulta el status del identi en Softland
+                        → POST /errores/resultado-reproceso
+```
+
+### Flujo 1 — `POST /errores/sync`  (header `x-api-key`)
+
+```json
+[
+  { "empresa": "IFLOW", "empresaNombre": "I FLOW S.A.", "modulo": "3. Compras",
+    "identi": "LIQ29948", "statusSoftland": "E", "error": "Se ha producido...",
+    "cuenta": "9167", "fecha": "2026-08-11T00:00:00" }
+]
+```
+
+- n8n manda **todos** los errores en un solo POST (hace falta el array completo
+  para detectar los que ya no están).
+- **Upsert** por `(empresa, modulo, identi)`. No pisa `estadoApp`, `responsable`,
+  `intentos`, observaciones.
+- `RESUELTO` que vuelve a llegar con error → se reabre (`ERROR`).
+- `REPROCESANDO` + `statusSoftland=S` explícito en el feed → `RESUELTO`.
+- `REPROCESANDO` + vuelve a `E/D/B/X` → `REQUIERE_CORRECCION`.
+- `REPROCESANDO` + **desaparece del feed** → NO se resuelve solo (desaparecer no
+  prueba `S`: pudo pasar a `N` u otro estado). Se marca `reprocesoDesaparecioAt`
+  como **alarma**; la verdad la trae el flujo 4.
+- `modulo` se normaliza: `1.→FACTURACION`, `2.→COBRANZAS`, `3.→COMPRAS`. Lo no
+  reconocido se ignora y se reporta en `detalleIgnorados`.
+
+Respuesta: `{ recibidos, empresas, creados, actualizados, reaparecidos,
+reprocesadosOk, regresiones, reprocesandoSinConfirmar, ignorados, desaparecidos,
+detalleIgnorados, procesadoEn }`.
+
+### Flujo 2 — `POST /errores/:id/reproceso`  (desde la app)
+
+Body: `{ observacion?, autorId? }`. El backend:
+`estadoApp = REPROCESANDO`, `corregidoPor`, `fechaCorreccion`, `intentos++`,
+crea un `ErrorIntento`, evento de trazabilidad, y **POST al webhook de n8n**
+(`{ empresa, modulo, moduloCodigo, identi }`). Si el webhook falla, queda en
+`GET /errores/reproceso-pendientes` para que n8n lo levante igual.
+
+### Flujo 4 — `POST /errores/resultado-reproceso`  (header `x-api-key`)
+
+```json
+{ "empresa": "IFLOW", "modulo": "3. Compras", "identi": "LIQ29948",
+  "statusSoftland": "S", "error": "nuevo ERRMSG si volvió a fallar" }
+```
+
+- `S` → `estadoApp = RESUELTO`, `fechaResolucion`, cierra el `ErrorIntento`.
+- `E / B / D / X` → `estadoApp = REQUIERE_CORRECCION`, guarda el nuevo `errorMensaje`.
+- `N` → sin cambios (sigue procesándose).
+
+## Lectura (front)
+
+| Método | Ruta                            | Devuelve                                                     |
+| ------ | ------------------------------- | ----------------------------------------------------------- |
+| GET    | `/errores`                      | Bandeja plana (tipo `ErrorTransaccion` del front).          |
+| GET    | `/errores/agrupados`            | `[{ empresa, totalErrores, totalesPorModulo, modulos[] }]`. |
+| GET    | `/errores/reproceso-pendientes` | Reprocesos en curso (fallback del webhook para n8n).        |
+| GET    | `/errores/:id`                  | Detalle + observaciones + trazabilidad + intentos.          |
+| GET    | `/empresas`                     | `[{ id, nombre }]`.                                         |
+| GET    | `/dashboard/stats`              | Métricas del dashboard (`DashboardStats`).                  |
+| GET    | `/users`, `/users/me`           | Usuarios (se crean al registrarse; auth pendiente).        |
+
+Filtros (query params) para `/errores` y `/errores/agrupados`: `empresa`,
+`modulo` (`FACTURACION|COMPRAS|COBRANZAS`), `estado`
+(`ERROR|ASIGNADO|EN_PROGRESO|REPROCESANDO|REQUIERE_CORRECCION|RESUELTO`),
+`responsableId` (`sin-asignar`), `soloAbiertos` (`true` por default).
+
+## Mutaciones (desde la app — se guardan en la DB)
+
+| Método | Ruta                         | Body                                          |
+| ------ | ---------------------------- | --------------------------------------------- |
+| PATCH  | `/errores/:id/asignacion`    | `{ responsableId?: string \| null, autorId? }` |
+| PATCH  | `/errores/:id/estado`        | `{ estado, nota?, autorId? }` — solo `ERROR`, `ASIGNADO`, `EN_PROGRESO` |
+| POST   | `/errores/:id/observaciones` | `{ texto, autorId? }`                         |
+| POST   | `/errores/:id/reproceso`     | `{ observacion?, autorId? }`                  |
+
+`REPROCESANDO`, `REQUIERE_CORRECCION` y `RESUELTO` **no** se setean a mano: los
+controla el flujo de reproceso (`RESUELTO` viene de `statusSoftland = S`).
+`autorId` es provisorio hasta que exista auth (sin él, el evento queda como "Sistema").
+
+## Modelo
+
+`TransaccionError` (empresa + modulo + identi como clave natural) con
+`estadoApp`, `statusSoftland`, `errorMensaje`, `intentos`, `fechaCorreccion`,
+`fechaDeteccion`, `fechaResolucion`, y `corregidoPorId` (FK a `Usuario`) +
+`corregidoPorNombre` (snapshot que sobrevive si el usuario cambia de nombre).
+`ErrorIntento` (histórico de reprocesos: `numeroIntento`, `statusAntes`,
+`statusDespues`, `usuarioId`, `usuarioNombre`, `observacion`, `cerradoAt`).
+`Observacion`, `EventoTrazabilidad`, `Empresa`, `Usuario`.
+
+## Estructura
+
+```
+src/
+  common/api-key.guard.ts     Guard de los endpoints de n8n (x-api-key)
+  errores/
+    dto/                      SyncError, ResultadoReproceso, QueryErrores, Mutaciones
+    sync.controller.ts        POST /errores/sync, POST /errores/resultado-reproceso
+    errores.controller.ts     GET de lectura + PATCH/POST de mutación
+    errores.service.ts        Lógica de los 4 flujos + armado por empresa/módulo
+    errores.repository.ts     Acceso a datos (Prisma)
+    errores.mapper.ts         Normalización de módulo + forma para el front
+  usuarios/                   /users, /users/me
+prisma/schema.prisma          Modelo
+```
+
+## Tests
 
 ```bash
-# development
-$ npm run start
-
-# watch mode
-$ npm run start:dev
-
-# production mode
-$ npm run start:prod
+npm test        # sync (idempotencia, reproceso), resultado-reproceso, mapper — sin DB
 ```
-
-## Run tests
-
-```bash
-# unit tests
-$ npm run test
-
-# e2e tests
-$ npm run test:e2e
-
-# test coverage
-$ npm run test:cov
-```
-
-## Deployment
-
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
-
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
-
-```bash
-$ npm install -g @nestjs/mau
-$ mau deploy
-```
-
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
-
-## Resources
-
-Check out a few resources that may come in handy when working with NestJS:
-
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
-
-## Support
-
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
-
-## Stay in touch
-
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
-
-## License
-
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
