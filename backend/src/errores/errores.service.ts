@@ -48,12 +48,20 @@ export class ErroresService {
   // ==========================================================================
   //  FLUJO 1 — SYNC (n8n manda TODOS los errores en un POST, cada 3 h)
   // ==========================================================================
-  async sync(registros: SyncErrorDto[]): Promise<SyncResultadoDto> {
+  async sync(
+    registros: SyncErrorDto[],
+    empresasConsultadas: string[] = [],
+  ): Promise<SyncResultadoDto> {
     const empresas = new Map<string, string>();
     for (const r of registros) {
       empresas.set(r.empresa, r.empresaNombre ?? r.empresa);
     }
-    const empresaCodigos = [...empresas.keys()];
+    const empresaCodigos = [
+      ...new Set([
+        ...empresasConsultadas.map((codigo) => codigo.trim()).filter(Boolean),
+        ...empresas.keys(),
+      ]),
+    ];
 
     let creados = 0;
     let actualizados = 0;

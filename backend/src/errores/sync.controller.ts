@@ -1,22 +1,16 @@
-import {
-  Body,
-  Controller,
-  HttpCode,
-  ParseArrayPipe,
-  Post,
-  UseGuards,
-} from '@nestjs/common';
+import { Body, Controller, HttpCode, Post, UseGuards } from '@nestjs/common';
 import { ApiKeyGuard } from '../common/api-key.guard';
 import { ResultadoReprocesoDto } from './dto/resultado-reproceso.dto';
-import { SyncErrorDto } from './dto/sync-error.dto';
+import { SyncRequestDto } from './dto/sync-request.dto';
 import { ErroresService } from './errores.service';
+import { SyncRequestPipe } from './pipes/sync-request.pipe';
 
 /**
- * Endpoints que consume n8n. Protegidos con `x-api-key` (env INGEST_API_KEY).
+ * Endpoints que consume el integrador. Protegidos con `x-api-key`.
  *
  * Flujo 1 — POST /errores/sync
- *   Body: [ { empresa, modulo, identi, statusSoftland, error, cuenta, fecha }, ... ]
- *   n8n manda TODOS los errores de todas las empresas en un solo POST.
+ *   Body recomendado: { empresasConsultadas: [...], errores: [...] }
+ *   También acepta el array histórico para no cortar integraciones existentes.
  *   Upsert por (empresa, modulo, identi); no pisa el estado de gestión.
  *
  * Flujo 4 — POST /errores/resultado-reproceso
@@ -30,17 +24,8 @@ export class SyncController {
 
   @Post('sync')
   @HttpCode(200)
-  sync(
-    @Body(
-      new ParseArrayPipe({
-        items: SyncErrorDto,
-        whitelist: true,
-        forbidNonWhitelisted: false,
-      }),
-    )
-    registros: SyncErrorDto[],
-  ) {
-    return this.service.sync(registros);
+  sync(@Body(SyncRequestPipe) request: SyncRequestDto) {
+    return this.service.sync(request.errores, request.empresasConsultadas);
   }
 
   @Post('resultado-reproceso')

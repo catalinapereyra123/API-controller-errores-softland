@@ -20,14 +20,14 @@ Variables (`.env`):
 | `DATABASE_URL`             | Conexión Postgres (Prisma).                                         |
 | `PORT`                     | Puerto HTTP (default 3000).                                         |
 | `CORS_ORIGIN`              | Orígenes permitidos, coma-separado (ej. `http://localhost:5173`).   |
-| `INGEST_API_KEY`           | Clave que n8n manda en `x-api-key`. Vacío = endpoints n8n abiertos. |
+| `INGEST_API_KEY`           | Clave que el integrador manda en `x-api-key`. Obligatoria en producción. |
 | `N8N_REPROCESO_WEBHOOK_URL` | Webhook de n8n para el flujo 2 (disparar el `UPDATE ... STATUS='N'`). |
 
 ## Los 4 flujos de n8n
 
 ```
 FLUJO 1 · SYNC          CRON 3h → traer errores de todas las empresas
-                        → POST /errores/sync  (array completo en 1 POST)
+                        → POST /errores/sync  (un lote completo)
 
 FLUJO 2 · REPROCESAR    app: POST /errores/:id/reproceso
                         → backend guarda REPROCESANDO + POST al webhook n8n
@@ -42,15 +42,30 @@ FLUJO 4 · VERIFICAR     n8n consulta el status del identi en Softland
 ### Flujo 1 — `POST /errores/sync`  (header `x-api-key`)
 
 ```json
-[
-  { "empresa": "IFLOW", "empresaNombre": "I FLOW S.A.", "modulo": "3. Compras",
-    "identi": "LIQ29948", "statusSoftland": "E", "error": "Se ha producido...",
-    "cuenta": "9167", "fecha": "2026-08-11T00:00:00" }
-]
+{
+  "empresasConsultadas": ["IFLOW", "AMCARG", "FLETCO"],
+  "errores": [
+    {
+      "empresa": "IFLOW",
+      "empresaNombre": "I FLOW S.A.",
+      "modulo": "3. Compras",
+      "identi": "LIQ29948",
+      "statusSoftland": "E",
+      "error": "Se ha producido...",
+      "cuenta": "9167",
+      "fecha": "2026-08-11T00:00:00"
+    }
+  ]
+}
 ```
 
-- n8n manda **todos** los errores en un solo POST (hace falta el array completo
-  para detectar los que ya no están).
+- El integrador manda **todos** los errores en un solo POST.
+- `empresasConsultadas` debe incluir también empresas que devolvieron cero
+  errores; así el backend puede detectar correctamente los que desaparecieron.
+- Por compatibilidad todavía se acepta el array anterior. En ese formato solo
+  pueden conciliarse las empresas que tengan al menos un error en el lote.
+- También se aceptan los alias de iFlow `status` y `fechaMovimiento`; internamente
+  se normalizan a `statusSoftland` y `fecha`.
 - **Upsert** por `(empresa, modulo, identi)`. No pisa `estadoApp`, `responsable`,
   `intentos`, observaciones.
 - `RESUELTO` que vuelve a llegar con error → se reabre (`ERROR`).
@@ -129,9 +144,10 @@ controla el flujo de reproceso (`RESUELTO` viene de `statusSoftland = S`).
 
 ```
 src/
-  common/api-key.guard.ts     Guard de los endpoints de n8n (x-api-key)
+  common/api-key.guard.ts     Guard de integración (x-api-key)
   errores/
-    dto/                      SyncError, ResultadoReproceso, QueryErrores, Mutaciones
+    dto/                      Contratos HTTP y validación
+    pipes/                    Normalización del payload de sincronización
     sync.controller.ts        POST /errores/sync, POST /errores/resultado-reproceso
     errores.controller.ts     GET de lectura + PATCH/POST de mutación
     errores.service.ts        Lógica de los 4 flujos + armado por empresa/módulo

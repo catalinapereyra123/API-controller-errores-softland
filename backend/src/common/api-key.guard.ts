@@ -3,6 +3,7 @@ import {
   ExecutionContext,
   Injectable,
   Logger,
+  ServiceUnavailableException,
   UnauthorizedException,
 } from '@nestjs/common';
 import type { Request } from 'express';
@@ -11,8 +12,8 @@ import type { Request } from 'express';
  * Protege el endpoint de ingesta. n8n tiene que mandar el header
  * `x-api-key` con el valor de la env `INGEST_API_KEY`.
  *
- * Si `INGEST_API_KEY` no está seteada, el guard deja pasar todo y avisa
- * por log (pensado para desarrollo local).
+ * En desarrollo local puede quedar sin configurar. En producción falla
+ * cerrado para no exponer accidentalmente los endpoints de integración.
  */
 @Injectable()
 export class ApiKeyGuard implements CanActivate {
@@ -22,8 +23,14 @@ export class ApiKeyGuard implements CanActivate {
     const expected = process.env.INGEST_API_KEY?.trim();
 
     if (!expected) {
+      if (process.env.NODE_ENV === 'production') {
+        throw new ServiceUnavailableException(
+          'El endpoint de integración no está configurado.',
+        );
+      }
+
       this.logger.warn(
-        'INGEST_API_KEY no está configurada: el endpoint de ingesta está abierto.',
+        'INGEST_API_KEY no está configurada: acceso abierto solo para desarrollo.',
       );
       return true;
     }

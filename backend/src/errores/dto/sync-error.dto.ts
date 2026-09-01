@@ -1,6 +1,7 @@
 import { Transform } from 'class-transformer';
 import {
   IsISO8601,
+  IsIn,
   IsOptional,
   IsString,
   MaxLength,
@@ -57,6 +58,7 @@ export class SyncErrorDto {
   identi!: string;
 
   @IsString()
+  @IsIn(['E', 'X', 'D', 'B', 'N', 'S'])
   @MinLength(1)
   @MaxLength(10)
   @Transform(({ value }) =>

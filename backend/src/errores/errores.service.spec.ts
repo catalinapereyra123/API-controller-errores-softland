@@ -123,6 +123,17 @@ class FakeRepo {
       ),
     );
 
+  obtenerBasico = (id: string) =>
+    Promise.resolve(this.transacciones.find((t) => t.id === id) ?? null);
+
+  obtener = (id: string) =>
+    Promise.resolve({
+      ...this.transacciones.find((t) => t.id === id),
+      observaciones: [],
+      eventos: [],
+      intentosReproceso: [],
+    });
+
   listar = (where: any) =>
     Promise.resolve(
       this.transacciones.filter((t) =>
@@ -228,6 +239,17 @@ describe('ErroresService.sync', () => {
     ).toBe(false);
   });
 
+  it('detecta una empresa sin errores cuando fue consultada', async () => {
+    await service.sync([registro()]);
+
+    const res = await service.sync([], ['AMCARG']);
+
+    expect(res.empresas).toBe(1);
+    expect(res.recibidos).toBe(0);
+    expect(res.desaparecidos).toBe(1);
+    expect(repo.transacciones[0].presenteEnUltimaSync).toBe(false);
+  });
+
   it('REPROCESANDO + status S => RESUELTO', async () => {
     await service.sync([registro()]);
     repo.transacciones[0].estadoApp = 'REPROCESANDO';
@@ -272,15 +294,6 @@ describe('ErroresService.solicitarReproceso', () => {
 
   beforeEach(async () => {
     repo = new FakeRepo();
-    repo.obtenerBasico = (id: string) =>
-      Promise.resolve(repo.transacciones.find((t) => t.id === id) ?? null);
-    repo.obtener = (id: string) =>
-      Promise.resolve({
-        ...repo.transacciones.find((t) => t.id === id),
-        observaciones: [],
-        eventos: [],
-        intentosReproceso: [],
-      });
     const moduleRef = await Test.createTestingModule({
       providers: [
         ErroresService,
