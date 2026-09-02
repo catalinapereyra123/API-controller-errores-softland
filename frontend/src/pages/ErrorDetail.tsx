@@ -268,9 +268,7 @@ function ErrorDetail({ onNavigate }: { onNavigate: (page: AppPage) => void }) {
                 />
               </div>
 
-              {tab === 'detalle' && (
-                <ErrorItemsTable items={detalle.items} />
-              )}
+              {tab === 'detalle' && <ErrorItemsTable items={detalle.items} />}
 
               {tab === 'historial' && (
                 <Card>

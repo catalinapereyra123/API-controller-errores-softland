@@ -39,7 +39,10 @@ function ErrorItemsTable({ items }: ErrorItemsTableProps) {
                 fontWeight: fontWeight.semibold,
                 color: colors.gray.medium,
               }}
-              className={cn('uppercase', (index === 2 || index === 3 || index === 4) && 'text-right')}
+              className={cn(
+                'uppercase',
+                (index === 2 || index === 3 || index === 4) && 'text-right',
+              )}
             >
               {label}
             </span>
@@ -50,7 +53,10 @@ function ErrorItemsTable({ items }: ErrorItemsTableProps) {
           <div
             key={item.nroItem}
             style={{ borderColor: colors.background.border }}
-            className={cn(GRID, 'items-start border-b px-lg py-md last:border-b-0')}
+            className={cn(
+              GRID,
+              'items-start border-b px-lg py-md last:border-b-0',
+            )}
           >
             <span
               style={{

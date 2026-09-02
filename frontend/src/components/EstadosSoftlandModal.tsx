@@ -40,9 +40,7 @@ function EstadosSoftlandModal({ open, onClose }: EstadosSoftlandModalProps) {
             >
               {estado.label}
             </span>
-            <span
-              style={{ ...textStyles.caption, color: colors.gray.medium }}
-            >
+            <span style={{ ...textStyles.caption, color: colors.gray.medium }}>
               {estado.description}
             </span>
           </li>

@@ -125,7 +125,10 @@ function Historial({ onNavigate }: { onNavigate: (page: AppPage) => void }) {
               icon={<TrendingUpIcon className="h-5 w-5" />}
               iconColor={colors.label.green.text}
               iconBackground={colors.label.green.background}
-              trend={{ text: 'Cerrados en estado S', color: colors.gray.medium }}
+              trend={{
+                text: 'Cerrados en estado S',
+                color: colors.gray.medium,
+              }}
             />
             <StatCard
               label="Reprocesos"
@@ -147,7 +150,10 @@ function Historial({ onNavigate }: { onNavigate: (page: AppPage) => void }) {
               icon={<MessageIcon className="h-5 w-5" />}
               iconColor={colors.label.purple.text}
               iconBackground={colors.label.purple.background}
-              trend={{ text: 'Cargadas por el equipo', color: colors.gray.medium }}
+              trend={{
+                text: 'Cargadas por el equipo',
+                color: colors.gray.medium,
+              }}
             />
             <StatCard
               label="Reasignaciones"
@@ -158,7 +164,10 @@ function Historial({ onNavigate }: { onNavigate: (page: AppPage) => void }) {
               icon={<UsersIcon className="h-5 w-5" />}
               iconColor={colors.label.orange.text}
               iconBackground={colors.label.orange.background}
-              trend={{ text: 'Cambios de responsable', color: colors.gray.medium }}
+              trend={{
+                text: 'Cambios de responsable',
+                color: colors.gray.medium,
+              }}
             />
           </div>
 
