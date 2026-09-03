@@ -33,4 +33,32 @@ export class SyncController {
   resultadoReproceso(@Body() dto: ResultadoReprocesoDto) {
     return this.service.registrarResultadoReproceso(dto);
   }
+
+  @Post('sync-individual')
+  @HttpCode(200)
+  syncIndividual(
+    @Body()
+    data: {
+      EmpresaCodigo: string;
+      Empresa: string;
+      Modulo: string;
+      Identi: string;
+      FechaMovimiento?: string;
+      Cuenta?: string;
+      Status: string;
+      Error?: string;
+    },
+  ) {
+    const dto: SyncErrorDto = {
+      empresa: data.EmpresaCodigo,
+      empresaNombre: data.Empresa,
+      modulo: data.Modulo,
+      identi: data.Identi,
+      statusSoftland: data.Status,
+      error: data.Error,
+      cuenta: data.Cuenta,
+      fecha: data.FechaMovimiento,
+    };
+    return this.service.sync([dto], [data.EmpresaCodigo]);
+  }
 }
