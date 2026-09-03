@@ -1,6 +1,7 @@
 import { Body, Controller, HttpCode, Post, UseGuards } from '@nestjs/common';
 import { ApiKeyGuard } from '../common/api-key.guard';
 import { ResultadoReprocesoDto } from './dto/resultado-reproceso.dto';
+import { SyncErrorDto } from './dto/sync-error.dto';
 import { SyncRequestDto } from './dto/sync-request.dto';
 import { ErroresService } from './errores.service';
 import { SyncRequestPipe } from './pipes/sync-request.pipe';
