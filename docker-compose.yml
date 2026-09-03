@@ -1,0 +1,51 @@
+name: errores-softland
+
+services:
+  db:
+    image: postgres:17
+    container_name: errores-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: errores_softland
+    ports:
+      - "5433:5432" # host 5433 -> evita chocar con un Postgres local en 5432
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d errores_softland"]
+      interval: 5s
+      timeout: 5s
+      retries: 15
+
+  backend:
+    build: ./backend
+    container_name: errores-back
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@db:5432/errores_softland?schema=public
+      PORT: "3000"
+      CORS_ORIGIN: http://localhost:5173
+      INGEST_API_KEY: "" # poner una clave cuando n8n pegue de verdad
+      N8N_REPROCESO_WEBHOOK_URL: ""
+    ports:
+      - "3000:3000"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        VITE_API_URL: http://localhost:3000
+    container_name: errores-front
+    restart: unless-stopped
+    ports:
+      - "5173:80"
+    depends_on:
+      - backend
+
+volumes:
+  db-data:

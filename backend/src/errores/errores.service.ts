@@ -478,7 +478,8 @@ export class ErroresService {
         detalle: e.detalle ?? '',
         tipo: e.tipo,
       })),
-      intentos: t.intentosReproceso.map((i) => ({
+      // `intentos` (número) viene de toErrorTransaccion; acá el detalle de cada uno:
+      intentosReproceso: t.intentosReproceso.map((i) => ({
         id: i.id,
         numeroIntento: i.numeroIntento,
         statusAntes: i.statusAntes,
