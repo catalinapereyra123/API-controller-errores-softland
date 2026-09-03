@@ -35,11 +35,11 @@ export class SyncController {
     return this.service.registrarResultadoReproceso(dto);
   }
 
-  @Post('sync-individual')
+  @Post('sync-batch')
   @HttpCode(200)
-  syncIndividual(
+  syncBatch(
     @Body()
-    data: {
+    data: Array<{
       EmpresaCodigo: string;
       Empresa: string;
       Modulo: string;
@@ -48,18 +48,20 @@ export class SyncController {
       Cuenta?: string;
       Status: string;
       Error?: string;
-    },
+    }>,
   ) {
-    const dto: SyncErrorDto = {
-      empresa: data.EmpresaCodigo,
-      empresaNombre: data.Empresa,
-      modulo: data.Modulo,
-      identi: data.Identi,
-      statusSoftland: data.Status,
-      error: data.Error,
-      cuenta: data.Cuenta,
-      fecha: data.FechaMovimiento,
-    };
-    return this.service.sync([dto], [data.EmpresaCodigo]);
+    const dtos: SyncErrorDto[] = data.map((item) => ({
+      empresa: item.EmpresaCodigo,
+      empresaNombre: item.Empresa,
+      modulo: item.Modulo,
+      identi: item.Identi,
+      statusSoftland: item.Status,
+      error: item.Error,
+      cuenta: item.Cuenta,
+      fecha: item.FechaMovimiento,
+    }));
+
+    const empresas = [...new Set(data.map((item) => item.EmpresaCodigo))];
+    return this.service.sync(dtos, empresas);
   }
 }
