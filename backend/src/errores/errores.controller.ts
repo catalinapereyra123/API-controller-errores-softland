@@ -65,8 +65,6 @@ export class ErroresController {
     return this.service.dashboard();
   }
 
-  // -------- Mutaciones (se guardan en la DB) --------
-
   /** Asigna / desasigna responsable. PATCH /errores/:id/asignacion */
   @Patch('errores/:id/asignacion')
   asignar(@Param('id') id: string, @Body() dto: AsignarDto) {
