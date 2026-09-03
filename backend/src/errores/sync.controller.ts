@@ -39,18 +39,30 @@ export class SyncController {
   @HttpCode(200)
   syncBatch(
     @Body()
-    data: Array<{
-      EmpresaCodigo: string;
-      Empresa: string;
-      Modulo: string;
-      Identi: string;
-      FechaMovimiento?: string;
-      Cuenta?: string;
-      Status: string;
-      Error?: string;
-    }>,
+    data:
+      | Array<{
+          EmpresaCodigo: string;
+          Empresa: string;
+          Modulo: string;
+          Identi: string;
+          FechaMovimiento?: string;
+          Cuenta?: string;
+          Status: string;
+          Error?: string;
+        }>
+      | {
+          EmpresaCodigo: string;
+          Empresa: string;
+          Modulo: string;
+          Identi: string;
+          FechaMovimiento?: string;
+          Cuenta?: string;
+          Status: string;
+          Error?: string;
+        },
   ) {
-    const dtos: SyncErrorDto[] = data.map((item) => ({
+    const arr = Array.isArray(data) ? data : [data];
+    const dtos: SyncErrorDto[] = arr.map((item) => ({
       empresa: item.EmpresaCodigo,
       empresaNombre: item.Empresa,
       modulo: item.Modulo,
@@ -61,7 +73,7 @@ export class SyncController {
       fecha: item.FechaMovimiento,
     }));
 
-    const empresas = [...new Set(data.map((item) => item.EmpresaCodigo))];
+    const empresas = [...new Set(arr.map((item) => item.EmpresaCodigo))];
     return this.service.sync(dtos, empresas);
   }
 }
