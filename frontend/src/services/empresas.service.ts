@@ -1,9 +1,6 @@
-import { empresasMock } from '../mocks/empresas.mock'
-import { mockDelay } from './mockDelay'
+import { api } from './api'
 import type { Empresa } from '../types'
 
-export async function getEmpresas(): Promise<Empresa[]> {
-  await mockDelay()
-  return empresasMock
-  // return api<Empresa[]>('/empresas')
+export function getEmpresas(): Promise<Empresa[]> {
+  return api<Empresa[]>('/empresas')
 }

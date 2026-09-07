@@ -1,10 +1,4 @@
-import type { Empresa, Usuario } from '../types'
-
-export function empresaLabel(empresas: Empresa[], empresaId: string): string {
-  return (
-    empresas.find((empresa) => empresa.id === empresaId)?.nombre ?? empresaId
-  )
-}
+import type { Usuario } from '../types'
 
 export function usuarioNombre(
   usuarios: Usuario[],

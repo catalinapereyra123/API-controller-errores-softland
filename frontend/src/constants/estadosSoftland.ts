@@ -41,6 +41,13 @@ export const ESTADOS_SOFTLAND: EstadoSoftland[] = [
     background: colors.label.orange.background,
   },
   {
+    code: 'X',
+    label: 'Excluida del proceso',
+    description: 'La transacción quedó fuera del procesamiento automático',
+    color: colors.label.gray.text,
+    background: colors.label.gray.background,
+  },
+  {
     code: 'B',
     label: 'Bloqueo por regla de negocio',
     description: 'Una regla de negocio frenó el procesamiento',

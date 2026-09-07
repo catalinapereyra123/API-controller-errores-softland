@@ -111,6 +111,7 @@ export function toErrorTransaccion(t: TransaccionConRelaciones) {
     codigo: t.identi,
     estado: t.estadoApp,
     empresaId: t.empresaCodigo,
+    empresaNombre: t.empresa?.nombre ?? t.empresaCodigo,
     modulo: MODULO_LABEL[t.modulo],
     descripcion: descripcionDe(t),
     responsableId: t.responsableId,
@@ -137,4 +138,42 @@ function descripcionDe(t: TransaccionError): string {
   if (t.errorMensaje) return t.errorMensaje;
   if (t.statusSoftland === 'X') return 'Transacción excluida del proceso.';
   return '—';
+}
+
+// ---------------------------------------------------------------------------
+//  Fechas del historial (agrupación por día)
+// ---------------------------------------------------------------------------
+
+const DIAS_SEMANA = [
+  'Domingo',
+  'Lunes',
+  'Martes',
+  'Miércoles',
+  'Jueves',
+  'Viernes',
+  'Sábado',
+];
+
+const dosDigitos = (n: number) => String(n).padStart(2, '0');
+
+/** yyyy-mm-dd en hora local: sirve de clave/ID del grupo. */
+export function claveDia(fecha: Date): string {
+  return `${fecha.getFullYear()}-${dosDigitos(fecha.getMonth() + 1)}-${dosDigitos(fecha.getDate())}`;
+}
+
+/** dd/mm/yyyy */
+export function formatoFecha(fecha: Date): string {
+  return `${dosDigitos(fecha.getDate())}/${dosDigitos(fecha.getMonth() + 1)}/${fecha.getFullYear()}`;
+}
+
+/** "Hoy", "Ayer" o el día de la semana. */
+export function etiquetaDia(fecha: Date, hoy: Date = new Date()): string {
+  const clave = claveDia(fecha);
+  if (clave === claveDia(hoy)) return 'Hoy';
+
+  const ayer = new Date(hoy);
+  ayer.setDate(ayer.getDate() - 1);
+  if (clave === claveDia(ayer)) return 'Ayer';
+
+  return DIAS_SEMANA[fecha.getDay()];
 }

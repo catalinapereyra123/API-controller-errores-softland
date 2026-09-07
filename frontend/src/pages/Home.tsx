@@ -23,14 +23,13 @@ import Table from '../components/Table'
 import { estadoTagByEstado } from '../constants/estados'
 import { useHomeData } from '../hooks/useHomeData'
 import { colors, fontFamily, fontWeight, spacing, textStyles } from '../styles'
-import type { AppPage, Empresa, ErrorTransaccion } from '../types'
+import type { AppPage, ErrorTransaccion } from '../types'
 import { cn } from '../utils/cn'
 import {
   formatElapsedSince,
   formatMinutes,
   formatTodayEs,
 } from '../utils/format'
-import { empresaLabel } from '../utils/labels'
 
 function ResponsableIndicator({ asignado }: { asignado: boolean }) {
   const color = asignado ? colors.status.success : colors.status.error
@@ -52,11 +51,9 @@ function ResponsableIndicator({ asignado }: { asignado: boolean }) {
 
 function ErrorRow({
   error,
-  empresas,
   onOpen,
 }: {
   error: ErrorTransaccion
-  empresas: Empresa[]
   onOpen: () => void
 }) {
   const EstadoTag = estadoTagByEstado[error.estado]
@@ -85,7 +82,7 @@ function ErrorRow({
         }}
         className="truncate"
       >
-        {empresaLabel(empresas, error.empresaId)}
+        {error.empresaNombre}
       </span>
       <span
         style={{ ...textStyles.bodySmall, color: colors.gray.medium }}
@@ -108,7 +105,13 @@ function ErrorRow({
   )
 }
 
-function Home({ onNavigate }: { onNavigate: (page: AppPage) => void }) {
+function Home({
+  onNavigate,
+  onOpenError,
+}: {
+  onNavigate: (page: AppPage) => void
+  onOpenError: (id: string) => void
+}) {
   const { data, loading, error, refetch } = useHomeData()
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [activeNavItem, setActiveNavItem] = useState<SidebarItemId>('inicio')
@@ -150,7 +153,7 @@ function Home({ onNavigate }: { onNavigate: (page: AppPage) => void }) {
           activeItem={activeNavItem}
           onItemSelect={handleSelectNavItem}
           user={
-            data
+            data?.currentUser
               ? {
                   name: data.currentUser.nombre,
                   role: data.currentUser.rol,
@@ -182,7 +185,7 @@ function Home({ onNavigate }: { onNavigate: (page: AppPage) => void }) {
               </button>
               <div className="flex flex-col gap-xxs">
                 <h1 style={{ ...textStyles.h1, color: colors.gray.darkest }}>
-                  Hola, {data?.currentUser.nombre.split(' ')[0] ?? '...'}
+                  Hola, {data?.currentUser?.nombre.split(' ')[0] ?? 'equipo'}
                 </h1>
                 <p style={{ ...textStyles.body, color: colors.gray.medium }}>
                   {formatTodayEs()}
@@ -382,8 +385,7 @@ function Home({ onNavigate }: { onNavigate: (page: AppPage) => void }) {
                   <ErrorRow
                     key={item.id}
                     error={item}
-                    empresas={data.empresas}
-                    onOpen={() => onNavigate('detalle')}
+                    onOpen={() => onOpenError(item.id)}
                   />
                 ))}
               </div>

@@ -10,6 +10,7 @@ export interface BandejaFilters {
   busqueda: string
   empresaId: string
   modulo: string
+  /** 'abiertos' | 'todos' | un ErrorEstado puntual. */
   estado: string
   responsableId: string
   periodo: string
@@ -19,7 +20,7 @@ export const FILTROS_INICIALES: BandejaFilters = {
   busqueda: '',
   empresaId: 'todas',
   modulo: 'todos',
-  estado: 'todos',
+  estado: 'abiertos',
   responsableId: 'todos',
   periodo: 'todos',
 }
@@ -32,7 +33,7 @@ const PERIODO_MINUTOS: Record<string, number | null> = {
 }
 
 interface BandejaData {
-  currentUser: Usuario
+  currentUser: Usuario | null
   empresas: Empresa[]
   usuarios: Usuario[]
   totalAbiertos: number
@@ -64,13 +65,15 @@ export function useBandejaErrores(): UseBandejaErroresResult {
       setLoading(true)
       setError(null)
       try {
+        // Se trae todo (incluidos los resueltos) y se filtra en el cliente,
+        // así los filtros responden sin ida y vuelta al servidor.
         const [currentUser, empresas, usuarios, stats, errores] =
           await Promise.all([
             getCurrentUser(),
             getEmpresas(),
             getUsuarios(),
             getDashboardStats(),
-            getBandejaErrores(),
+            getBandejaErrores({ soloAbiertos: 'false' }),
           ])
         if (!cancelled) {
           setData({
@@ -82,9 +85,13 @@ export function useBandejaErrores(): UseBandejaErroresResult {
             errores,
           })
         }
-      } catch {
+      } catch (e) {
         if (!cancelled) {
-          setError('No pudimos cargar la bandeja de errores.')
+          setError(
+            e instanceof Error
+              ? `No pudimos cargar la bandeja: ${e.message}`
+              : 'No pudimos cargar la bandeja de errores.',
+          )
         }
       } finally {
         if (!cancelled) setLoading(false)
@@ -110,13 +117,23 @@ export function useBandejaErrores(): UseBandejaErroresResult {
     const periodoMinutos = PERIODO_MINUTOS[filters.periodo]
 
     return data.errores.filter((item) => {
-      if (busqueda && !item.codigo.toLowerCase().includes(busqueda))
+      if (
+        busqueda &&
+        !item.codigo.toLowerCase().includes(busqueda) &&
+        !item.descripcion.toLowerCase().includes(busqueda)
+      )
         return false
       if (filters.empresaId !== 'todas' && item.empresaId !== filters.empresaId)
         return false
-      if (filters.modulo !== 'todos' && item.modulo !== filters.modulo)
+      if (filters.modulo !== 'todos' && item.moduloCodigo !== filters.modulo)
         return false
-      if (filters.estado !== 'todos' && item.estado !== filters.estado)
+      if (filters.estado === 'abiertos' && item.estado === 'RESUELTO')
+        return false
+      if (
+        filters.estado !== 'abiertos' &&
+        filters.estado !== 'todos' &&
+        item.estado !== filters.estado
+      )
         return false
       if (
         filters.responsableId === 'sin-asignar' &&

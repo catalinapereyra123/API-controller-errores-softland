@@ -17,8 +17,8 @@ import {
 } from '../constants/estados'
 import { useBandejaErrores } from '../hooks/useBandejaErrores'
 import { colors, fontFamily, fontWeight, textStyles } from '../styles'
-import type { AppPage, Empresa, ErrorTransaccion, Usuario } from '../types'
-import { empresaLabel, usuarioNombre } from '../utils/labels'
+import type { AppPage, ErrorTransaccion, Usuario } from '../types'
+import { usuarioNombre } from '../utils/labels'
 import { formatDetectedAt, formatElapsedSince } from '../utils/format'
 
 const BANDEJA_GRID_COLS =
@@ -61,12 +61,10 @@ function BandejaTableHeader() {
 
 function BandejaRow({
   error,
-  empresas,
   usuarios,
   onOpen,
 }: {
   error: ErrorTransaccion
-  empresas: Empresa[]
   usuarios: Usuario[]
   onOpen: () => void
 }) {
@@ -96,7 +94,7 @@ function BandejaRow({
           color: colors.gray.darkest,
         }}
       >
-        {empresaLabel(empresas, error.empresaId)}
+        {error.empresaNombre}
       </span>
       <span style={{ ...textStyles.bodySmall, color: colors.gray.medium }}>
         {error.modulo}
@@ -155,8 +153,10 @@ function BandejaRow({
 
 function BandejaErrores({
   onNavigate,
+  onOpenError,
 }: {
   onNavigate: (page: AppPage) => void
+  onOpenError: (id: string) => void
 }) {
   const {
     data,
@@ -178,9 +178,14 @@ function BandejaErrores({
     if (id === 'historial') onNavigate('historial')
   }
 
+  // Los módulos salen de los errores que llegaron: se filtra por código
+  // (FACTURACION, COMPRAS…) y se muestra la etiqueta legible.
   const modulos = useMemo(() => {
-    const distintos = new Set((data?.errores ?? []).map((item) => item.modulo))
-    return Array.from(distintos).sort()
+    const porCodigo = new Map<string, string>()
+    for (const item of data?.errores ?? []) {
+      porCodigo.set(item.moduloCodigo, item.modulo)
+    }
+    return [...porCodigo.entries()].sort((a, b) => a[1].localeCompare(b[1]))
   }, [data])
 
   const empresaOptions: DropdownOption[] = [
@@ -193,13 +198,14 @@ function BandejaErrores({
 
   const moduloOptions: DropdownOption[] = [
     { value: 'todos', label: 'Proceso: Todos' },
-    ...modulos.map((modulo) => ({
-      value: modulo,
-      label: `Proceso: ${modulo}`,
+    ...modulos.map(([codigo, label]) => ({
+      value: codigo,
+      label: `Proceso: ${label}`,
     })),
   ]
 
   const estadoOptions: DropdownOption[] = [
+    { value: 'abiertos', label: 'Estado: Abiertos' },
     { value: 'todos', label: 'Estado: Todos' },
     ...estadoOrder.map((estado) => ({
       value: estado,
@@ -252,7 +258,7 @@ function BandejaErrores({
           activeItem={activeNavItem}
           onItemSelect={handleSelectNavItem}
           user={
-            data
+            data?.currentUser
               ? {
                   name: data.currentUser.nombre,
                   role: data.currentUser.rol,
@@ -370,7 +376,7 @@ function BandejaErrores({
               onChange={(value) => setFilters({ periodo: value })}
             />
             <Dropdown
-              text="Estado: Todos"
+              text="Estado: Abiertos"
               options={estadoOptions}
               color={colors.background.border}
               textColor={colors.gray.dark}
@@ -413,9 +419,8 @@ function BandejaErrores({
                     <BandejaRow
                       key={item.id}
                       error={item}
-                      empresas={data.empresas}
                       usuarios={data.usuarios}
-                      onOpen={() => onNavigate('detalle')}
+                      onOpen={() => onOpenError(item.id)}
                     />
                   ))}
                 </div>

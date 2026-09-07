@@ -158,6 +158,45 @@ export class ErroresRepository {
     });
   }
 
+  /**
+   * Errores que requieren atención inmediata en el dashboard:
+   * abiertos y sin responsable, o abiertos hace más de `horas` horas.
+   */
+  prioritarios(horas = 2, limite = 10) {
+    const desde = new Date(Date.now() - horas * 60 * 60 * 1000);
+    return this.prisma.transaccionError.findMany({
+      where: {
+        estadoApp: { in: ESTADOS_ABIERTOS },
+        OR: [{ responsableId: null }, { fechaDeteccion: { lt: desde } }],
+      },
+      include: { responsable: true, empresa: true },
+      orderBy: { fechaDeteccion: 'asc' },
+      take: limite,
+    });
+  }
+
+  /** Eventos de trazabilidad del período, con su transacción y empresa. */
+  eventosDesde(fecha: Date, limite = 300) {
+    return this.prisma.eventoTrazabilidad.findMany({
+      where: { createdAt: { gte: fecha } },
+      include: { transaccion: { include: { empresa: true } } },
+      orderBy: { createdAt: 'desc' },
+      take: limite,
+    });
+  }
+
+  contarEventos(where: Prisma.EventoTrazabilidadWhereInput) {
+    return this.prisma.eventoTrazabilidad.count({ where });
+  }
+
+  contarObservaciones(where: Prisma.ObservacionWhereInput) {
+    return this.prisma.observacion.count({ where });
+  }
+
+  contarIntentos(where: Prisma.ErrorIntentoWhereInput) {
+    return this.prisma.errorIntento.count({ where });
+  }
+
   listarEmpresas() {
     return this.prisma.empresa.findMany({ orderBy: { nombre: 'asc' } });
   }

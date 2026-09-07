@@ -1,17 +1,11 @@
-import { currentUserIdMock, usuariosMock } from '../mocks/usuarios.mock'
-import { mockDelay } from './mockDelay'
+import { api } from './api'
 import type { Usuario } from '../types'
 
-export async function getCurrentUser(): Promise<Usuario> {
-  await mockDelay()
-  const usuario = usuariosMock.find((item) => item.id === currentUserIdMock)
-  if (!usuario) throw new Error('Usuario actual no encontrado')
-  return usuario
-  // return api<Usuario>('/users/me')
+/** GET /users/me — null mientras no haya usuarios cargados (todavía no hay auth). */
+export function getCurrentUser(): Promise<Usuario | null> {
+  return api<Usuario | null>('/users/me')
 }
 
-export async function getUsuarios(): Promise<Usuario[]> {
-  await mockDelay()
-  return usuariosMock
-  // return api<Usuario[]>('/users')
+export function getUsuarios(): Promise<Usuario[]> {
+  return api<Usuario[]>('/users')
 }

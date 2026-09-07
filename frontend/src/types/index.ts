@@ -1,5 +1,26 @@
+/**
+ * Espejo de lo que devuelve la API (backend/src/errores/*).
+ * Si cambia un DTO del back, se cambia acá.
+ */
+
+/** Estado de gestión interno (enum `EstadoApp` del back). */
 export type ErrorEstado =
-  'ERROR' | 'PENDIENTE' | 'ASIGNADO' | 'EN_PROGRESO' | 'CORREGIDO' | 'RESUELTO'
+  | 'ERROR'
+  | 'ASIGNADO'
+  | 'EN_PROGRESO'
+  | 'REPROCESANDO'
+  | 'REQUIERE_CORRECCION'
+  | 'RESUELTO'
+
+/** Estados que la app puede setear a mano (el resto lo maneja el reproceso). */
+export const ESTADOS_MANUALES: ErrorEstado[] = [
+  'ERROR',
+  'ASIGNADO',
+  'EN_PROGRESO',
+]
+
+/** Enum `Modulo` del back. */
+export type ModuloCodigo = 'FACTURACION' | 'COMPRAS' | 'COBRANZAS'
 
 export type AppPage = 'home' | 'bandeja' | 'detalle' | 'historial'
 
@@ -15,22 +36,42 @@ export interface Usuario {
   avatarIniciales: string
 }
 
+/** Fila de la bandeja: `toErrorTransaccion` del back. */
 export interface ErrorTransaccion {
   id: string
+  /** IDENTI de Softland. */
   codigo: string
   estado: ErrorEstado
   empresaId: string
+  empresaNombre: string
+  /** Etiqueta legible del módulo: "Facturación", "Compras", "Cobranzas". */
   modulo: string
+  moduloCodigo: ModuloCodigo
+  /** Mensaje de error de Softland (o un texto por defecto). */
   descripcion: string
   responsableId: string | null
+  /** ISO. Primera vez que se detectó. */
   abiertoDesde: string
   intentos: number
+  /** Status crudo de Softland: E, X, D, B, N, S. */
+  statusSoftland: string
+  cuenta: string | null
+  fechaMovimiento: string | null
+  /** Ruta del c:\padron\...txt extraída del mensaje, si la hay. */
+  archivoLog: string | null
+  corregidoPorId: string | null
+  corregidoPor: string | null
+  fechaCorreccion: string | null
+  fechaResolucion: string | null
+  ultimaDeteccion: string
+  presenteEnUltimaSync: boolean
 }
 
 export interface ErrorObservacion {
   id: string
   autor: string
   iniciales: string
+  /** ISO. */
   hace: string
   texto: string
 }
@@ -40,20 +81,43 @@ export type TrazabilidadTipo =
 
 export interface TrazabilidadEvento {
   id: string
+  /** ISO. */
   hora: string
   titulo: string
   detalle: string
   tipo: TrazabilidadTipo
 }
 
+export interface IntentoReproceso {
+  id: string
+  numeroIntento: number
+  statusAntes: string | null
+  statusDespues: string | null
+  usuarioId: string | null
+  usuario: string | null
+  observacion: string | null
+  /** ISO. */
+  fecha: string
+  cerradoAt: string | null
+}
+
+/** GET /errores/:id */
+export interface ErrorDetalle extends ErrorTransaccion {
+  observaciones: ErrorObservacion[]
+  trazabilidad: TrazabilidadEvento[]
+  intentosReproceso: IntentoReproceso[]
+}
+
 export interface HistorialEvento {
   id: string
+  /** ISO. */
   hora: string
   tipo: TrazabilidadTipo
   titulo: string
+  detalle: string
+  transaccionId: string
   codigo: string
   empresa: string
-  usuario: string
 }
 
 export interface HistorialDia {
@@ -63,8 +127,10 @@ export interface HistorialDia {
   eventos: HistorialEvento[]
 }
 
+/** GET /historial */
 export interface HistorialResumen {
   periodo: string
+  desde: string
   resueltos: number
   reprocesos: number
   observaciones: number
@@ -72,46 +138,7 @@ export interface HistorialResumen {
   dias: HistorialDia[]
 }
 
-export interface ErrorItem {
-  nroItem: number
-  articulo: string
-  descripcion: string
-  cantidad: number
-  precioUnitario: number
-  importe: number
-  tipo: string
-}
-
-export interface ErrorDetalle {
-  id: string
-  codigo: string
-  estado: ErrorEstado
-  empresa: string
-  proceso: string
-  proveedorCodigo: string
-  detectadoEn: string
-  tiempoAbierto: string
-  intentos: number
-  mensajeSoftland: string
-  tablaSoftland: string
-  cabecera: {
-    proveedor: string
-    fechaComprobante: string
-    estadoActual: string
-    importeTotal: number
-    importeAplicado: number
-    diferencia: number
-  }
-  items: ErrorItem[]
-  responsable: {
-    nombre: string
-    iniciales: string
-    asignadaHace: string
-  } | null
-  observaciones: ErrorObservacion[]
-  trazabilidad: TrazabilidadEvento[]
-}
-
+/** GET /dashboard/stats */
 export interface DashboardStats {
   erroresAbiertos: number
   erroresAbiertosDelta: number

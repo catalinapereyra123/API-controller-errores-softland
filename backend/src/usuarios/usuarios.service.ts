@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import type { Usuario } from '../../generated/prisma/client';
 
@@ -20,13 +20,16 @@ export class UsuariosService {
     return usuarios.map(toDto);
   }
 
-  /** Usuario de la sesión activa. Provisorio hasta que haya auth. */
+  /**
+   * Usuario de la sesión activa. Provisorio hasta que haya auth.
+   * Devuelve null si todavía no hay usuarios cargados: la app funciona igual
+   * (las acciones quedan registradas como "Sistema").
+   */
   async actual() {
     const usuario =
       (await this.prisma.usuario.findFirst({ where: { esActual: true } })) ??
       (await this.prisma.usuario.findFirst({ orderBy: { nombre: 'asc' } }));
 
-    if (!usuario) throw new NotFoundException('No hay usuarios cargados.');
-    return toDto(usuario);
+    return usuario ? toDto(usuario) : null;
   }
 }

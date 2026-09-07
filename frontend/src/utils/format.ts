@@ -25,14 +25,6 @@ export function formatDetectedAt(isoDate: string): string {
   return `${day}/${month} ${hours}:${minutes}`
 }
 
-export function formatCurrency(amount: number): string {
-  return new Intl.NumberFormat('es-AR', {
-    style: 'currency',
-    currency: 'ARS',
-    minimumFractionDigits: 2,
-  }).format(amount)
-}
-
 export function formatTodayEs(date: Date = new Date()): string {
   const formatted = new Intl.DateTimeFormat('es-AR', {
     weekday: 'long',
@@ -42,4 +34,21 @@ export function formatTodayEs(date: Date = new Date()): string {
     .format(date)
     .replace(',', '')
   return formatted.charAt(0).toUpperCase() + formatted.slice(1)
+}
+
+/** HH:mm de una fecha ISO. */
+export function formatTime(isoDate: string): string {
+  const date = new Date(isoDate)
+  return `${String(date.getHours()).padStart(2, '0')}:${String(
+    date.getMinutes(),
+  ).padStart(2, '0')}`
+}
+
+/** dd/mm/yyyy de una fecha ISO. Devuelve '—' si viene null. */
+export function formatDate(isoDate: string | null): string {
+  if (!isoDate) return '—'
+  const date = new Date(isoDate)
+  return `${String(date.getDate()).padStart(2, '0')}/${String(
+    date.getMonth() + 1,
+  ).padStart(2, '0')}/${date.getFullYear()}`
 }

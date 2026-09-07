@@ -7,18 +7,18 @@ import {
 } from '../components/icons'
 import type { TimelineItem } from '../components/Timeline'
 import { colors } from '../styles'
-import type {
-  HistorialEvento,
-  TrazabilidadEvento,
-  TrazabilidadTipo,
-} from '../types'
+import type { HistorialEvento, TrazabilidadEvento } from '../types'
+import { formatTime } from '../utils/format'
+
+interface EstiloEvento {
+  icon: ReactNode
+  color: string
+  background: string
+}
 
 // Traduce el tipo de evento (dato del back) a su representación visual.
 // El componente Timeline es genérico y no conoce estos tipos de dominio.
-const estiloPorTipo: Record<
-  TrazabilidadTipo,
-  { icon: ReactNode; color: string; background: string }
-> = {
+const estiloPorTipo: Record<string, EstiloEvento> = {
   error: {
     icon: <AlertTriangleIcon className="h-4 w-4" />,
     color: colors.label.red.text,
@@ -41,18 +41,28 @@ const estiloPorTipo: Record<
   },
 }
 
+// `tipo` viene como texto libre de la DB: si aparece uno nuevo, se dibuja
+// neutro en vez de romper.
+const ESTILO_POR_DEFECTO: EstiloEvento = {
+  icon: <AlertTriangleIcon className="h-4 w-4" />,
+  color: colors.label.gray.text,
+  background: colors.label.gray.background,
+}
+
+const estiloDe = (tipo: string) => estiloPorTipo[tipo] ?? ESTILO_POR_DEFECTO
+
 /** Adapta los eventos de trazabilidad al formato genérico de `Timeline`. */
 export function trazabilidadToTimelineItems(
   eventos: TrazabilidadEvento[],
 ): TimelineItem[] {
   return eventos.map((evento) => {
-    const estilo = estiloPorTipo[evento.tipo]
+    const estilo = estiloDe(evento.tipo)
     return {
       id: evento.id,
       icon: estilo.icon,
       iconColor: estilo.color,
       iconBackground: estilo.background,
-      time: evento.hora,
+      time: formatTime(evento.hora),
       title: evento.titulo,
       description: evento.detalle,
     }
@@ -64,15 +74,17 @@ export function historialToTimelineItems(
   eventos: HistorialEvento[],
 ): TimelineItem[] {
   return eventos.map((evento) => {
-    const estilo = estiloPorTipo[evento.tipo]
+    const estilo = estiloDe(evento.tipo)
     return {
       id: evento.id,
       icon: estilo.icon,
       iconColor: estilo.color,
       iconBackground: estilo.background,
-      time: evento.hora,
+      time: formatTime(evento.hora),
       title: evento.titulo,
-      description: `${evento.codigo} · ${evento.empresa} · ${evento.usuario}`,
+      description: [`${evento.codigo} · ${evento.empresa}`, evento.detalle]
+        .filter(Boolean)
+        .join(' · '),
     }
   })
 }

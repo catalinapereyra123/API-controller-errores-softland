@@ -1,8 +1,8 @@
 import { useRef, useState, type ReactNode } from 'react'
 import Button from '../components/Button'
 import Card from '../components/Card'
+import Dropdown, { type DropdownOption } from '../components/Dropdown'
 import ErrorActionsCard from '../components/ErrorActionsCard'
-import ErrorItemsTable from '../components/ErrorItemsTable'
 import EstadosSoftlandModal from '../components/EstadosSoftlandModal'
 import InfoStrip from '../components/InfoStrip'
 import {
@@ -16,7 +16,8 @@ import {
 import Sidebar, { type SidebarNavItem } from '../components/Sidebar'
 import Tabs, { type TabItem } from '../components/Tabs'
 import Timeline from '../components/Timeline'
-import { estadoTagByEstado } from '../constants/estados'
+import { estadoLabels, estadoTagByEstado } from '../constants/estados'
+import { ESTADOS_SOFTLAND } from '../constants/estadosSoftland'
 import { trazabilidadToTimelineItems } from '../constants/trazabilidad'
 import { useErrorDetail } from '../hooks/useErrorDetail'
 import {
@@ -27,15 +28,21 @@ import {
   spacing,
   textStyles,
 } from '../styles'
-import type { AppPage } from '../types'
+import { ESTADOS_MANUALES, type AppPage, type ErrorEstado } from '../types'
 import { cn } from '../utils/cn'
-import { formatCurrency } from '../utils/format'
+import {
+  formatDate,
+  formatDetectedAt,
+  formatElapsedSince,
+} from '../utils/format'
 
 const TABS: TabItem[] = [
-  { id: 'cabecera', label: 'Cabecera' },
-  { id: 'detalle', label: 'Detalle' },
-  { id: 'historial', label: 'Historial' },
+  { id: 'resumen', label: 'Resumen' },
+  { id: 'reprocesos', label: 'Reprocesos' },
+  { id: 'trazabilidad', label: 'Trazabilidad' },
 ]
+
+const SIN_ASIGNAR = 'sin-asignar'
 
 function Avatar({ text }: { text: string }) {
   return (
@@ -54,29 +61,51 @@ function Avatar({ text }: { text: string }) {
 function Field({
   label,
   value,
-  emphasis,
-  valueColor,
+  mono,
 }: {
   label: string
   value: ReactNode
-  emphasis?: boolean
-  valueColor?: string
+  mono?: boolean
 }) {
   return (
-    <div className="flex flex-col gap-xxs">
+    <div className="flex min-w-0 flex-col gap-xxs">
       <span style={{ ...textStyles.caption, color: colors.gray.medium }}>
         {label}
       </span>
       <span
         style={{
-          ...(emphasis ? textStyles.h4 : textStyles.body),
+          ...textStyles.body,
           fontWeight: fontWeight.bold,
-          color: valueColor ?? colors.gray.darkest,
+          color: colors.gray.darkest,
+          ...(mono ? { fontFamily: fontFamily.mono.join(', ') } : {}),
         }}
+        className="break-words"
       >
         {value}
       </span>
     </div>
+  )
+}
+
+/** Círculo con el status crudo de Softland (E, X, N, S…) y su descripción. */
+function StatusSoftland({ status }: { status: string }) {
+  const meta = ESTADOS_SOFTLAND.find((estado) => estado.code === status)
+
+  return (
+    <span className="inline-flex items-center gap-xs">
+      <span
+        style={{
+          backgroundColor: meta?.background ?? colors.label.gray.background,
+          color: meta?.color ?? colors.label.gray.text,
+        }}
+        className="inline-flex h-6 w-6 items-center justify-center rounded-full text-caption font-bold"
+      >
+        {status}
+      </span>
+      <span style={{ ...textStyles.bodySmall, color: colors.gray.medium }}>
+        {meta?.label ?? 'Sin descripción'}
+      </span>
+    </span>
   )
 }
 
@@ -111,16 +140,33 @@ function CollapsibleCard({
   )
 }
 
-function ErrorDetail({ onNavigate }: { onNavigate: (page: AppPage) => void }) {
-  const { data, loading, error, refetch } = useErrorDetail()
+function ErrorDetail({
+  errorId,
+  onNavigate,
+}: {
+  errorId: string | null
+  onNavigate: (page: AppPage) => void
+}) {
+  const {
+    data,
+    loading,
+    error,
+    refetch,
+    saving,
+    actionError,
+    asignar,
+    cambiarEstadoManual,
+    observar,
+    reprocesar,
+  } = useErrorDetail(errorId)
   const [sidebarOpen, setSidebarOpen] = useState(true)
-  const [tab, setTab] = useState('cabecera')
+  const [tab, setTab] = useState('resumen')
   const [comentario, setComentario] = useState('')
   const [estadosOpen, setEstadosOpen] = useState(false)
   const tabsRef = useRef<HTMLDivElement>(null)
 
-  function irAHistorial() {
-    setTab('historial')
+  function irATrazabilidad() {
+    setTab('trazabilidad')
     tabsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }
 
@@ -130,8 +176,37 @@ function ErrorDetail({ onNavigate }: { onNavigate: (page: AppPage) => void }) {
     if (item.id === 'historial') onNavigate('historial')
   }
 
+  async function handleComentar() {
+    const texto = comentario.trim()
+    if (!texto) return
+    await observar(texto)
+    setComentario('')
+  }
+
   const detalle = data?.detalle
   const EstadoTag = detalle ? estadoTagByEstado[detalle.estado] : null
+  const responsable = data?.usuarios.find(
+    (usuario) => usuario.id === detalle?.responsableId,
+  )
+
+  const responsableOptions: DropdownOption[] = [
+    { value: SIN_ASIGNAR, label: 'Sin asignar' },
+    ...(data?.usuarios ?? []).map((usuario) => ({
+      value: usuario.id,
+      label: usuario.nombre,
+    })),
+  ]
+
+  const estadoOptions: DropdownOption[] = ESTADOS_MANUALES.map((estado) => ({
+    value: estado,
+    label: estadoLabels[estado],
+  }))
+
+  // REPROCESANDO / REQUIERE_CORRECCION / RESUELTO los maneja el flujo de
+  // reproceso: el back rechaza setearlos a mano.
+  const estadoEsManual = detalle
+    ? ESTADOS_MANUALES.includes(detalle.estado)
+    : false
 
   return (
     <div
@@ -163,7 +238,7 @@ function ErrorDetail({ onNavigate }: { onNavigate: (page: AppPage) => void }) {
           activeItem="bandeja"
           onItemSelect={handleSelectNavItem}
           user={
-            data
+            data?.currentUser
               ? {
                   name: data.currentUser.nombre,
                   role: data.currentUser.rol,
@@ -207,7 +282,7 @@ function ErrorDetail({ onNavigate }: { onNavigate: (page: AppPage) => void }) {
             />
           </div>
 
-          {error && (
+          {(error ?? actionError) && (
             <div
               style={{
                 ...textStyles.bodySmall,
@@ -218,7 +293,7 @@ function ErrorDetail({ onNavigate }: { onNavigate: (page: AppPage) => void }) {
               }}
               className="flex items-center justify-between gap-md rounded-xl border px-lg py-md"
             >
-              {error}
+              {error ?? actionError}
               <button type="button" className="underline" onClick={refetch}>
                 Reintentar
               </button>
@@ -228,7 +303,7 @@ function ErrorDetail({ onNavigate }: { onNavigate: (page: AppPage) => void }) {
           {loading || !detalle || !EstadoTag ? (
             <Card className="flex items-center justify-center py-xxl">
               <span style={{ ...textStyles.body, color: colors.gray.medium }}>
-                Cargando detalle del error…
+                {error ? 'No hay detalle para mostrar.' : 'Cargando detalle…'}
               </span>
             </Card>
           ) : (
@@ -248,11 +323,20 @@ function ErrorDetail({ onNavigate }: { onNavigate: (page: AppPage) => void }) {
 
               <InfoStrip
                 items={[
-                  { label: 'Empresa', value: detalle.empresa },
-                  { label: 'Proceso', value: detalle.proceso },
-                  { label: 'Proveedor', value: detalle.proveedorCodigo },
-                  { label: 'Detectado', value: detalle.detectadoEn },
-                  { label: 'Tiempo abierto', value: detalle.tiempoAbierto },
+                  { label: 'Empresa', value: detalle.empresaNombre },
+                  { label: 'Proceso', value: detalle.modulo },
+                  { label: 'Cuenta', value: detalle.cuenta?.trim() || '—' },
+                  {
+                    label: 'Detectado',
+                    value: formatDetectedAt(detalle.abiertoDesde),
+                  },
+                  {
+                    label: 'Tiempo abierto',
+                    value:
+                      detalle.estado === 'RESUELTO'
+                        ? '—'
+                        : formatElapsedSince(detalle.abiertoDesde),
+                  },
                   { label: 'Intentos', value: detalle.intentos },
                 ]}
               />
@@ -268,9 +352,7 @@ function ErrorDetail({ onNavigate }: { onNavigate: (page: AppPage) => void }) {
                 />
               </div>
 
-              {tab === 'detalle' && <ErrorItemsTable items={detalle.items} />}
-
-              {tab === 'historial' && (
+              {tab === 'trazabilidad' && (
                 <Card>
                   <span
                     style={{ ...textStyles.h3, color: colors.gray.darkest }}
@@ -278,17 +360,91 @@ function ErrorDetail({ onNavigate }: { onNavigate: (page: AppPage) => void }) {
                   >
                     Trazabilidad completa
                   </span>
-                  <Timeline
-                    items={trazabilidadToTimelineItems(detalle.trazabilidad)}
-                    connectorColor={colors.background.border}
-                    timeColor={colors.gray.default}
-                    titleColor={colors.gray.darkest}
-                    descriptionColor={colors.gray.medium}
-                  />
+                  {detalle.trazabilidad.length === 0 ? (
+                    <span
+                      style={{
+                        ...textStyles.bodySmall,
+                        color: colors.gray.medium,
+                      }}
+                    >
+                      Todavía no hay eventos registrados.
+                    </span>
+                  ) : (
+                    <Timeline
+                      items={trazabilidadToTimelineItems(detalle.trazabilidad)}
+                      connectorColor={colors.background.border}
+                      timeColor={colors.gray.default}
+                      titleColor={colors.gray.darkest}
+                      descriptionColor={colors.gray.medium}
+                    />
+                  )}
                 </Card>
               )}
 
-              {tab === 'cabecera' && (
+              {tab === 'reprocesos' && (
+                <Card>
+                  <span
+                    style={{ ...textStyles.h3, color: colors.gray.darkest }}
+                    className="mb-lg block"
+                  >
+                    Intentos de reproceso
+                  </span>
+
+                  {detalle.intentosReproceso.length === 0 ? (
+                    <span
+                      style={{
+                        ...textStyles.bodySmall,
+                        color: colors.gray.medium,
+                      }}
+                    >
+                      Esta transacción nunca se mandó a reprocesar.
+                    </span>
+                  ) : (
+                    <div className="flex flex-col gap-md">
+                      {detalle.intentosReproceso.map((intento) => (
+                        <div
+                          key={intento.id}
+                          style={{ borderColor: colors.background.border }}
+                          className="flex flex-wrap items-start gap-lg border-b pb-md last:border-b-0 last:pb-0"
+                        >
+                          <Field
+                            label="Intento"
+                            value={`#${intento.numeroIntento}`}
+                          />
+                          <Field
+                            label="Solicitado"
+                            value={formatDetectedAt(intento.fecha)}
+                          />
+                          <Field
+                            label="Por"
+                            value={intento.usuario ?? 'Sistema'}
+                          />
+                          <Field
+                            label="Status antes"
+                            value={intento.statusAntes ?? '—'}
+                            mono
+                          />
+                          <Field
+                            label="Status después"
+                            value={
+                              intento.statusDespues ?? 'Esperando resultado'
+                            }
+                            mono
+                          />
+                          {intento.observacion && (
+                            <Field
+                              label="Observación"
+                              value={intento.observacion}
+                            />
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </Card>
+              )}
+
+              {tab === 'resumen' && (
                 <div className="grid gap-lg lg:grid-cols-[minmax(0,1fr)_320px]">
                   {/* Columna principal */}
                   <div className="flex flex-col gap-lg">
@@ -322,7 +478,7 @@ function ErrorDetail({ onNavigate }: { onNavigate: (page: AppPage) => void }) {
                               color: colors.gray.darkest,
                             }}
                           >
-                            “{detalle.mensajeSoftland}”
+                            “{detalle.descripcion}”
                           </p>
                         </div>
                       </div>
@@ -336,7 +492,7 @@ function ErrorDetail({ onNavigate }: { onNavigate: (page: AppPage) => void }) {
                             color: colors.gray.darkest,
                           }}
                         >
-                          Cabecera de la transacción
+                          Datos de la transacción
                         </span>
                         <span
                           style={{
@@ -346,56 +502,85 @@ function ErrorDetail({ onNavigate }: { onNavigate: (page: AppPage) => void }) {
                             color: colors.gray.default,
                           }}
                         >
-                          {detalle.tablaSoftland}
+                          {detalle.empresaId} · {detalle.moduloCodigo}
                         </span>
                       </div>
 
                       <div className="mt-lg grid grid-cols-2 gap-lg sm:grid-cols-3">
+                        <Field label="IDENTI" value={detalle.codigo} mono />
                         <Field
-                          label="Proveedor"
-                          value={detalle.cabecera.proveedor}
+                          label="Cuenta"
+                          value={detalle.cuenta?.trim() || '—'}
+                          mono
                         />
                         <Field
-                          label="Fecha de comprobante"
-                          value={detalle.cabecera.fechaComprobante}
+                          label="Fecha del movimiento"
+                          value={formatDate(detalle.fechaMovimiento)}
                         />
                         <Field
-                          label="Estado actual"
+                          label="Status en Softland"
                           value={
-                            <span
-                              style={{
-                                backgroundColor: colors.label.gray.background,
-                                color: colors.label.gray.text,
-                              }}
-                              className="inline-flex h-6 w-6 items-center justify-center rounded-full text-caption font-bold"
-                            >
-                              {detalle.cabecera.estadoActual}
-                            </span>
+                            <StatusSoftland status={detalle.statusSoftland} />
                           }
                         />
                         <Field
-                          label="Importe total"
-                          value={formatCurrency(detalle.cabecera.importeTotal)}
-                          emphasis
+                          label="Última sincronización"
+                          value={formatDetectedAt(detalle.ultimaDeteccion)}
                         />
                         <Field
-                          label="Importe aplicado"
-                          value={formatCurrency(
-                            detalle.cabecera.importeAplicado,
-                          )}
-                          emphasis
+                          label="¿Sigue en el feed?"
+                          value={detalle.presenteEnUltimaSync ? 'Sí' : 'No'}
                         />
-                        <Field
-                          label="Diferencia"
-                          value={formatCurrency(detalle.cabecera.diferencia)}
-                          emphasis
-                          valueColor={colors.status.error}
-                        />
+                        {detalle.corregidoPor && (
+                          <Field
+                            label="Corregido por"
+                            value={detalle.corregidoPor}
+                          />
+                        )}
+                        {detalle.fechaCorreccion && (
+                          <Field
+                            label="Mandado a reprocesar"
+                            value={formatDetectedAt(detalle.fechaCorreccion)}
+                          />
+                        )}
+                        {detalle.fechaResolucion && (
+                          <Field
+                            label="Resuelto"
+                            value={formatDetectedAt(detalle.fechaResolucion)}
+                          />
+                        )}
                       </div>
+
+                      {detalle.archivoLog && (
+                        <div
+                          style={{
+                            borderColor: colors.background.border,
+                            borderRadius: radius.lg,
+                          }}
+                          className="mt-lg border p-md"
+                        >
+                          <Field
+                            label="Archivo de log en el servidor"
+                            value={detalle.archivoLog}
+                            mono
+                          />
+                        </div>
+                      )}
                     </Card>
 
                     <CollapsibleCard title="Observaciones">
                       <div className="flex flex-col gap-lg">
+                        {detalle.observaciones.length === 0 && (
+                          <span
+                            style={{
+                              ...textStyles.bodySmall,
+                              color: colors.gray.medium,
+                            }}
+                          >
+                            Todavía no hay observaciones.
+                          </span>
+                        )}
+
                         {detalle.observaciones.map((obs) => (
                           <div
                             key={obs.id}
@@ -419,7 +604,7 @@ function ErrorDetail({ onNavigate }: { onNavigate: (page: AppPage) => void }) {
                                   color: colors.gray.default,
                                 }}
                               >
-                                {obs.hace}
+                                {formatDetectedAt(obs.hace)}
                               </span>
                             </div>
                             <p
@@ -472,10 +657,12 @@ function ErrorDetail({ onNavigate }: { onNavigate: (page: AppPage) => void }) {
                           />
                           <div className="flex justify-end">
                             <Button
-                              text="Comentar"
+                              text={saving ? 'Guardando…' : 'Comentar'}
                               color={colors.primary.default}
-                              disabled={comentario.trim().length === 0}
-                              onClick={() => setComentario('')}
+                              disabled={
+                                comentario.trim().length === 0 || saving
+                              }
+                              onClick={() => void handleComentar()}
                               icon={<SendIcon className="h-4 w-4" />}
                               size={{
                                 ...textStyles.bodySmall,
@@ -515,9 +702,9 @@ function ErrorDetail({ onNavigate }: { onNavigate: (page: AppPage) => void }) {
                         Responsable
                       </span>
 
-                      {detalle.responsable ? (
+                      {responsable ? (
                         <div className="mt-md flex items-center gap-sm">
-                          <Avatar text={detalle.responsable.iniciales} />
+                          <Avatar text={responsable.avatarIniciales} />
                           <div className="flex min-w-0 flex-1 flex-col">
                             <span
                               style={{
@@ -526,7 +713,7 @@ function ErrorDetail({ onNavigate }: { onNavigate: (page: AppPage) => void }) {
                                 color: colors.gray.darkest,
                               }}
                             >
-                              {detalle.responsable.nombre}
+                              {responsable.nombre}
                             </span>
                             <span
                               style={{
@@ -534,19 +721,9 @@ function ErrorDetail({ onNavigate }: { onNavigate: (page: AppPage) => void }) {
                                 color: colors.gray.medium,
                               }}
                             >
-                              {detalle.responsable.asignadaHace}
+                              {responsable.rol}
                             </span>
                           </div>
-                          <Button
-                            text="Cambiar"
-                            color={colors.primary.dark}
-                            variant="text"
-                            size={{
-                              ...textStyles.bodySmall,
-                              fontWeight: fontWeight.bold,
-                              padding: spacing.xs,
-                            }}
-                          />
                         </div>
                       ) : (
                         <p
@@ -559,38 +736,112 @@ function ErrorDetail({ onNavigate }: { onNavigate: (page: AppPage) => void }) {
                           Sin responsable asignado
                         </p>
                       )}
+
+                      <Dropdown
+                        text="Asignar a…"
+                        options={responsableOptions}
+                        color={colors.background.border}
+                        textColor={colors.gray.dark}
+                        backgroundColor={colors.background.surface}
+                        value={detalle.responsableId ?? SIN_ASIGNAR}
+                        onChange={(value) =>
+                          void asignar(value === SIN_ASIGNAR ? null : value)
+                        }
+                        className="mt-md"
+                      />
+                      {data?.usuarios.length === 0 && (
+                        <p
+                          style={{
+                            ...textStyles.caption,
+                            color: colors.gray.medium,
+                          }}
+                          className="mt-xs"
+                        >
+                          Todavía no hay usuarios cargados.
+                        </p>
+                      )}
                     </Card>
 
-                    <ErrorActionsCard />
+                    <Card>
+                      <span
+                        style={{ ...textStyles.h3, color: colors.gray.darkest }}
+                      >
+                        Estado de gestión
+                      </span>
+                      <Dropdown
+                        text={estadoLabels[detalle.estado]}
+                        options={estadoOptions}
+                        color={colors.background.border}
+                        textColor={colors.gray.dark}
+                        backgroundColor={colors.background.surface}
+                        value={estadoEsManual ? detalle.estado : undefined}
+                        onChange={(value) =>
+                          void cambiarEstadoManual(value as ErrorEstado)
+                        }
+                        className="mt-md"
+                      />
+                      {!estadoEsManual && (
+                        <p
+                          style={{
+                            ...textStyles.caption,
+                            color: colors.gray.medium,
+                          }}
+                          className="mt-xs"
+                        >
+                          Está en “{estadoLabels[detalle.estado]}”: ese estado
+                          lo maneja el flujo de reproceso.
+                        </p>
+                      )}
+                    </Card>
+
+                    <ErrorActionsCard
+                      onMarkAsFixed={() => void reprocesar()}
+                      disabled={
+                        saving ||
+                        detalle.estado === 'REPROCESANDO' ||
+                        detalle.estado === 'RESUELTO'
+                      }
+                    />
 
                     <CollapsibleCard title="Trazabilidad">
-                      <Timeline
-                        items={trazabilidadToTimelineItems(
-                          detalle.trazabilidad.slice(-3),
-                        )}
-                        connectorColor={colors.background.border}
-                        timeColor={colors.gray.default}
-                        titleColor={colors.gray.darkest}
-                        descriptionColor={colors.gray.medium}
-                        footer={
-                          <div className="flex justify-end">
-                            <Button
-                              text="Ver historial completo"
-                              color={colors.primary.dark}
-                              variant="text"
-                              onClick={irAHistorial}
-                              trailingIcon={
-                                <ExternalLinkIcon className="h-4 w-4" />
-                              }
-                              size={{
-                                ...textStyles.bodySmall,
-                                fontWeight: fontWeight.bold,
-                                padding: `${spacing.xs} 0`,
-                              }}
-                            />
-                          </div>
-                        }
-                      />
+                      {detalle.trazabilidad.length === 0 ? (
+                        <span
+                          style={{
+                            ...textStyles.bodySmall,
+                            color: colors.gray.medium,
+                          }}
+                        >
+                          Sin eventos.
+                        </span>
+                      ) : (
+                        <Timeline
+                          items={trazabilidadToTimelineItems(
+                            detalle.trazabilidad.slice(-3),
+                          )}
+                          connectorColor={colors.background.border}
+                          timeColor={colors.gray.default}
+                          titleColor={colors.gray.darkest}
+                          descriptionColor={colors.gray.medium}
+                          footer={
+                            <div className="flex justify-end">
+                              <Button
+                                text="Ver historial completo"
+                                color={colors.primary.dark}
+                                variant="text"
+                                onClick={irATrazabilidad}
+                                trailingIcon={
+                                  <ExternalLinkIcon className="h-4 w-4" />
+                                }
+                                size={{
+                                  ...textStyles.bodySmall,
+                                  fontWeight: fontWeight.bold,
+                                  padding: `${spacing.xs} 0`,
+                                }}
+                              />
+                            </div>
+                          }
+                        />
+                      )}
                     </CollapsibleCard>
                   </div>
                 </div>

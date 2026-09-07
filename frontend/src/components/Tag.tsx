@@ -33,22 +33,22 @@ export function Tag({
   )
 }
 
-export function PendienteTag() {
-  return (
-    <Tag
-      text="Pendiente"
-      color={colors.label.gray.text}
-      backgroundColor={colors.label.gray.background}
-    />
-  )
-}
-
 export function ErrorTag() {
   return (
     <Tag
       text="Error"
       color={colors.label.red.text}
       backgroundColor={colors.label.red.background}
+    />
+  )
+}
+
+export function AsignadoTag() {
+  return (
+    <Tag
+      text="Asignado"
+      color={colors.label.blue.text}
+      backgroundColor={colors.label.blue.background}
     />
   )
 }
@@ -63,12 +63,23 @@ export function EnProgresoTag() {
   )
 }
 
-export function CorregidoTag() {
+export function ReprocesandoTag() {
   return (
     <Tag
-      text="Corregido"
+      text="Reprocesando"
       color={colors.label.purple.text}
       backgroundColor={colors.label.purple.background}
+    />
+  )
+}
+
+/** El reproceso volvió a fallar: hay que corregir de nuevo. */
+export function RequiereCorreccionTag() {
+  return (
+    <Tag
+      text="A corregir"
+      color={colors.label.red.text}
+      backgroundColor={colors.label.red.background}
     />
   )
 }
@@ -79,16 +90,6 @@ export function ResueltoTag() {
       text="Resuelto"
       color={colors.label.green.text}
       backgroundColor={colors.label.green.background}
-    />
-  )
-}
-
-export function AsignadoTag() {
-  return (
-    <Tag
-      text="Asignado"
-      color={colors.label.blue.text}
-      backgroundColor={colors.label.blue.background}
     />
   )
 }

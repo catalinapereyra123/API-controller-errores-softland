@@ -4,7 +4,7 @@ import { getCurrentUser } from '../services/usuarios.service'
 import type { HistorialResumen, Usuario } from '../types'
 
 interface HistorialData {
-  currentUser: Usuario
+  currentUser: Usuario | null
   resumen: HistorialResumen
 }
 
@@ -32,12 +32,14 @@ export function useHistorial(): UseHistorialResult {
           getCurrentUser(),
           getHistorial(),
         ])
+        if (!cancelled) setData({ currentUser, resumen })
+      } catch (e) {
         if (!cancelled) {
-          setData({ currentUser, resumen })
-        }
-      } catch {
-        if (!cancelled) {
-          setError('No pudimos cargar el historial.')
+          setError(
+            e instanceof Error
+              ? `No pudimos cargar el historial: ${e.message}`
+              : 'No pudimos cargar el historial.',
+          )
         }
       } finally {
         if (!cancelled) setLoading(false)

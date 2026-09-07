@@ -19,6 +19,7 @@ import {
   SyncResultadoDto,
 } from './dto/sync-resultado.dto';
 import { QueryErroresDto } from './dto/query-errores.dto';
+import { HistorialDiaDto } from './dto/historial.dto';
 import { ErroresRepository } from './errores.repository';
 import {
   ErrorTransaccionDto,
@@ -30,6 +31,9 @@ import {
   parseModulo,
   statusEsError,
   tipoEventoPorEstado,
+  claveDia,
+  etiquetaDia,
+  formatoFecha,
   toErrorTransaccion,
 } from './errores.mapper';
 
@@ -501,6 +505,74 @@ export class ErroresService {
   // ==========================================================================
   //  MUTACIONES (desde la app: se guardan en la DB, no vienen de n8n)
   // ==========================================================================
+
+  /**
+   * Errores que requieren atención inmediata (tabla del dashboard):
+   * abiertos sin responsable o abiertos hace más de 2 horas.
+   */
+  async prioritarios(): Promise<ErrorTransaccionDto[]> {
+    const items = await this.repo.prioritarios();
+    return items.map(toErrorTransaccion);
+  }
+
+  /**
+   * Historial de actividad de los últimos `dias` días: contadores del período
+   * y los eventos de trazabilidad agrupados por día.
+   */
+  async historial(dias = 7) {
+    const desde = new Date();
+    desde.setHours(0, 0, 0, 0);
+    desde.setDate(desde.getDate() - (dias - 1));
+
+    const [eventos, resueltos, reprocesos, observaciones, reasignaciones] =
+      await Promise.all([
+        this.repo.eventosDesde(desde),
+        this.repo.contar({
+          estadoApp: EstadoApp.RESUELTO,
+          fechaResolucion: { gte: desde },
+        }),
+        this.repo.contarIntentos({ createdAt: { gte: desde } }),
+        this.repo.contarObservaciones({ createdAt: { gte: desde } }),
+        this.repo.contarEventos({
+          tipo: 'asignacion',
+          createdAt: { gte: desde },
+        }),
+      ]);
+
+    const porDia = new Map<string, HistorialDiaDto>();
+
+    for (const e of eventos) {
+      const clave = claveDia(e.createdAt);
+      if (!porDia.has(clave)) {
+        porDia.set(clave, {
+          id: clave,
+          etiqueta: etiquetaDia(e.createdAt),
+          fecha: formatoFecha(e.createdAt),
+          eventos: [],
+        });
+      }
+      porDia.get(clave)!.eventos.push({
+        id: e.id,
+        hora: e.createdAt.toISOString(),
+        tipo: e.tipo,
+        titulo: e.titulo,
+        detalle: e.detalle ?? '',
+        transaccionId: e.transaccionId,
+        codigo: e.transaccion.identi,
+        empresa: e.transaccion.empresa?.nombre ?? e.transaccion.empresaCodigo,
+      });
+    }
+
+    return {
+      periodo: `Últimos ${dias} días`,
+      desde: desde.toISOString(),
+      resueltos,
+      reprocesos,
+      observaciones,
+      reasignaciones,
+      dias: [...porDia.values()],
+    };
+  }
 
   async asignar(id: string, dto: AsignarDto) {
     const t = await this.requerir(id);

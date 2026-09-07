@@ -1,12 +1,18 @@
-import { bandejaErroresMock } from '../mocks/bandejaErrores.mock'
-import { mockDelay } from './mockDelay'
+import { api, qs } from './api'
 import type { ErrorTransaccion } from '../types'
 
-export async function getBandejaErrores(): Promise<ErrorTransaccion[]> {
-  await mockDelay(350)
-  return [...bandejaErroresMock].sort(
-    (a, b) =>
-      new Date(b.abiertoDesde).getTime() - new Date(a.abiertoDesde).getTime(),
-  )
-  // return api<ErrorTransaccion[]>('/errores?sort=-abiertoDesde')
+export interface BandejaQuery extends Record<string, string | undefined> {
+  empresa?: string
+  modulo?: string
+  estado?: string
+  responsableId?: string
+  /** 'false' trae también los RESUELTO. */
+  soloAbiertos?: 'true' | 'false'
+}
+
+/** GET /errores — bandeja plana, ya ordenada por detección descendente. */
+export function getBandejaErrores(
+  query: BandejaQuery = {},
+): Promise<ErrorTransaccion[]> {
+  return api<ErrorTransaccion[]>(`/errores${qs(query)}`)
 }

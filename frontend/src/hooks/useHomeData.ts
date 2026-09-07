@@ -3,18 +3,12 @@ import {
   getDashboardStats,
   getErroresPrioritarios,
 } from '../services/dashboard.service'
-import { getEmpresas } from '../services/empresas.service'
 import { getCurrentUser } from '../services/usuarios.service'
-import type {
-  DashboardStats,
-  Empresa,
-  ErrorTransaccion,
-  Usuario,
-} from '../types'
+import type { DashboardStats, ErrorTransaccion, Usuario } from '../types'
 
 interface HomeData {
-  currentUser: Usuario
-  empresas: Empresa[]
+  /** null mientras no haya usuarios cargados (todavía no hay auth). */
+  currentUser: Usuario | null
   stats: DashboardStats
   erroresPrioritarios: ErrorTransaccion[]
 }
@@ -39,19 +33,21 @@ export function useHomeData(): UseHomeDataResult {
       setLoading(true)
       setError(null)
       try {
-        const [currentUser, empresas, stats, erroresPrioritarios] =
-          await Promise.all([
-            getCurrentUser(),
-            getEmpresas(),
-            getDashboardStats(),
-            getErroresPrioritarios(),
-          ])
+        const [currentUser, stats, erroresPrioritarios] = await Promise.all([
+          getCurrentUser(),
+          getDashboardStats(),
+          getErroresPrioritarios(),
+        ])
         if (!cancelled) {
-          setData({ currentUser, empresas, stats, erroresPrioritarios })
+          setData({ currentUser, stats, erroresPrioritarios })
         }
-      } catch {
+      } catch (e) {
         if (!cancelled) {
-          setError('No pudimos cargar la información del dashboard.')
+          setError(
+            e instanceof Error
+              ? `No pudimos cargar el dashboard: ${e.message}`
+              : 'No pudimos cargar la información del dashboard.',
+          )
         }
       } finally {
         if (!cancelled) setLoading(false)

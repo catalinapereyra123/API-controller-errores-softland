@@ -7,20 +7,27 @@ import type { AppPage } from './types'
 
 function App() {
   const [page, setPage] = useState<AppPage>('home')
+  // Qué error está abierto en la pantalla de detalle.
+  const [errorId, setErrorId] = useState<string | null>(null)
+
+  function abrirDetalle(id: string) {
+    setErrorId(id)
+    setPage('detalle')
+  }
 
   if (page === 'bandeja') {
-    return <BandejaErrores onNavigate={setPage} />
+    return <BandejaErrores onNavigate={setPage} onOpenError={abrirDetalle} />
   }
 
   if (page === 'detalle') {
-    return <ErrorDetail onNavigate={setPage} />
+    return <ErrorDetail errorId={errorId} onNavigate={setPage} />
   }
 
   if (page === 'historial') {
     return <Historial onNavigate={setPage} />
   }
 
-  return <Home onNavigate={setPage} />
+  return <Home onNavigate={setPage} onOpenError={abrirDetalle} />
 }
 
 export default App

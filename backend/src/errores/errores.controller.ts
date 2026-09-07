@@ -41,6 +41,12 @@ export class ErroresController {
     return this.service.agrupadoPorEmpresa(query);
   }
 
+  /** Errores que requieren atención inmediata. GET /errores/prioritarios */
+  @Get('errores/prioritarios')
+  prioritarios() {
+    return this.service.prioritarios();
+  }
+
   /** Qué transacciones están esperando reproceso (para que n8n las levante). */
   @Get('errores/reproceso-pendientes')
   reprocesoPendientes() {
@@ -63,6 +69,12 @@ export class ErroresController {
   @Get('dashboard/stats')
   dashboard() {
     return this.service.dashboard();
+  }
+
+  /** Actividad de los últimos 7 días. GET /historial */
+  @Get('historial')
+  historial() {
+    return this.service.historial();
   }
 
   /** Asigna / desasigna responsable. PATCH /errores/:id/asignacion */

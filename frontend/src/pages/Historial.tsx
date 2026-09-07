@@ -57,7 +57,7 @@ function Historial({ onNavigate }: { onNavigate: (page: AppPage) => void }) {
           activeItem="historial"
           onItemSelect={handleSelectNavItem}
           user={
-            data
+            data?.currentUser
               ? {
                   name: data.currentUser.nombre,
                   role: data.currentUser.rol,

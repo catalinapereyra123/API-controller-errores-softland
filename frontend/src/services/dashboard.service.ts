@@ -1,18 +1,11 @@
-import {
-  dashboardStatsMock,
-  erroresPrioritariosMock,
-} from '../mocks/dashboard.mock'
-import { mockDelay } from './mockDelay'
+import { api } from './api'
 import type { DashboardStats, ErrorTransaccion } from '../types'
 
-export async function getDashboardStats(): Promise<DashboardStats> {
-  await mockDelay()
-  return dashboardStatsMock
-  // return api<DashboardStats>('/dashboard/stats')
+export function getDashboardStats(): Promise<DashboardStats> {
+  return api<DashboardStats>('/dashboard/stats')
 }
 
-export async function getErroresPrioritarios(): Promise<ErrorTransaccion[]> {
-  await mockDelay(350)
-  return erroresPrioritariosMock
-  // return api<ErrorPrioritario[]>('/errores/prioritarios')
+/** Abiertos sin responsable o abiertos hace más de 2 h. */
+export function getErroresPrioritarios(): Promise<ErrorTransaccion[]> {
+  return api<ErrorTransaccion[]>('/errores/prioritarios')
 }
