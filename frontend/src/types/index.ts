@@ -31,6 +31,8 @@ export interface Empresa {
 
 export interface Usuario {
   id: string
+  /** Sólo lo devuelven los endpoints de /auth (login, registro y me). */
+  email?: string
   nombre: string
   rol: string
   avatarIniciales: string
@@ -149,4 +151,12 @@ export interface DashboardStats {
   tiempoPromedioResolucionMinutos: number
   tiempoPromedioResolucionDeltaMinutos: number
   bandejaPendientes: number
+}
+
+/** Respuesta de POST /auth/login y POST /auth/registro. */
+export interface Sesion {
+  token: string
+  /** Segundos de vida del token. */
+  expiraEn: number
+  usuario: Usuario
 }

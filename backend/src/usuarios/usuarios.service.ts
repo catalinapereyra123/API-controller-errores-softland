@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
-import { PrismaService } from '../prisma/prisma.service';
 import type { Usuario } from '../../generated/prisma/client';
+import { PrismaService } from '../prisma/prisma.service';
 
 const toDto = (u: Usuario) => ({
   id: u.id,
@@ -18,18 +18,5 @@ export class UsuariosService {
       orderBy: { nombre: 'asc' },
     });
     return usuarios.map(toDto);
-  }
-
-  /**
-   * Usuario de la sesión activa. Provisorio hasta que haya auth.
-   * Devuelve null si todavía no hay usuarios cargados: la app funciona igual
-   * (las acciones quedan registradas como "Sistema").
-   */
-  async actual() {
-    const usuario =
-      (await this.prisma.usuario.findFirst({ where: { esActual: true } })) ??
-      (await this.prisma.usuario.findFirst({ orderBy: { nombre: 'asc' } }));
-
-    return usuario ? toDto(usuario) : null;
   }
 }

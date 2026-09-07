@@ -6,7 +6,10 @@ import {
   Patch,
   Post,
   Query,
+  UseGuards,
 } from '@nestjs/common';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { UsuarioActual } from '../auth/usuario-actual.decorator';
 import {
   AsignarDto,
   CambiarEstadoDto,
@@ -20,10 +23,13 @@ import { ErroresService } from './errores.service';
  * Lectura + mutaciones para el front. Rutas sin prefijo para que matcheen con
  * `frontend/src/services/*` (p. ej. api('/errores'), api('/dashboard/stats')).
  *
+ * Todo el controller pide JWT: quien hace la acción sale del token, no del body.
+ *
  * Nota: las rutas con path literal (`/errores/agrupados`,
  * `/errores/reproceso-pendientes`) van declaradas ANTES de `/errores/:id`.
  */
 @Controller()
+@UseGuards(JwtAuthGuard)
 export class ErroresController {
   constructor(private readonly service: ErroresService) {}
 
@@ -79,25 +85,41 @@ export class ErroresController {
 
   /** Asigna / desasigna responsable. PATCH /errores/:id/asignacion */
   @Patch('errores/:id/asignacion')
-  asignar(@Param('id') id: string, @Body() dto: AsignarDto) {
-    return this.service.asignar(id, dto);
+  asignar(
+    @Param('id') id: string,
+    @Body() dto: AsignarDto,
+    @UsuarioActual('id') autorId: string,
+  ) {
+    return this.service.asignar(id, dto, autorId);
   }
 
   /** Cambio manual de estado. PATCH /errores/:id/estado */
   @Patch('errores/:id/estado')
-  cambiarEstado(@Param('id') id: string, @Body() dto: CambiarEstadoDto) {
-    return this.service.cambiarEstado(id, dto);
+  cambiarEstado(
+    @Param('id') id: string,
+    @Body() dto: CambiarEstadoDto,
+    @UsuarioActual('id') autorId: string,
+  ) {
+    return this.service.cambiarEstado(id, dto, autorId);
   }
 
   /** Nueva observación. POST /errores/:id/observaciones */
   @Post('errores/:id/observaciones')
-  observar(@Param('id') id: string, @Body() dto: CrearObservacionDto) {
-    return this.service.agregarObservacion(id, dto);
+  observar(
+    @Param('id') id: string,
+    @Body() dto: CrearObservacionDto,
+    @UsuarioActual('id') autorId: string,
+  ) {
+    return this.service.agregarObservacion(id, dto, autorId);
   }
 
   /** Mandar a reprocesar (n8n pone status 'N' en Softland). POST /errores/:id/reproceso */
   @Post('errores/:id/reproceso')
-  reprocesar(@Param('id') id: string, @Body() dto: SolicitarReprocesoDto) {
-    return this.service.solicitarReproceso(id, dto);
+  reprocesar(
+    @Param('id') id: string,
+    @Body() dto: SolicitarReprocesoDto,
+    @UsuarioActual('id') autorId: string,
+  ) {
+    return this.service.solicitarReproceso(id, dto, autorId);
   }
 }

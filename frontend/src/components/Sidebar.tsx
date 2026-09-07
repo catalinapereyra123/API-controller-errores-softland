@@ -1,5 +1,5 @@
 import type { CSSProperties, ReactNode } from 'react'
-import { HistoryIcon, HomeIcon, InboxIcon } from './icons'
+import { HistoryIcon, HomeIcon, InboxIcon, LogoutIcon } from './icons'
 import { cn } from '../utils/cn'
 
 export type SidebarItemId = 'inicio' | 'bandeja' | 'historial'
@@ -51,6 +51,8 @@ interface SidebarProps {
   activeItem?: SidebarItemId
   onItemSelect?: (item: SidebarNavItem) => void
   user?: SidebarUser
+  /** Si viene, se muestra el botón de cerrar sesión junto al usuario. */
+  onLogout?: () => void
   className?: string
 }
 
@@ -72,6 +74,7 @@ function Sidebar({
   activeItem,
   onItemSelect,
   user,
+  onLogout,
   className,
 }: SidebarProps) {
   return (
@@ -166,7 +169,7 @@ function Sidebar({
           >
             {user.avatarText}
           </span>
-          <div className="flex min-w-0 flex-col">
+          <div className="flex min-w-0 flex-1 flex-col">
             <span
               style={{ color: titleColor }}
               className="truncate text-body font-bold"
@@ -180,6 +183,19 @@ function Sidebar({
               {user.role}
             </span>
           </div>
+
+          {onLogout && (
+            <button
+              type="button"
+              onClick={onLogout}
+              aria-label="Cerrar sesión"
+              title="Cerrar sesión"
+              style={{ color: subtitleColor }}
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-colors hover:bg-background-page"
+            >
+              <LogoutIcon className="h-4 w-4" />
+            </button>
+          )}
         </div>
       )}
     </aside>

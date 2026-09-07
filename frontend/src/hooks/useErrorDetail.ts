@@ -6,11 +6,10 @@ import {
   getErrorDetail,
   solicitarReproceso,
 } from '../services/errorDetail.service'
-import { getCurrentUser, getUsuarios } from '../services/usuarios.service'
+import { getUsuarios } from '../services/usuarios.service'
 import type { ErrorDetalle, ErrorEstado, Usuario } from '../types'
 
 interface DetalleData {
-  currentUser: Usuario | null
   usuarios: Usuario[]
   detalle: ErrorDetalle
 }
@@ -51,12 +50,11 @@ export function useErrorDetail(id: string | null): UseErrorDetailResult {
       setLoading(true)
       setError(null)
       try {
-        const [currentUser, usuarios, detalle] = await Promise.all([
-          getCurrentUser(),
+        const [usuarios, detalle] = await Promise.all([
           getUsuarios(),
           getErrorDetail(id),
         ])
-        if (!cancelled) setData({ currentUser, usuarios, detalle })
+        if (!cancelled) setData({ usuarios, detalle })
       } catch (e) {
         if (!cancelled) {
           setError(
@@ -97,29 +95,26 @@ export function useErrorDetail(id: string | null): UseErrorDetailResult {
     }
   }, [])
 
-  const autorId = data?.currentUser?.id
-
   const asignar = useCallback(
     (responsableId: string | null) =>
-      ejecutar(() => asignarResponsable(id!, responsableId, autorId)),
-    [ejecutar, id, autorId],
+      ejecutar(() => asignarResponsable(id!, responsableId)),
+    [ejecutar, id],
   )
 
   const cambiarEstadoManual = useCallback(
-    (estado: ErrorEstado) =>
-      ejecutar(() => cambiarEstado(id!, estado, autorId)),
-    [ejecutar, id, autorId],
+    (estado: ErrorEstado) => ejecutar(() => cambiarEstado(id!, estado)),
+    [ejecutar, id],
   )
 
   const observar = useCallback(
-    (texto: string) => ejecutar(() => agregarObservacion(id!, texto, autorId)),
-    [ejecutar, id, autorId],
+    (texto: string) => ejecutar(() => agregarObservacion(id!, texto)),
+    [ejecutar, id],
   )
 
   const reprocesar = useCallback(
     (observacion?: string) =>
-      ejecutar(() => solicitarReproceso(id!, observacion, autorId)),
-    [ejecutar, id, autorId],
+      ejecutar(() => solicitarReproceso(id!, observacion)),
+    [ejecutar, id],
   )
 
   return {

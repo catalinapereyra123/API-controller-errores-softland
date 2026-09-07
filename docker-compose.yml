@@ -29,6 +29,7 @@ services:
       CORS_ORIGIN: http://localhost:5173
       INGEST_API_KEY: "" # poner una clave cuando n8n pegue de verdad
       N8N_REPROCESO_WEBHOOK_URL: ""
+      JWT_SECRET: "dev-secret-cambiar-en-produccion" # firma los tokens de login
     ports:
       - "3000:3000"
     depends_on:

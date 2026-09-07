@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { getBandejaErrores } from '../services/bandeja.service'
 import { getDashboardStats } from '../services/dashboard.service'
 import { getEmpresas } from '../services/empresas.service'
-import { getCurrentUser, getUsuarios } from '../services/usuarios.service'
+import { getUsuarios } from '../services/usuarios.service'
 import type { Empresa, ErrorTransaccion, Usuario } from '../types'
 import { minutesSince } from '../utils/format'
 
@@ -33,7 +33,6 @@ const PERIODO_MINUTOS: Record<string, number | null> = {
 }
 
 interface BandejaData {
-  currentUser: Usuario | null
   empresas: Empresa[]
   usuarios: Usuario[]
   totalAbiertos: number
@@ -67,17 +66,14 @@ export function useBandejaErrores(): UseBandejaErroresResult {
       try {
         // Se trae todo (incluidos los resueltos) y se filtra en el cliente,
         // así los filtros responden sin ida y vuelta al servidor.
-        const [currentUser, empresas, usuarios, stats, errores] =
-          await Promise.all([
-            getCurrentUser(),
-            getEmpresas(),
-            getUsuarios(),
-            getDashboardStats(),
-            getBandejaErrores({ soloAbiertos: 'false' }),
-          ])
+        const [empresas, usuarios, stats, errores] = await Promise.all([
+          getEmpresas(),
+          getUsuarios(),
+          getDashboardStats(),
+          getBandejaErrores({ soloAbiertos: 'false' }),
+        ])
         if (!cancelled) {
           setData({
-            currentUser,
             empresas,
             usuarios,
             totalAbiertos: stats.erroresAbiertos,

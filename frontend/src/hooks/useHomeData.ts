@@ -3,12 +3,9 @@ import {
   getDashboardStats,
   getErroresPrioritarios,
 } from '../services/dashboard.service'
-import { getCurrentUser } from '../services/usuarios.service'
-import type { DashboardStats, ErrorTransaccion, Usuario } from '../types'
+import type { DashboardStats, ErrorTransaccion } from '../types'
 
 interface HomeData {
-  /** null mientras no haya usuarios cargados (todavía no hay auth). */
-  currentUser: Usuario | null
   stats: DashboardStats
   erroresPrioritarios: ErrorTransaccion[]
 }
@@ -33,14 +30,11 @@ export function useHomeData(): UseHomeDataResult {
       setLoading(true)
       setError(null)
       try {
-        const [currentUser, stats, erroresPrioritarios] = await Promise.all([
-          getCurrentUser(),
+        const [stats, erroresPrioritarios] = await Promise.all([
           getDashboardStats(),
           getErroresPrioritarios(),
         ])
-        if (!cancelled) {
-          setData({ currentUser, stats, erroresPrioritarios })
-        }
+        if (!cancelled) setData({ stats, erroresPrioritarios })
       } catch (e) {
         if (!cancelled) {
           setError(

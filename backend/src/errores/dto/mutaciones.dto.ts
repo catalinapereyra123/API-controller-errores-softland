@@ -17,11 +17,6 @@ export class AsignarDto {
     typeof value === 'string' && value !== '' ? value : null,
   )
   responsableId?: string | null;
-
-  /** id de quien hace la acción (provisorio hasta que haya auth). */
-  @IsOptional()
-  @IsString()
-  autorId?: string;
 }
 
 /** PATCH /errores/:id/estado (transiciones de gestión: ASIGNADO, EN_PROGRESO...). */
@@ -33,10 +28,6 @@ export class CambiarEstadoDto {
   @IsString()
   @MaxLength(500)
   nota?: string;
-
-  @IsOptional()
-  @IsString()
-  autorId?: string;
 }
 
 /** POST /errores/:id/observaciones */
@@ -48,10 +39,6 @@ export class CrearObservacionDto {
     typeof value === 'string' ? value.trim() : value,
   )
   texto!: string;
-
-  @IsOptional()
-  @IsString()
-  autorId?: string;
 }
 
 /** POST /errores/:id/reproceso ("marcar como corregido y reprocesar"). */
@@ -63,8 +50,4 @@ export class SolicitarReprocesoDto {
     typeof value === 'string' ? value.trim() : value,
   )
   observacion?: string;
-
-  @IsOptional()
-  @IsString()
-  autorId?: string;
 }

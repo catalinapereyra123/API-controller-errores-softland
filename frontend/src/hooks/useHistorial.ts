@@ -1,22 +1,16 @@
 import { useCallback, useEffect, useState } from 'react'
 import { getHistorial } from '../services/historial.service'
-import { getCurrentUser } from '../services/usuarios.service'
-import type { HistorialResumen, Usuario } from '../types'
-
-interface HistorialData {
-  currentUser: Usuario | null
-  resumen: HistorialResumen
-}
+import type { HistorialResumen } from '../types'
 
 interface UseHistorialResult {
-  data: HistorialData | null
+  resumen: HistorialResumen | null
   loading: boolean
   error: string | null
   refetch: () => void
 }
 
 export function useHistorial(): UseHistorialResult {
-  const [data, setData] = useState<HistorialData | null>(null)
+  const [resumen, setResumen] = useState<HistorialResumen | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [reloadToken, setReloadToken] = useState(0)
@@ -28,11 +22,8 @@ export function useHistorial(): UseHistorialResult {
       setLoading(true)
       setError(null)
       try {
-        const [currentUser, resumen] = await Promise.all([
-          getCurrentUser(),
-          getHistorial(),
-        ])
-        if (!cancelled) setData({ currentUser, resumen })
+        const datos = await getHistorial()
+        if (!cancelled) setResumen(datos)
       } catch (e) {
         if (!cancelled) {
           setError(
@@ -54,5 +45,5 @@ export function useHistorial(): UseHistorialResult {
 
   const refetch = useCallback(() => setReloadToken((token) => token + 1), [])
 
-  return { data, loading, error, refetch }
+  return { resumen, loading, error, refetch }
 }

@@ -224,3 +224,13 @@ export function ExternalLinkIcon(props: SVGProps<SVGSVGElement>) {
     </BaseIcon>
   )
 }
+
+export function LogoutIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <BaseIcon {...props}>
+      <path d="M9 21H5a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h4" />
+      <path d="m16 17 5-5-5-5" />
+      <path d="M21 12H9" />
+    </BaseIcon>
+  )
+}

@@ -40,13 +40,14 @@ model Empresa {
   transacciones TransaccionError[]
 }
 
-/// Usuarios de la app (se crean al registrarse; el registro/login se implementa aparte).
+/// Usuarios de la app. Se crean con POST /auth/registro y se autentican con JWT.
 model Usuario {
   id              String             @id @default(cuid())
+  email           String             @unique
+  passwordHash    String // scrypt: "salt:hash" en hexa (ver auth/password.service.ts)
   nombre          String
   rol             String             @default("Soporte funcional")
   avatarIniciales String
-  esActual        Boolean            @default(false) // provisorio hasta que exista auth
   createdAt       DateTime           @default(now())
   asignaciones    TransaccionError[] @relation("responsable")
   correcciones    TransaccionError[] @relation("corrige")

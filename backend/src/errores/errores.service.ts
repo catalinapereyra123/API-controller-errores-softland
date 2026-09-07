@@ -253,9 +253,13 @@ export class ErroresService {
   // ==========================================================================
   //  FLUJO 2 — REPROCESAR (acción de la app: guarda y avisa a n8n)
   // ==========================================================================
-  async solicitarReproceso(id: string, dto: SolicitarReprocesoDto) {
+  async solicitarReproceso(
+    id: string,
+    dto: SolicitarReprocesoDto,
+    autorId?: string,
+  ) {
     const t = await this.requerir(id);
-    const autor = await this.resolverAutor(dto.autorId);
+    const autor = await this.resolverAutor(autorId);
     const numeroIntento = t.intentos + 1;
 
     await this.repo.transaction(async (tx) => {
@@ -574,9 +578,9 @@ export class ErroresService {
     };
   }
 
-  async asignar(id: string, dto: AsignarDto) {
+  async asignar(id: string, dto: AsignarDto, autorId?: string) {
     const t = await this.requerir(id);
-    const autor = await this.resolverAutor(dto.autorId);
+    const autor = await this.resolverAutor(autorId);
     const responsable = dto.responsableId
       ? await this.repo.buscarUsuario(dto.responsableId)
       : null;
@@ -616,7 +620,7 @@ export class ErroresService {
     return this.detalle(id);
   }
 
-  async cambiarEstado(id: string, dto: CambiarEstadoDto) {
+  async cambiarEstado(id: string, dto: CambiarEstadoDto, autorId?: string) {
     if (!ESTADOS_MANUALES.includes(dto.estado)) {
       throw new BadRequestException(
         `El estado ${dto.estado} lo controla el flujo de reproceso, no se setea a mano. ` +
@@ -625,7 +629,7 @@ export class ErroresService {
     }
 
     const t = await this.requerir(id);
-    const autor = await this.resolverAutor(dto.autorId);
+    const autor = await this.resolverAutor(autorId);
 
     const data: Prisma.TransaccionErrorUpdateInput = { estadoApp: dto.estado };
     // Reabrir un RESUELTO a mano (p. ej. a EN_PROGRESO) limpia la resolución.
@@ -649,9 +653,13 @@ export class ErroresService {
     return this.detalle(id);
   }
 
-  async agregarObservacion(id: string, dto: CrearObservacionDto) {
+  async agregarObservacion(
+    id: string,
+    dto: CrearObservacionDto,
+    autorId?: string,
+  ) {
     await this.requerir(id);
-    const autor = await this.resolverAutor(dto.autorId);
+    const autor = await this.resolverAutor(autorId);
 
     await this.repo.transaction(async (tx) => {
       await this.repo.crearObservacion(

@@ -22,6 +22,7 @@ Variables (`.env`):
 | `CORS_ORIGIN`              | Orígenes permitidos, coma-separado (ej. `http://localhost:5173`).   |
 | `INGEST_API_KEY`           | Clave que el integrador manda en `x-api-key`. Obligatoria en producción. |
 | `N8N_REPROCESO_WEBHOOK_URL` | Webhook de n8n para el flujo 2 (disparar el `UPDATE ... STATUS='N'`). |
+| `JWT_SECRET`               | Secreto para firmar los tokens de login. Obligatorio en producción.  |
 
 ## Los 4 flujos de n8n
 
@@ -83,7 +84,7 @@ detalleIgnorados, procesadoEn }`.
 
 ### Flujo 2 — `POST /errores/:id/reproceso`  (desde la app)
 
-Body: `{ observacion?, autorId? }`. El backend:
+Body: `{ observacion? }` + `Authorization: Bearer`. El backend:
 `estadoApp = REPROCESANDO`, `corregidoPor`, `fechaCorreccion`, `intentos++`,
 crea un `ErrorIntento`, evento de trazabilidad, y **POST al webhook de n8n**
 (`{ empresa, modulo, moduloCodigo, identi }`). Si el webhook falla, queda en
@@ -110,25 +111,44 @@ crea un `ErrorIntento`, evento de trazabilidad, y **POST al webhook de n8n**
 | GET    | `/errores/:id`                  | Detalle + observaciones + trazabilidad + intentos.          |
 | GET    | `/empresas`                     | `[{ id, nombre }]`.                                         |
 | GET    | `/dashboard/stats`              | Métricas del dashboard (`DashboardStats`).                  |
-| GET    | `/users`, `/users/me`           | Usuarios (se crean al registrarse; auth pendiente).        |
+| GET    | `/errores/prioritarios`         | Abiertos sin responsable o con más de 2 h.                  |
+| GET    | `/historial`                    | Actividad de los últimos 7 días agrupada por día.           |
+| GET    | `/users`                        | Usuarios que pueden ser responsables.                       |
 
 Filtros (query params) para `/errores` y `/errores/agrupados`: `empresa`,
 `modulo` (`FACTURACION|COMPRAS|COBRANZAS`), `estado`
 (`ERROR|ASIGNADO|EN_PROGRESO|REPROCESANDO|REQUIERE_CORRECCION|RESUELTO`),
 `responsableId` (`sin-asignar`), `soloAbiertos` (`true` por default).
 
+## Autenticación (JWT)
+
+| Método | Ruta              | Body / Devuelve                                                  |
+| ------ | ----------------- | ---------------------------------------------------------------- |
+| POST   | `/auth/registro`  | `{ email, password, nombre, rol? }` → `{ token, expiraEn, usuario }` |
+| POST   | `/auth/login`     | `{ email, password }` → `{ token, expiraEn, usuario }`           |
+| GET    | `/auth/me`        | Usuario del token (el front lo usa al recargar).                 |
+
+El token dura 8 h y se manda como `Authorization: Bearer <token>` en todos los
+endpoints del front (`/errores*`, `/empresas`, `/dashboard/stats`, `/historial`,
+`/users`). Los endpoints de n8n (`/errores/sync`, `/errores/sync-batch`,
+`/errores/resultado-reproceso`) siguen con `x-api-key`, no con JWT.
+
+Las contraseñas se guardan con **scrypt** (`node:crypto`, sin dependencias
+nativas) en formato `salt:hash`. `JWT_SECRET` es obligatorio si
+`NODE_ENV=production`; en desarrollo se usa uno fijo y se avisa por log.
+
 ## Mutaciones (desde la app — se guardan en la DB)
 
 | Método | Ruta                         | Body                                          |
 | ------ | ---------------------------- | --------------------------------------------- |
-| PATCH  | `/errores/:id/asignacion`    | `{ responsableId?: string \| null, autorId? }` |
-| PATCH  | `/errores/:id/estado`        | `{ estado, nota?, autorId? }` — solo `ERROR`, `ASIGNADO`, `EN_PROGRESO` |
-| POST   | `/errores/:id/observaciones` | `{ texto, autorId? }`                         |
-| POST   | `/errores/:id/reproceso`     | `{ observacion?, autorId? }`                  |
+| PATCH  | `/errores/:id/asignacion`    | `{ responsableId?: string \| null }`          |
+| PATCH  | `/errores/:id/estado`        | `{ estado, nota? }` — solo `ERROR`, `ASIGNADO`, `EN_PROGRESO` |
+| POST   | `/errores/:id/observaciones` | `{ texto }`                                   |
+| POST   | `/errores/:id/reproceso`     | `{ observacion? }`                            |
 
 `REPROCESANDO`, `REQUIERE_CORRECCION` y `RESUELTO` **no** se setean a mano: los
 controla el flujo de reproceso (`RESUELTO` viene de `statusSoftland = S`).
-`autorId` es provisorio hasta que exista auth (sin él, el evento queda como "Sistema").
+Quién hace cada acción sale del JWT (`Authorization: Bearer`), no del body.
 
 ## Modelo
 
@@ -153,7 +173,8 @@ src/
     errores.service.ts        Lógica de los 4 flujos + armado por empresa/módulo
     errores.repository.ts     Acceso a datos (Prisma)
     errores.mapper.ts         Normalización de módulo + forma para el front
-  usuarios/                   /users, /users/me
+  auth/                       /auth/registro, /auth/login, /auth/me
+  usuarios/                   /users
 prisma/schema.prisma          Modelo
 ```
 

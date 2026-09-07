@@ -14,9 +14,11 @@ import {
   UsersIcon,
   XCircleIcon,
 } from '../components/icons'
-import Sidebar, {
-  type SidebarItemId,
-  type SidebarNavItem,
+import { useAuth } from '../auth/useAuth'
+import AppSidebar from '../components/AppSidebar'
+import type {
+  SidebarItemId,
+  SidebarNavItem,
 } from '../components/Sidebar'
 import StatCard from '../components/StatCard'
 import Table from '../components/Table'
@@ -112,6 +114,7 @@ function Home({
   onNavigate: (page: AppPage) => void
   onOpenError: (id: string) => void
 }) {
+  const { usuario } = useAuth()
   const { data, loading, error, refetch } = useHomeData()
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [activeNavItem, setActiveNavItem] = useState<SidebarItemId>('inicio')
@@ -135,34 +138,9 @@ function Home({
           sidebarOpen ? 'w-[280px]' : 'w-0 border-r-0'
         }`}
       >
-        <Sidebar
-          logoText="S"
-          logoColor={colors.primary.dark}
-          logoBackground={colors.primary.lightest}
-          title="API Errores Softland"
-          subtitle="Softland · Errores"
-          titleColor={colors.gray.darkest}
-          subtitleColor={colors.gray.medium}
-          backgroundColor={colors.background.surface}
-          dividerColor={colors.background.border}
-          sectionTitleColor={colors.gray.default}
-          itemColor={colors.gray.dark}
-          itemHoverBackground={colors.background.page}
-          itemActiveColor={colors.primary.dark}
-          itemActiveBackground={colors.primary.lightest}
+        <AppSidebar
           activeItem={activeNavItem}
           onItemSelect={handleSelectNavItem}
-          user={
-            data?.currentUser
-              ? {
-                  name: data.currentUser.nombre,
-                  role: data.currentUser.rol,
-                  avatarText: data.currentUser.avatarIniciales,
-                  avatarColor: colors.primary.dark,
-                  avatarBackground: colors.primary.lightest,
-                }
-              : undefined
-          }
         />
       </div>
 
@@ -185,7 +163,7 @@ function Home({
               </button>
               <div className="flex flex-col gap-xxs">
                 <h1 style={{ ...textStyles.h1, color: colors.gray.darkest }}>
-                  Hola, {data?.currentUser?.nombre.split(' ')[0] ?? 'equipo'}
+                  Hola, {usuario?.nombre.split(' ')[0] ?? 'equipo'}
                 </h1>
                 <p style={{ ...textStyles.body, color: colors.gray.medium }}>
                   {formatTodayEs()}

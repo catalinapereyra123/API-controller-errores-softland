@@ -13,7 +13,8 @@ import {
   PanelLeftIcon,
   SendIcon,
 } from '../components/icons'
-import Sidebar, { type SidebarNavItem } from '../components/Sidebar'
+import AppSidebar from '../components/AppSidebar'
+import type { SidebarNavItem } from '../components/Sidebar'
 import Tabs, { type TabItem } from '../components/Tabs'
 import Timeline from '../components/Timeline'
 import { estadoLabels, estadoTagByEstado } from '../constants/estados'
@@ -220,34 +221,9 @@ function ErrorDetail({
           sidebarOpen ? 'w-[280px]' : 'w-0 border-r-0',
         )}
       >
-        <Sidebar
-          logoText="S"
-          logoColor={colors.primary.dark}
-          logoBackground={colors.primary.lightest}
-          title="API Errores Softland"
-          subtitle="Softland · Errores"
-          titleColor={colors.gray.darkest}
-          subtitleColor={colors.gray.medium}
-          backgroundColor={colors.background.surface}
-          dividerColor={colors.background.border}
-          sectionTitleColor={colors.gray.default}
-          itemColor={colors.gray.dark}
-          itemHoverBackground={colors.background.page}
-          itemActiveColor={colors.primary.dark}
-          itemActiveBackground={colors.primary.lightest}
+        <AppSidebar
           activeItem="bandeja"
           onItemSelect={handleSelectNavItem}
-          user={
-            data?.currentUser
-              ? {
-                  name: data.currentUser.nombre,
-                  role: data.currentUser.rol,
-                  avatarText: data.currentUser.avatarIniciales,
-                  avatarColor: colors.primary.dark,
-                  avatarBackground: colors.primary.lightest,
-                }
-              : undefined
-          }
         />
       </div>
 
