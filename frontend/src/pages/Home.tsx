@@ -16,10 +16,7 @@ import {
 } from '../components/icons'
 import { useAuth } from '../auth/useAuth'
 import AppSidebar from '../components/AppSidebar'
-import type {
-  SidebarItemId,
-  SidebarNavItem,
-} from '../components/Sidebar'
+import type { SidebarItemId, SidebarNavItem } from '../components/Sidebar'
 import StatCard from '../components/StatCard'
 import Table from '../components/Table'
 import { estadoTagByEstado } from '../constants/estados'

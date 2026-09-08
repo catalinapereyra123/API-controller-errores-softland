@@ -221,10 +221,7 @@ function ErrorDetail({
           sidebarOpen ? 'w-[280px]' : 'w-0 border-r-0',
         )}
       >
-        <AppSidebar
-          activeItem="bandeja"
-          onItemSelect={handleSelectNavItem}
-        />
+        <AppSidebar activeItem="bandeja" onItemSelect={handleSelectNavItem} />
       </div>
 
       <main className="flex-1 overflow-y-auto p-xl">

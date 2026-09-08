@@ -5,10 +5,7 @@ import Dropdown, { type DropdownOption } from '../components/Dropdown'
 import { PanelLeftIcon, PlusIcon, SearchIcon } from '../components/icons'
 import Input from '../components/Input'
 import AppSidebar from '../components/AppSidebar'
-import type {
-  SidebarItemId,
-  SidebarNavItem,
-} from '../components/Sidebar'
+import type { SidebarItemId, SidebarNavItem } from '../components/Sidebar'
 import Table from '../components/Table'
 import { cn } from '../utils/cn'
 import {

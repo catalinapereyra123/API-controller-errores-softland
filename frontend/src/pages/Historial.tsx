@@ -38,10 +38,7 @@ function Historial({ onNavigate }: { onNavigate: (page: AppPage) => void }) {
           sidebarOpen ? 'w-[280px]' : 'w-0 border-r-0',
         )}
       >
-        <AppSidebar
-          activeItem="historial"
-          onItemSelect={handleSelectNavItem}
-        />
+        <AppSidebar activeItem="historial" onItemSelect={handleSelectNavItem} />
       </div>
 
       <main className="flex-1 overflow-y-auto p-xl">
