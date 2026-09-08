@@ -107,7 +107,7 @@ crea un `ErrorIntento`, evento de trazabilidad, y **POST al webhook de n8n**
 | ------ | ------------------------------- | ----------------------------------------------------------- |
 | GET    | `/errores`                      | Bandeja plana (tipo `ErrorTransaccion` del front).          |
 | GET    | `/errores/agrupados`            | `[{ empresa, totalErrores, totalesPorModulo, modulos[] }]`. |
-| GET    | `/errores/reproceso-pendientes` | Reprocesos en curso (fallback del webhook para n8n).        |
+| GET    | `/errores/reproceso-pendientes` | Reprocesos en curso para el integrador (`x-api-key`).       |
 | GET    | `/errores/:id`                  | Detalle + observaciones + trazabilidad + intentos.          |
 | GET    | `/empresas`                     | `[{ id, nombre }]`.                                         |
 | GET    | `/dashboard/stats`              | Métricas del dashboard (`DashboardStats`).                  |

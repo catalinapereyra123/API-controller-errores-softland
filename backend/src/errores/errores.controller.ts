@@ -25,8 +25,8 @@ import { ErroresService } from './errores.service';
  *
  * Todo el controller pide JWT: quien hace la acción sale del token, no del body.
  *
- * Nota: las rutas con path literal (`/errores/agrupados`,
- * `/errores/reproceso-pendientes`) van declaradas ANTES de `/errores/:id`.
+ * Nota: las rutas con path literal (por ejemplo, `/errores/agrupados`) van
+ * declaradas ANTES de `/errores/:id`.
  */
 @Controller()
 @UseGuards(JwtAuthGuard)
@@ -51,12 +51,6 @@ export class ErroresController {
   @Get('errores/prioritarios')
   prioritarios() {
     return this.service.prioritarios();
-  }
-
-  /** Qué transacciones están esperando reproceso (para que n8n las levante). */
-  @Get('errores/reproceso-pendientes')
-  reprocesoPendientes() {
-    return this.service.reprocesoPendientes();
   }
 
   /** Detalle de un error (incluye observaciones y trazabilidad). */

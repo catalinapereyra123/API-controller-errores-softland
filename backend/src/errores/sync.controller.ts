@@ -1,4 +1,11 @@
-import { Body, Controller, HttpCode, Post, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  HttpCode,
+  Post,
+  UseGuards,
+} from '@nestjs/common';
 import { ApiKeyGuard } from '../common/api-key.guard';
 import { ResultadoReprocesoDto } from './dto/resultado-reproceso.dto';
 import { SyncErrorDto } from './dto/sync-error.dto';
@@ -14,6 +21,9 @@ import { SyncRequestPipe } from './pipes/sync-request.pipe';
  *   También acepta el array histórico para no cortar integraciones existentes.
  *   Upsert por (empresa, modulo, identi); no pisa el estado de gestión.
  *
+ * Flujo 2 (polling) — GET /errores/reproceso-pendientes
+ *   iFlow consulta qué transacciones esperan ser enviadas a Softland.
+ *
  * Flujo 4 — POST /errores/resultado-reproceso
  *   Body: { empresa, modulo, identi, statusSoftland, error? }
  *   n8n reporta el status que devolvió Softland tras el reproceso.
@@ -22,6 +32,11 @@ import { SyncRequestPipe } from './pipes/sync-request.pipe';
 @UseGuards(ApiKeyGuard)
 export class SyncController {
   constructor(private readonly service: ErroresService) {}
+
+  @Get('reproceso-pendientes')
+  reprocesoPendientes() {
+    return this.service.reprocesoPendientes();
+  }
 
   @Post('sync')
   @HttpCode(200)
