@@ -760,7 +760,7 @@ export class ErroresService {
     const url = process.env.N8N_REPROCESO_WEBHOOK_URL?.trim();
     if (!url) {
       this.logger.warn(
-        'N8N_REPROCESO_WEBHOOK_URL no configurada: el reproceso queda para que n8n lo levante por GET /errores/reproceso-pendientes.',
+        'N8N_REPROCESO_WEBHOOK_URL no configurada: el reproceso queda para que el integrador lo levante por GET /errores/integracion/reproceso-pendientes.',
       );
       return false;
     }

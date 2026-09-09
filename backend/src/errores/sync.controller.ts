@@ -21,8 +21,10 @@ import { SyncRequestPipe } from './pipes/sync-request.pipe';
  *   También acepta el array histórico para no cortar integraciones existentes.
  *   Upsert por (empresa, modulo, identi); no pisa el estado de gestión.
  *
- * Flujo 2 (polling) — GET /errores/reproceso-pendientes
- *   iFlow consulta qué transacciones esperan ser enviadas a Softland.
+ * Flujo 2 (polling) — GET /errores/integracion/reproceso-pendientes
+ *   iFlow consulta qué transacciones esperan ser enviadas a Softland. El
+ *   segmento `integracion/` no es decorativo: sin él la ruta la captura el
+ *   `GET /errores/:id` de ErroresController (que pide JWT) y devuelve 401.
  *
  * Flujo 4 — POST /errores/resultado-reproceso
  *   Body: { empresa, modulo, identi, statusSoftland, error? }
@@ -33,7 +35,7 @@ import { SyncRequestPipe } from './pipes/sync-request.pipe';
 export class SyncController {
   constructor(private readonly service: ErroresService) {}
 
-  @Get('reproceso-pendientes')
+  @Get('integracion/reproceso-pendientes')
   reprocesoPendientes() {
     return this.service.reprocesoPendientes();
   }

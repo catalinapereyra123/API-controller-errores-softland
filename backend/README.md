@@ -88,7 +88,7 @@ Body: `{ observacion? }` + `Authorization: Bearer`. El backend:
 `estadoApp = REPROCESANDO`, `corregidoPor`, `fechaCorreccion`, `intentos++`,
 crea un `ErrorIntento`, evento de trazabilidad, y **POST al webhook de n8n**
 (`{ empresa, modulo, moduloCodigo, identi }`). Si el webhook falla, queda en
-`GET /errores/reproceso-pendientes` para que n8n lo levante igual.
+`GET /errores/integracion/reproceso-pendientes` para que el integrador lo levante igual.
 
 ### Flujo 4 — `POST /errores/resultado-reproceso`  (header `x-api-key`)
 
@@ -107,7 +107,7 @@ crea un `ErrorIntento`, evento de trazabilidad, y **POST al webhook de n8n**
 | ------ | ------------------------------- | ----------------------------------------------------------- |
 | GET    | `/errores`                      | Bandeja plana (tipo `ErrorTransaccion` del front).          |
 | GET    | `/errores/agrupados`            | `[{ empresa, totalErrores, totalesPorModulo, modulos[] }]`. |
-| GET    | `/errores/reproceso-pendientes` | Reprocesos en curso para el integrador (`x-api-key`).       |
+| GET    | `/errores/integracion/reproceso-pendientes` | Reprocesos en curso para el integrador (`x-api-key`). |
 | GET    | `/errores/:id`                  | Detalle + observaciones + trazabilidad + intentos.          |
 | GET    | `/empresas`                     | `[{ id, nombre }]`.                                         |
 | GET    | `/dashboard/stats`              | Métricas del dashboard (`DashboardStats`).                  |
