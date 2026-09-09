@@ -162,6 +162,14 @@ export class ErroresRepository {
    * Errores que requieren atención inmediata en el dashboard:
    * abiertos y sin responsable, o abiertos hace más de `horas` horas.
    */
+  /** El más viejo que matchee (FIFO por fecha de solicitud). */
+  primerPendiente(where: Prisma.TransaccionErrorWhereInput) {
+    return this.prisma.transaccionError.findFirst({
+      where,
+      orderBy: [{ fechaCorreccion: 'asc' }, { createdAt: 'asc' }],
+    });
+  }
+
   prioritarios(horas = 2, limite = 10) {
     const desde = new Date(Date.now() - horas * 60 * 60 * 1000);
     return this.prisma.transaccionError.findMany({

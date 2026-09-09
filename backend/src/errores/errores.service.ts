@@ -326,7 +326,24 @@ export class ErroresService {
   /** Lista para que n8n levante qué reprocesar (fallback del webhook). */
   async reprocesoPendientes() {
     const items = await this.repo.listar({ estadoApp: EstadoApp.REPROCESANDO });
-    return items.map((t) => ({
+    return items.map((t) => this.aPendiente(t));
+  }
+
+  /**
+   * Lo mismo pero de a uno: el pendiente más viejo (FIFO), o `null` si no hay
+   * ninguno. Es el que consume el flujo 2 de iFlow, que mapea campos sueltos a
+   * la query y no sabe recorrer un array.
+   */
+  async reprocesoPendiente() {
+    const t = await this.repo.primerPendiente({
+      estadoApp: EstadoApp.REPROCESANDO,
+    });
+    return t ? this.aPendiente(t) : null;
+  }
+
+  /** Forma que ve el integrador: la clave de Softland + contexto del intento. */
+  private aPendiente(t: TransaccionError) {
+    return {
       id: t.id,
       empresa: t.empresaCodigo,
       modulo: t.modulo,
@@ -335,7 +352,7 @@ export class ErroresService {
       solicitadoEn: t.fechaCorreccion?.toISOString() ?? null,
       notificado: t.reprocesoNotificadoAt !== null,
       intentos: t.intentos,
-    }));
+    };
   }
 
   // ==========================================================================

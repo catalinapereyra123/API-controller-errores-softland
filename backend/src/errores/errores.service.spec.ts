@@ -90,6 +90,11 @@ class FakeRepo {
     return Promise.resolve(row);
   };
 
+  primerPendiente = (where: any) =>
+    Promise.resolve(
+      this.transacciones.find((t) => t.estadoApp === where.estadoApp) ?? null,
+    );
+
   intentoAbierto = (errorId: string) =>
     Promise.resolve(
       [...this.intentos]
@@ -319,6 +324,23 @@ describe('ErroresService.solicitarReproceso', () => {
     expect(repo.intentos[0].numeroIntento).toBe(1);
     expect(repo.intentos[0].usuarioNombre).toBe('Sistema');
     expect(detalle.reprocesoNotificado).toBe(false);
+  });
+
+  it('reprocesoPendiente devuelve un objeto, no un array', async () => {
+    await service.sync([registro()]);
+    expect(await service.reprocesoPendiente()).toBeNull();
+
+    await service.solicitarReproceso('t1', {});
+    const pendiente = await service.reprocesoPendiente();
+
+    expect(Array.isArray(pendiente)).toBe(false);
+    expect(pendiente).toMatchObject({
+      empresa: 'AMCARG',
+      modulo: 'COMPRAS',
+      moduloOrigen: '3. Compras',
+      identi: 'LIQ100',
+      intentos: 1,
+    });
   });
 
   it('cambiarEstado rechaza RESUELTO manual', async () => {

@@ -18,6 +18,16 @@ describe('Rutas del integrador vs. /errores/:id', () => {
   let app: INestApplication<App>;
   const service = {
     reprocesoPendientes: jest.fn().mockResolvedValue([]),
+    reprocesoPendiente: jest.fn().mockResolvedValue({
+      id: 'clx1',
+      empresa: 'NORFLOW',
+      modulo: 'COMPRAS',
+      moduloOrigen: '3. Compras',
+      identi: 'LIQ29054',
+      solicitadoEn: '2026-09-09T14:20:00.000Z',
+      notificado: false,
+      intentos: 1,
+    }),
     detalle: jest.fn().mockResolvedValue({ id: 'abc123' }),
   };
 
@@ -49,6 +59,24 @@ describe('Rutas del integrador vs. /errores/:id', () => {
     expect(res.status).toBe(200);
     expect(res.body).toEqual([]);
     expect(service.reprocesoPendientes).toHaveBeenCalled();
+  });
+
+  it('el singular devuelve un objeto plano, mapeable campo por campo', async () => {
+    const res = await request(app.getHttpServer())
+      .get('/errores/integracion/reproceso-pendiente')
+      .set('x-api-key', 'clave-de-prueba');
+
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual({
+      id: 'clx1',
+      empresa: 'NORFLOW',
+      modulo: 'COMPRAS',
+      moduloOrigen: '3. Compras',
+      identi: 'LIQ29054',
+      solicitadoEn: '2026-09-09T14:20:00.000Z',
+      notificado: false,
+      intentos: 1,
+    });
   });
 
   it('sin x-api-key corta el ApiKeyGuard, no el de sesión', async () => {

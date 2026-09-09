@@ -40,6 +40,16 @@ export class SyncController {
     return this.service.reprocesoPendientes();
   }
 
+  /**
+   * Un solo pendiente (el más viejo) en vez del array, para los flujos que
+   * mapean campo por campo y no saben recorrer listas. Si no hay nada
+   * pendiente devuelve null.
+   */
+  @Get('integracion/reproceso-pendiente')
+  reprocesoPendiente() {
+    return this.service.reprocesoPendiente();
+  }
+
   @Post('sync')
   @HttpCode(200)
   sync(@Body(SyncRequestPipe) request: SyncRequestDto) {
