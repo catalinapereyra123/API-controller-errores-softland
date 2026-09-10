@@ -458,10 +458,6 @@ function ErrorDetail({
                       </div>
                     </Card>
 
-                    {detalle.estado !== 'RESUELTO' && (
-                      <PasosASeguirCard error={detalle} />
-                    )}
-
                     <Card>
                       <div className="flex items-center justify-between gap-md">
                         <span
@@ -545,6 +541,10 @@ function ErrorDetail({
                         </div>
                       )}
                     </Card>
+
+                    {detalle.estado !== 'RESUELTO' && (
+                      <PasosASeguirCard error={detalle} />
+                    )}
 
                     <CollapsibleCard title="Observaciones">
                       <div className="flex flex-col gap-lg">
