@@ -114,7 +114,7 @@ class FakeRepo {
         (t) =>
           codigos.includes(t.empresaCodigo) &&
           !t.presenteEnUltimaSync &&
-          !['REPROCESANDO', 'RESUELTO'].includes(t.estadoApp),
+          !['REPROCESANDO', 'RESUELTO', 'DESCARTADO'].includes(t.estadoApp),
       ).length,
     );
 
@@ -420,5 +420,85 @@ describe('ErroresService.registrarResultadoReproceso', () => {
 
     expect(res.statusSoftland).toBe('N');
     expect(repo.transacciones[0].estadoApp).toBe('REPROCESANDO');
+  });
+});
+
+describe('ErroresService — DESCARTADO', () => {
+  let service: ErroresService;
+  let repo: FakeRepo;
+
+  const ultimoEvento = (): unknown => repo.eventos[repo.eventos.length - 1];
+
+  beforeEach(async () => {
+    repo = new FakeRepo();
+    const moduleRef = await Test.createTestingModule({
+      providers: [
+        ErroresService,
+        { provide: ErroresRepository, useValue: repo },
+      ],
+    }).compile();
+    service = moduleRef.get(ErroresService);
+    delete process.env.N8N_REPROCESO_WEBHOOK_URL;
+  });
+
+  it('se descarta a mano y deja un evento de descarte', async () => {
+    await service.sync([registro()]);
+
+    await service.cambiarEstado('t1', { estado: 'DESCARTADO' });
+
+    expect(repo.transacciones[0].estadoApp).toBe('DESCARTADO');
+    expect(ultimoEvento()).toMatchObject({
+      tipo: 'descarte',
+      titulo: 'Estado: Descartado',
+    });
+  });
+
+  it('el sync no reabre un DESCARTADO aunque siga llegando con error', async () => {
+    await service.sync([registro()]);
+    await service.cambiarEstado('t1', { estado: 'DESCARTADO' });
+
+    const res = await service.sync([registro({ error: 'Otro mensaje' })]);
+
+    expect(res.reaparecidos).toBe(0);
+    expect(repo.transacciones[0].estadoApp).toBe('DESCARTADO');
+    expect(repo.transacciones[0].errorMensaje).toBe('Otro mensaje');
+  });
+
+  it('no se puede marcar como corregido mientras está descartado', async () => {
+    await service.sync([registro()]);
+    await service.cambiarEstado('t1', { estado: 'DESCARTADO' });
+
+    await expect(service.solicitarReproceso('t1', {})).rejects.toThrow(
+      /descartado/i,
+    );
+    expect(repo.intentos).toHaveLength(0);
+  });
+
+  it('reabrirlo deja el evento "Reabierto"', async () => {
+    await service.sync([registro()]);
+    await service.cambiarEstado('t1', { estado: 'DESCARTADO' });
+
+    await service.cambiarEstado('t1', { estado: 'ERROR' });
+
+    expect(repo.transacciones[0].estadoApp).toBe('ERROR');
+    expect(ultimoEvento()).toMatchObject({ titulo: 'Reabierto: Error' });
+  });
+
+  it('si llega el resultado de un reproceso viejo, guarda el status y sigue descartado', async () => {
+    await service.sync([registro()]);
+    await service.solicitarReproceso('t1', {});
+    await service.cambiarEstado('t1', { estado: 'DESCARTADO' });
+
+    const res = await service.registrarResultadoReproceso({
+      empresa: 'AMCARG',
+      modulo: '3. Compras',
+      identi: 'LIQ100',
+      statusSoftland: 'E',
+    });
+
+    expect(res.estadoApp).toBe('DESCARTADO');
+    expect(repo.transacciones[0].estadoApp).toBe('DESCARTADO');
+    expect(repo.transacciones[0].statusSoftland).toBe('E');
+    expect(repo.intentos[0].statusDespues).toBe('E');
   });
 });

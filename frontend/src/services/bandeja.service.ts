@@ -6,7 +6,7 @@ export interface BandejaQuery extends Record<string, string | undefined> {
   modulo?: string
   estado?: string
   responsableId?: string
-  /** 'false' trae también los RESUELTO. */
+  /** 'false' trae también los cerrados (RESUELTO y DESCARTADO). */
   soloAbiertos?: 'true' | 'false'
 }
 

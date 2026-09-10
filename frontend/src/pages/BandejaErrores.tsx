@@ -9,6 +9,7 @@ import type { SidebarItemId, SidebarNavItem } from '../components/Sidebar'
 import Table from '../components/Table'
 import { cn } from '../utils/cn'
 import {
+  ESTADOS_CERRADOS,
   estadoLabels,
   estadoOrder,
   estadoTagByEstado,
@@ -74,7 +75,16 @@ function BandejaRow({
       style={{ borderColor: colors.background.border }}
       className={`grid ${BANDEJA_GRID_COLS} items-start gap-md border-b px-lg py-md last:border-b-0`}
     >
-      <EstadoTag />
+      <div className="flex flex-col gap-xxs">
+        <EstadoTag />
+        {error.estado === 'REPROCESANDO' && (
+          <span
+            style={{ ...textStyles.caption, color: colors.label.purple.text }}
+          >
+            Esperando resultado
+          </span>
+        )}
+      </div>
       <span
         style={{
           ...textStyles.bodySmall,
@@ -128,7 +138,7 @@ function BandejaRow({
           color: colors.gray.darkest,
         }}
       >
-        {error.estado === 'RESUELTO'
+        {ESTADOS_CERRADOS.includes(error.estado)
           ? '—'
           : formatElapsedSince(error.abiertoDesde)}
       </span>

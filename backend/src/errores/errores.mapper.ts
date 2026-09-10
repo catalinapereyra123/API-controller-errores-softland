@@ -23,9 +23,10 @@ export const ESTADO_LABEL: Record<EstadoApp, string> = {
   REPROCESANDO: 'Reprocesando',
   REQUIERE_CORRECCION: 'Requiere corrección',
   RESUELTO: 'Resuelto',
+  DESCARTADO: 'Descartado',
 };
 
-/** Un error se considera "abierto" mientras no esté RESUELTO. */
+/** Un error se considera "abierto" mientras no esté RESUELTO ni DESCARTADO. */
 export const ESTADOS_ABIERTOS: EstadoApp[] = [
   EstadoApp.ERROR,
   EstadoApp.ASIGNADO,
@@ -38,11 +39,14 @@ export const ESTADOS_ABIERTOS: EstadoApp[] = [
  * Estados que se pueden setear a mano desde la app (PATCH /errores/:id/estado).
  * REPROCESANDO / REQUIERE_CORRECCION / RESUELTO los controla SOLO el flujo de
  * reproceso: RESUELTO tiene que venir de Softland (statusSoftland = S).
+ * DESCARTADO es para lo que no interesa (p. ej. restos de pruebas): sale de la
+ * bandeja, el sync no lo reabre y no se puede mandar a reprocesar.
  */
 export const ESTADOS_MANUALES: EstadoApp[] = [
   EstadoApp.ERROR,
   EstadoApp.ASIGNADO,
   EstadoApp.EN_PROGRESO,
+  EstadoApp.DESCARTADO,
 ];
 
 /** Tipo de evento de trazabilidad según el estado (define el ícono en el front). */
@@ -53,6 +57,7 @@ export function tipoEventoPorEstado(estado: EstadoApp): string {
   if (estado === EstadoApp.REPROCESANDO || estado === EstadoApp.RESUELTO) {
     return 'reproceso';
   }
+  if (estado === EstadoApp.DESCARTADO) return 'descarte';
   return 'error';
 }
 

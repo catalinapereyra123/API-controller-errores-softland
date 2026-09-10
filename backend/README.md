@@ -70,6 +70,8 @@ FLUJO 4 · VERIFICAR     n8n consulta el status del identi en Softland
 - **Upsert** por `(empresa, modulo, identi)`. No pisa `estadoApp`, `responsable`,
   `intentos`, observaciones.
 - `RESUELTO` que vuelve a llegar con error → se reabre (`ERROR`).
+- `DESCARTADO` (no interesa, p. ej. restos de pruebas) → solo se refrescan los
+  datos: el sync nunca lo reabre.
 - `REPROCESANDO` + `statusSoftland=S` explícito en el feed → `RESUELTO`.
 - `REPROCESANDO` + vuelve a `E/D/B/X` → `REQUIERE_CORRECCION`.
 - `REPROCESANDO` + **desaparece del feed** → NO se resuelve solo (desaparecer no
@@ -102,6 +104,8 @@ sin array, para los flujos que mapean campo por campo y no recorren listas.
 - `S` → `estadoApp = RESUELTO`, `fechaResolucion`, cierra el `ErrorIntento`.
 - `E / B / D / X` → `estadoApp = REQUIERE_CORRECCION`, guarda el nuevo `errorMensaje`.
 - `N` → sin cambios (sigue procesándose).
+- Si el error está `DESCARTADO`, se guarda el status y se cierra el intento, pero
+  no cambia de estado (no vuelve a la bandeja).
 
 ## Lectura (front)
 
@@ -120,8 +124,9 @@ sin array, para los flujos que mapean campo por campo y no recorren listas.
 
 Filtros (query params) para `/errores` y `/errores/agrupados`: `empresa`,
 `modulo` (`FACTURACION|COMPRAS|COBRANZAS`), `estado`
-(`ERROR|ASIGNADO|EN_PROGRESO|REPROCESANDO|REQUIERE_CORRECCION|RESUELTO`),
-`responsableId` (`sin-asignar`), `soloAbiertos` (`true` por default).
+(`ERROR|ASIGNADO|EN_PROGRESO|REPROCESANDO|REQUIERE_CORRECCION|RESUELTO|DESCARTADO`),
+`responsableId` (`sin-asignar`), `soloAbiertos` (`true` por default: sin
+`RESUELTO` ni `DESCARTADO`).
 
 ## Autenticación (JWT)
 
@@ -145,12 +150,15 @@ nativas) en formato `salt:hash`. `JWT_SECRET` es obligatorio si
 | Método | Ruta                         | Body                                          |
 | ------ | ---------------------------- | --------------------------------------------- |
 | PATCH  | `/errores/:id/asignacion`    | `{ responsableId?: string \| null }`          |
-| PATCH  | `/errores/:id/estado`        | `{ estado, nota? }` — solo `ERROR`, `ASIGNADO`, `EN_PROGRESO` |
+| PATCH  | `/errores/:id/estado`        | `{ estado, nota? }` — solo `ERROR`, `ASIGNADO`, `EN_PROGRESO`, `DESCARTADO` |
 | POST   | `/errores/:id/observaciones` | `{ texto }`                                   |
 | POST   | `/errores/:id/reproceso`     | `{ observacion? }`                            |
 
 `REPROCESANDO`, `REQUIERE_CORRECCION` y `RESUELTO` **no** se setean a mano: los
 controla el flujo de reproceso (`RESUELTO` viene de `statusSoftland = S`).
+`DESCARTADO` es para lo que no interesa (p. ej. restos de pruebas): sale de la
+bandeja y de los contadores, el sync no lo reabre y `POST /errores/:id/reproceso`
+responde 400 hasta que se reabra (volviendo a `ERROR` o `ASIGNADO`).
 Quién hace cada acción sale del JWT (`Authorization: Bearer`), no del body.
 
 ## Modelo

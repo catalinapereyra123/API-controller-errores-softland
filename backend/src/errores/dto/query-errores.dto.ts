@@ -24,7 +24,7 @@ export class QueryErroresDto {
   @IsString()
   responsableId?: string;
 
-  /** `true` => solo errores abiertos (no RESUELTO). Default: true. */
+  /** `true` => solo abiertos (sin RESUELTO ni DESCARTADO). Default: true. */
   @IsOptional()
   @IsIn(['true', 'false'])
   soloAbiertos?: 'true' | 'false';

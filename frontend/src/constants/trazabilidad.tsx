@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import {
   AlertTriangleIcon,
+  BanIcon,
   MessageIcon,
   RefreshIcon,
   UserIcon,
@@ -38,6 +39,11 @@ const estiloPorTipo: Record<string, EstiloEvento> = {
     icon: <RefreshIcon className="h-4 w-4" />,
     color: colors.label.green.text,
     background: colors.label.green.background,
+  },
+  descarte: {
+    icon: <BanIcon className="h-4 w-4" />,
+    color: colors.label.gray.text,
+    background: colors.label.gray.background,
   },
 }
 

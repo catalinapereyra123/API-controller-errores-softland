@@ -94,4 +94,15 @@ export function ResueltoTag() {
   )
 }
 
+/** No interesa (p. ej. restos de pruebas): queda fuera de la bandeja. */
+export function DescartadoTag() {
+  return (
+    <Tag
+      text="Descartado"
+      color={colors.label.gray.text}
+      backgroundColor={colors.label.gray.background}
+    />
+  )
+}
+
 export default Tag

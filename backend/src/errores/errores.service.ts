@@ -259,6 +259,11 @@ export class ErroresService {
     autorId?: string,
   ) {
     const t = await this.requerir(id);
+    if (t.estadoApp === EstadoApp.DESCARTADO) {
+      throw new BadRequestException(
+        'El error está descartado: reabrilo antes de marcarlo como corregido.',
+      );
+    }
     const autor = await this.resolverAutor(autorId);
     const numeroIntento = t.intentos + 1;
 
@@ -375,6 +380,34 @@ export class ErroresService {
         estadoApp: t.estadoApp,
         statusSoftland: 'N',
         mensaje: 'Sigue en cola (status N), sin cambios.',
+      };
+    }
+
+    // Descartado a mano (p. ej. un resto de pruebas): se guarda lo que devolvió
+    // Softland y se cierra el intento, pero no vuelve a la bandeja.
+    if (t.estadoApp === EstadoApp.DESCARTADO) {
+      await this.repo.transaction(async (tx) => {
+        await this.repo.actualizarTransaccion(
+          t.id,
+          { statusSoftland: dto.statusSoftland },
+          tx,
+        );
+        await this.cerrarIntentoAbierto(t.id, dto.statusSoftland, tx);
+        await this.repo.crearEvento(
+          {
+            transaccionId: t.id,
+            tipo: 'reproceso',
+            titulo: 'Llegó el resultado del reproceso',
+            detalle: `Status ${dto.statusSoftland}. Sigue descartado.`,
+          },
+          tx,
+        );
+      });
+      return {
+        ok: true,
+        estadoApp: t.estadoApp,
+        statusSoftland: dto.statusSoftland,
+        mensaje: 'Está descartado: se guardó el status sin cambiar el estado.',
       };
     }
 
@@ -651,6 +684,9 @@ export class ErroresService {
     const data: Prisma.TransaccionErrorUpdateInput = { estadoApp: dto.estado };
     // Reabrir un RESUELTO a mano (p. ej. a EN_PROGRESO) limpia la resolución.
     if (t.estadoApp === EstadoApp.RESUELTO) data.fechaResolucion = null;
+    const reabre =
+      t.estadoApp === EstadoApp.DESCARTADO &&
+      dto.estado !== EstadoApp.DESCARTADO;
 
     await this.repo.transaction(async (tx) => {
       await this.repo.actualizarTransaccion(id, data, tx);
@@ -658,7 +694,7 @@ export class ErroresService {
         {
           transaccionId: id,
           tipo: tipoEventoPorEstado(dto.estado),
-          titulo: `Estado: ${ESTADO_LABEL[dto.estado]}`,
+          titulo: `${reabre ? 'Reabierto' : 'Estado'}: ${ESTADO_LABEL[dto.estado]}`,
           detalle: [dto.nota, `Por ${autor.nombre}`]
             .filter(Boolean)
             .join(' · '),

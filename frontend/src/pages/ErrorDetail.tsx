@@ -3,6 +3,7 @@ import Button from '../components/Button'
 import Card from '../components/Card'
 import Dropdown, { type DropdownOption } from '../components/Dropdown'
 import ErrorActionsCard from '../components/ErrorActionsCard'
+import EstadoAviso from '../components/EstadoAviso'
 import EstadosSoftlandModal from '../components/EstadosSoftlandModal'
 import InfoStrip from '../components/InfoStrip'
 import PasosASeguirCard from '../components/PasosASeguirCard'
@@ -18,7 +19,11 @@ import AppSidebar from '../components/AppSidebar'
 import type { SidebarNavItem } from '../components/Sidebar'
 import Tabs, { type TabItem } from '../components/Tabs'
 import Timeline from '../components/Timeline'
-import { estadoLabels, estadoTagByEstado } from '../constants/estados'
+import {
+  ESTADOS_CERRADOS,
+  estadoLabels,
+  estadoTagByEstado,
+} from '../constants/estados'
 import { ESTADOS_SOFTLAND } from '../constants/estadosSoftland'
 import { trazabilidadToTimelineItems } from '../constants/trazabilidad'
 import { useErrorDetail } from '../hooks/useErrorDetail'
@@ -306,14 +311,15 @@ function ErrorDetail({
                   },
                   {
                     label: 'Tiempo abierto',
-                    value:
-                      detalle.estado === 'RESUELTO'
-                        ? '—'
-                        : formatElapsedSince(detalle.abiertoDesde),
+                    value: ESTADOS_CERRADOS.includes(detalle.estado)
+                      ? '—'
+                      : formatElapsedSince(detalle.abiertoDesde),
                   },
                   { label: 'Intentos', value: detalle.intentos },
                 ]}
               />
+
+              <EstadoAviso error={detalle} />
 
               <div ref={tabsRef} className="scroll-mt-xl">
                 <Tabs
@@ -542,9 +548,7 @@ function ErrorDetail({
                       )}
                     </Card>
 
-                    {detalle.estado !== 'RESUELTO' && (
-                      <PasosASeguirCard error={detalle} />
-                    )}
+                    <PasosASeguirCard error={detalle} />
 
                     <CollapsibleCard title="Observaciones">
                       <div className="flex flex-col gap-lg">
@@ -773,11 +777,14 @@ function ErrorDetail({
                     </Card>
 
                     <ErrorActionsCard
+                      estado={detalle.estado}
+                      disabled={saving}
                       onMarkAsFixed={() => void reprocesar()}
-                      disabled={
-                        saving ||
-                        detalle.estado === 'REPROCESANDO' ||
-                        detalle.estado === 'RESUELTO'
+                      onDiscard={() => void cambiarEstadoManual('DESCARTADO')}
+                      onReopen={() =>
+                        void cambiarEstadoManual(
+                          detalle.responsableId ? 'ASIGNADO' : 'ERROR',
+                        )
                       }
                     />
 

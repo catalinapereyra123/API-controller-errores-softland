@@ -11,12 +11,14 @@ export type ErrorEstado =
   | 'REPROCESANDO'
   | 'REQUIERE_CORRECCION'
   | 'RESUELTO'
+  | 'DESCARTADO'
 
 /** Estados que la app puede setear a mano (el resto lo maneja el reproceso). */
 export const ESTADOS_MANUALES: ErrorEstado[] = [
   'ERROR',
   'ASIGNADO',
   'EN_PROGRESO',
+  'DESCARTADO',
 ]
 
 /** Enum `Modulo` del back. */
@@ -79,7 +81,7 @@ export interface ErrorObservacion {
 }
 
 export type TrazabilidadTipo =
-  'error' | 'asignacion' | 'observacion' | 'reproceso'
+  'error' | 'asignacion' | 'observacion' | 'reproceso' | 'descarte'
 
 export interface TrazabilidadEvento {
   id: string

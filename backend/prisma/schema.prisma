@@ -30,6 +30,7 @@ enum EstadoApp {
   REPROCESANDO // se corrigió y se mandó a reprocesar (Softland en 'N')
   REQUIERE_CORRECCION // el reproceso no lo resolvió, volvió a fallar
   RESUELTO // Softland lo procesó OK (status S) o ya no figura
+  DESCARTADO // no interesa (p. ej. restos de pruebas): sale de la bandeja y no se reprocesa
 }
 
 model Empresa {

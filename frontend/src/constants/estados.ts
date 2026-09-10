@@ -1,5 +1,6 @@
 import {
   AsignadoTag,
+  DescartadoTag,
   EnProgresoTag,
   ErrorTag,
   ReprocesandoTag,
@@ -15,6 +16,7 @@ export const estadoTagByEstado: Record<ErrorEstado, () => React.JSX.Element> = {
   REPROCESANDO: ReprocesandoTag,
   REQUIERE_CORRECCION: RequiereCorreccionTag,
   RESUELTO: ResueltoTag,
+  DESCARTADO: DescartadoTag,
 }
 
 export const estadoLabels: Record<ErrorEstado, string> = {
@@ -24,6 +26,7 @@ export const estadoLabels: Record<ErrorEstado, string> = {
   REPROCESANDO: 'Reprocesando',
   REQUIERE_CORRECCION: 'Requiere corrección',
   RESUELTO: 'Resuelto',
+  DESCARTADO: 'Descartado',
 }
 
 export const estadoOrder: ErrorEstado[] = [
@@ -33,4 +36,8 @@ export const estadoOrder: ErrorEstado[] = [
   'REPROCESANDO',
   'REQUIERE_CORRECCION',
   'RESUELTO',
+  'DESCARTADO',
 ]
+
+/** Cerrados: fuera de "Abiertos" en la bandeja y sin tiempo abierto. */
+export const ESTADOS_CERRADOS: ErrorEstado[] = ['RESUELTO', 'DESCARTADO']

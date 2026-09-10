@@ -260,3 +260,21 @@ export function CheckIcon(props: SVGProps<SVGSVGElement>) {
     </BaseIcon>
   )
 }
+
+export function BanIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <BaseIcon {...props}>
+      <circle cx="12" cy="12" r="8.5" />
+      <path d="m6 6 12 12" />
+    </BaseIcon>
+  )
+}
+
+export function UndoIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <BaseIcon {...props}>
+      <path d="M9 14 4 9l5-5" />
+      <path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11" />
+    </BaseIcon>
+  )
+}

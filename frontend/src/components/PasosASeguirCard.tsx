@@ -75,11 +75,21 @@ function Copiable({ valor }: { valor: string }) {
   )
 }
 
+// Esperando el resultado del reproceso, resuelto o descartado: no hay nada que
+// revisar en Softland.
+const ESTADOS_SIN_PASOS: ErrorTransaccion['estado'][] = [
+  'REPROCESANDO',
+  'RESUELTO',
+  'DESCARTADO',
+]
+
 /**
  * Qué revisar para destrabar el error, según el mensaje y el status de
  * Softland. Las reglas viven en `constants/recomendaciones`.
  */
 function PasosASeguirCard({ error }: PasosASeguirCardProps) {
+  if (ESTADOS_SIN_PASOS.includes(error.estado)) return null
+
   const { diagnostico, pasos } = recomendacionPara(error)
 
   return (

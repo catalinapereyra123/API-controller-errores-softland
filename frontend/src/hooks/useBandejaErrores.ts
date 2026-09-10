@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { ESTADOS_CERRADOS } from '../constants/estados'
 import { getBandejaErrores } from '../services/bandeja.service'
 import { getDashboardStats } from '../services/dashboard.service'
 import { getEmpresas } from '../services/empresas.service'
@@ -64,8 +65,8 @@ export function useBandejaErrores(): UseBandejaErroresResult {
       setLoading(true)
       setError(null)
       try {
-        // Se trae todo (incluidos los resueltos) y se filtra en el cliente,
-        // así los filtros responden sin ida y vuelta al servidor.
+        // Se trae todo (también resueltos y descartados) y se filtra en el
+        // cliente, así los filtros responden sin ida y vuelta al servidor.
         const [empresas, usuarios, stats, errores] = await Promise.all([
           getEmpresas(),
           getUsuarios(),
@@ -123,7 +124,10 @@ export function useBandejaErrores(): UseBandejaErroresResult {
         return false
       if (filters.modulo !== 'todos' && item.moduloCodigo !== filters.modulo)
         return false
-      if (filters.estado === 'abiertos' && item.estado === 'RESUELTO')
+      if (
+        filters.estado === 'abiertos' &&
+        ESTADOS_CERRADOS.includes(item.estado)
+      )
         return false
       if (
         filters.estado !== 'abiertos' &&
