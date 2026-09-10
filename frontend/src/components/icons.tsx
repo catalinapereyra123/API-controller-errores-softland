@@ -234,3 +234,29 @@ export function LogoutIcon(props: SVGProps<SVGSVGElement>) {
     </BaseIcon>
   )
 }
+
+export function LightbulbIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <BaseIcon {...props}>
+      <path d="M9.5 17.5v-1c0-.8-.35-1.5-.95-2.05a6 6 0 1 1 6.9 0c-.6.55-.95 1.25-.95 2.05v1Z" />
+      <path d="M10 20.5h4" />
+    </BaseIcon>
+  )
+}
+
+export function CopyIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <BaseIcon {...props}>
+      <rect x="9" y="9" width="11" height="11" rx="2" />
+      <path d="M15 9V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h3" />
+    </BaseIcon>
+  )
+}
+
+export function CheckIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <BaseIcon {...props}>
+      <path d="m5 12.5 4.5 4.5L19 7.5" />
+    </BaseIcon>
+  )
+}

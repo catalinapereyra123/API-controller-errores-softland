@@ -5,6 +5,7 @@ import Dropdown, { type DropdownOption } from '../components/Dropdown'
 import ErrorActionsCard from '../components/ErrorActionsCard'
 import EstadosSoftlandModal from '../components/EstadosSoftlandModal'
 import InfoStrip from '../components/InfoStrip'
+import PasosASeguirCard from '../components/PasosASeguirCard'
 import {
   ArrowLeftIcon,
   ChevronDownIcon,
@@ -456,6 +457,10 @@ function ErrorDetail({
                         </div>
                       </div>
                     </Card>
+
+                    {detalle.estado !== 'RESUELTO' && (
+                      <PasosASeguirCard error={detalle} />
+                    )}
 
                     <Card>
                       <div className="flex items-center justify-between gap-md">
