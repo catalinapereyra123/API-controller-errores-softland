@@ -24,7 +24,7 @@ Variables (`.env`):
 | `N8N_REPROCESO_WEBHOOK_URL` | Webhook de n8n para el flujo 2 (disparar el `UPDATE ... STATUS='N'`). |
 | `JWT_SECRET`               | Secreto para firmar los tokens de login. Obligatorio en producción.  |
 
-## Los 4 flujos de n8n
+## Los flujos del integrador
 
 ```
 FLUJO 1 · SYNC          CRON 3h → traer errores de todas las empresas
@@ -38,6 +38,11 @@ FLUJO 3 · PROCESAR      (2ª etapa) ejecutar USR_CO / USR_FC / USR_RC en Softla
 
 FLUJO 4 · VERIFICAR     n8n consulta el status del identi en Softland
                         → POST /errores/resultado-reproceso
+
+FLUJO 5 · VERIFICAR     CRON 3-6h (desfasado del flujo 1) · solo lectura
+  RESUELTOS             → GET  /errores/integracion/verificacion-pendientes
+                        → consultar cada identi en SAR_xxRMVH
+                        → POST /errores/verificacion
 ```
 
 ### Flujo 1 — `POST /errores/sync`  (header `x-api-key`)
@@ -107,6 +112,80 @@ sin array, para los flujos que mapean campo por campo y no recorren listas.
 - Si el error está `DESCARTADO`, se guarda el status y se cierra el intento, pero
   no cambia de estado (no vuelve a la bandeja).
 
+### Flujo 5 — verificación periódica (cierre automático)
+
+Cierra los errores que se arreglaron **por fuera de la app** (a mano en la base,
+o porque Softland los volvió a tomar). Sin esto el registro queda huérfano en
+`E` para siempre aunque en Softland ya esté en `S`. Es **solo lectura** sobre
+las bases de las empresas: a diferencia del flujo 2, nunca escribe en Softland.
+
+No compara listas completas ("lo que no vino hoy lo doy por corregido"): si una
+empresa falla en una corrida, sus errores desaparecerían del lote y se cerrarían
+mal. Verifica cada error abierto, uno por uno, contra su propio registro.
+
+**Paso 1 — `GET /errores/integracion/verificacion-pendientes`** (`x-api-key`)
+
+```json
+[
+  { "id": "clx9", "empresa": "PAE", "modulo": "FACTURACION",
+    "moduloOrigen": "1. Facturacion", "identi": "F2H5077",
+    "statusConocido": "E", "ultimaVerificacion": null }
+]
+```
+
+Solo la clave, sin el detalle. Devuelve los errores **abiertos que no tienen un
+reproceso en curso** (`REPROCESANDO` queda afuera: ese lo cierra el flujo 4, y
+si los dos tocaran el mismo registro se pisarían). Acepta `?limite=200` para
+cortar la corrida; como ordena por "lo menos verificado primero", la corrida
+siguiente arranca donde quedó la anterior.
+
+> El segmento `integracion/` no es decorativo: sin él la ruta la captura el
+> `GET /errores/:id` (que pide JWT) y el integrador recibe 401.
+
+**Paso 2 —** consultar cada `identi` en Softland, según el módulo:
+
+| Módulo      | Consulta                                                           |
+| ----------- | ------------------------------------------------------------------ |
+| FACTURACION | `SELECT SAR_FCRMVH_STATUS FROM SAR_FCRMVH WHERE SAR_FCRMVH_IDENTI = :identi` |
+| COMPRAS     | `SELECT SAR_CORMVH_STATUS FROM SAR_CORMVH WHERE SAR_CORMVH_IDENTI = :identi` |
+| COBRANZAS   | `SELECT SAR_VTRRCH_STATUS FROM SAR_VTRRCH WHERE SAR_VTRRCH_IDENTI = :identi` |
+
+**Paso 3 — `POST /errores/verificacion`** (`x-api-key`)
+
+```json
+{ "empresa": "PAE", "modulo": "1. Facturacion", "identi": "F2H5077",
+  "statusSoftland": "S" }
+```
+
+| `statusSoftland`   | Qué hace                                                      |
+| ------------------ | ------------------------------------------------------------- |
+| `S`                | `RESUELTO` + `fechaResolucion` + `origenCierre = VERIFICACION_AUTOMATICA`. |
+| `E / D / B / X`    | Sigue abierto. Si estaba `RESUELTO`, **se reabre** (`ERROR`) y se limpia `origenCierre`. |
+| `N`                | En cola en Softland: solo se guarda el status.                |
+| vacío / ausente    | La consulta no devolvió filas. **No cierra nada**: que no figure no prueba que se resolvió. |
+| desconocido        | Se registra y se deja abierto (se avisa por log).             |
+
+En todos los casos se sella `ultimaVerificacionAt`, como evidencia de que se
+revisó aunque siga en error. Dos excepciones que no cambian de estado: si el
+error está `REPROCESANDO` (lo cierra el flujo 4) o `DESCARTADO` (no vuelve a la
+bandeja).
+
+Respuesta: `{ ok, estadoApp, statusSoftland, cerrado, reabierto, mensaje }`.
+
+**Cron:** cada 3 a 6 h, desfasado del flujo 1 para no consultar todas las bases
+a la vez.
+
+#### `origenCierre`: de dónde vino el cierre
+
+| Valor                     | Significa                                                    |
+| ------------------------- | ------------------------------------------------------------ |
+| `MANUAL`                  | Alguien apretó "marcar como corregido" y Softland confirmó el reproceso (flujos 1 y 4). |
+| `VERIFICACION_AUTOMATICA` | Se arregló por afuera; lo detectó este flujo. Nadie tocó el tablero. |
+| `null`                    | El error está abierto (o se reabrió).                        |
+
+No hay un campo `en_reproceso`: `estadoApp = REPROCESANDO` ya lo dice, y
+duplicarlo sería una segunda fuente de verdad que puede quedar desfasada.
+
 ## Lectura (front)
 
 | Método | Ruta                            | Devuelve                                                     |
@@ -115,6 +194,7 @@ sin array, para los flujos que mapean campo por campo y no recorren listas.
 | GET    | `/errores/agrupados`            | `[{ empresa, totalErrores, totalesPorModulo, modulos[] }]`. |
 | GET    | `/errores/integracion/reproceso-pendientes` | Reprocesos en curso para el integrador (`x-api-key`). |
 | GET    | `/errores/integracion/reproceso-pendiente` | Ídem pero de a uno, el más viejo (o `null`). |
+| GET    | `/errores/integracion/verificacion-pendientes` | Claves a verificar contra Softland (`x-api-key`). |
 | GET    | `/errores/:id`                  | Detalle + observaciones + trazabilidad + intentos.          |
 | GET    | `/empresas`                     | `[{ id, nombre }]`.                                         |
 | GET    | `/dashboard/stats`              | Métricas del dashboard (`DashboardStats`).                  |
@@ -139,7 +219,8 @@ Filtros (query params) para `/errores` y `/errores/agrupados`: `empresa`,
 El token dura 8 h y se manda como `Authorization: Bearer <token>` en todos los
 endpoints del front (`/errores*`, `/empresas`, `/dashboard/stats`, `/historial`,
 `/users`). Los endpoints de n8n (`/errores/sync`, `/errores/sync-batch`,
-`/errores/resultado-reproceso`) siguen con `x-api-key`, no con JWT.
+`/errores/resultado-reproceso`, `/errores/verificacion`) siguen con
+`x-api-key`, no con JWT.
 
 Las contraseñas se guardan con **scrypt** (`node:crypto`, sin dependencias
 nativas) en formato `salt:hash`. `JWT_SECRET` es obligatorio si
@@ -165,7 +246,8 @@ Quién hace cada acción sale del JWT (`Authorization: Bearer`), no del body.
 
 `TransaccionError` (empresa + modulo + identi como clave natural) con
 `estadoApp`, `statusSoftland`, `errorMensaje`, `intentos`, `fechaCorreccion`,
-`fechaDeteccion`, `fechaResolucion`, y `corregidoPorId` (FK a `Usuario`) +
+`fechaDeteccion`, `fechaResolucion`, `origenCierre` (`MANUAL` |
+`VERIFICACION_AUTOMATICA`), `ultimaVerificacionAt`, y `corregidoPorId` (FK a `Usuario`) +
 `corregidoPorNombre` (snapshot que sobrevive si el usuario cambia de nombre).
 `ErrorIntento` (histórico de reprocesos: `numeroIntento`, `statusAntes`,
 `statusDespues`, `usuarioId`, `usuarioNombre`, `observacion`, `cerradoAt`).
@@ -179,9 +261,9 @@ src/
   errores/
     dto/                      Contratos HTTP y validación
     pipes/                    Normalización del payload de sincronización
-    sync.controller.ts        POST /errores/sync, POST /errores/resultado-reproceso
+    sync.controller.ts        Rutas del integrador (x-api-key): sync, resultado-reproceso, verificacion
     errores.controller.ts     GET de lectura + PATCH/POST de mutación
-    errores.service.ts        Lógica de los 4 flujos + armado por empresa/módulo
+    errores.service.ts        Lógica de los flujos + armado por empresa/módulo
     errores.repository.ts     Acceso a datos (Prisma)
     errores.mapper.ts         Normalización de módulo + forma para el front
   auth/                       /auth/registro, /auth/login, /auth/me
@@ -192,5 +274,5 @@ prisma/schema.prisma          Modelo
 ## Tests
 
 ```bash
-npm test        # sync (idempotencia, reproceso), resultado-reproceso, mapper — sin DB
+npm test        # sync, reproceso, verificación y mapper — sin DB
 ```

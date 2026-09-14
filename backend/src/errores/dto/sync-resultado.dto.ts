@@ -33,3 +33,30 @@ export interface ResultadoReprocesoResultadoDto {
   statusSoftland: string;
   mensaje: string;
 }
+
+/** Una clave a verificar (GET /errores/integracion/verificacion-pendientes). */
+export interface VerificacionPendienteDto {
+  id: string;
+  empresa: string;
+  modulo: string;
+  /** Texto crudo de Softland ("3. Compras"): sirve para elegir la tabla. */
+  moduloOrigen: string;
+  identi: string;
+  /** Último status conocido por la app, para comparar. */
+  statusConocido: string;
+  /** ISO o null si nunca se verificó. */
+  ultimaVerificacion: string | null;
+}
+
+/** Resultado de POST /errores/verificacion (flujo 5). */
+export interface VerificacionResultadoDto {
+  ok: boolean;
+  estadoApp: string;
+  /** Lo que reportó el integrador; null = la consulta no devolvió filas. */
+  statusSoftland: string | null;
+  /** true si esta verificación cerró el error. */
+  cerrado: boolean;
+  /** true si esta verificación reabrió un error que estaba RESUELTO. */
+  reabierto: boolean;
+  mensaje: string;
+}

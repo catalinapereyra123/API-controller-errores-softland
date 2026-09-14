@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import type { Modulo, Prisma } from '../../generated/prisma/client';
-import { ESTADOS_ABIERTOS } from './errores.mapper';
+import { ESTADOS_ABIERTOS, ESTADOS_VERIFICABLES } from './errores.mapper';
 
 type Db = PrismaService | Prisma.TransactionClient;
 
@@ -124,6 +124,37 @@ export class ErroresRepository {
         presenteEnUltimaSync: false,
         reprocesoDesaparecioAt: null,
       },
+    });
+  }
+
+  // ---------- Verificación (flujo 5) ----------
+
+  /**
+   * Claves que tiene que verificar el flujo 5: errores abiertos sin reproceso
+   * en curso. Devuelve sólo lo necesario para consultar Softland, no el
+   * detalle completo.
+   *
+   * Ordena por la verificación más vieja primero (las que nunca se
+   * verificaron, antes que todo): así una corrida con `limite` recorre la
+   * bandeja entera en vez de repetir siempre los mismos registros.
+   */
+  listarParaVerificar(limite?: number) {
+    return this.prisma.transaccionError.findMany({
+      where: { estadoApp: { in: ESTADOS_VERIFICABLES } },
+      select: {
+        id: true,
+        empresaCodigo: true,
+        modulo: true,
+        moduloOrigen: true,
+        identi: true,
+        statusSoftland: true,
+        ultimaVerificacionAt: true,
+      },
+      orderBy: [
+        { ultimaVerificacionAt: { sort: 'asc', nulls: 'first' } },
+        { fechaDeteccion: 'asc' },
+      ],
+      ...(limite ? { take: limite } : {}),
     });
   }
 

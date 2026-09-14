@@ -5,7 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import type { Prisma, TransaccionError } from '../../generated/prisma/client';
-import { EstadoApp, Modulo } from '../../generated/prisma/client';
+import { EstadoApp, Modulo, OrigenCierre } from '../../generated/prisma/client';
 import {
   AsignarDto,
   CambiarEstadoDto,
@@ -14,9 +14,12 @@ import {
 } from './dto/mutaciones.dto';
 import { ResultadoReprocesoDto } from './dto/resultado-reproceso.dto';
 import { SyncErrorDto } from './dto/sync-error.dto';
+import { VerificacionDto } from './dto/verificacion.dto';
 import {
   ResultadoReprocesoResultadoDto,
   SyncResultadoDto,
+  VerificacionPendienteDto,
+  VerificacionResultadoDto,
 } from './dto/sync-resultado.dto';
 import { QueryErroresDto } from './dto/query-errores.dto';
 import { HistorialDiaDto } from './dto/historial.dto';
@@ -160,6 +163,7 @@ export class ErroresService {
         if (enReproceso && esOk) {
           data.estadoApp = EstadoApp.RESUELTO;
           data.fechaResolucion = ahora;
+          data.origenCierre = OrigenCierre.MANUAL;
           evento = {
             tipo: 'reproceso',
             titulo: 'Reproceso confirmado',
@@ -179,6 +183,7 @@ export class ErroresService {
         } else if (estabaResuelto && esError) {
           data.estadoApp = EstadoApp.ERROR;
           data.fechaResolucion = null;
+          data.origenCierre = null;
           evento = {
             tipo: 'error',
             titulo: 'El error volvió a aparecer en Softland',
@@ -272,6 +277,7 @@ export class ErroresService {
         id,
         {
           estadoApp: EstadoApp.REPROCESANDO,
+          origenCierre: null,
           ...(autor.id
             ? { corregidoPor: { connect: { id: autor.id } } }
             : { corregidoPor: { disconnect: true } }),
@@ -420,6 +426,7 @@ export class ErroresService {
     if (esOk) {
       data.estadoApp = EstadoApp.RESUELTO;
       data.fechaResolucion = new Date();
+      data.origenCierre = OrigenCierre.MANUAL;
       data.reprocesoDesaparecioAt = null;
       evento = {
         tipo: 'reproceso',
@@ -429,6 +436,7 @@ export class ErroresService {
     } else {
       data.estadoApp = EstadoApp.REQUIERE_CORRECCION;
       data.errorMensaje = dto.error ?? t.errorMensaje;
+      data.origenCierre = null;
       data.reprocesoDesaparecioAt = null;
       evento = {
         tipo: 'error',
@@ -450,6 +458,200 @@ export class ErroresService {
       mensaje: esOk
         ? 'Marcado como RESUELTO.'
         : 'Marcado como REQUIERE_CORRECCION.',
+    };
+  }
+
+  // ==========================================================================
+  //  FLUJO 5 — VERIFICACIÓN PERIÓDICA (cierra lo que se arregló por afuera)
+  //  En la especificación figura como "FSOF-0003 · verificación de resueltos".
+  // ==========================================================================
+
+  /**
+   * Claves que el integrador tiene que consultar en Softland: errores abiertos
+   * sin reproceso en curso. Sólo la clave — el detalle no hace falta para el
+   * chequeo.
+   *
+   * `limite` corta la corrida (p. ej. 200 por vez). Como el orden es "lo menos
+   * verificado primero", la corrida siguiente arranca por donde quedó ésta.
+   */
+  async verificacionPendientes(
+    limite?: number,
+  ): Promise<VerificacionPendienteDto[]> {
+    const items = await this.repo.listarParaVerificar(limite);
+    return items.map((t) => ({
+      id: t.id,
+      empresa: t.empresaCodigo,
+      modulo: t.modulo,
+      moduloOrigen: t.moduloOrigen,
+      identi: t.identi,
+      statusConocido: t.statusSoftland,
+      ultimaVerificacion: t.ultimaVerificacionAt?.toISOString() ?? null,
+    }));
+  }
+
+  /**
+   * El integrador reporta qué status tiene hoy esa transacción en Softland.
+   * Nada de esto escribe en Softland: es solo lectura del lado de las empresas.
+   *
+   *  - sin status (la consulta no devolvió filas) => sólo queda la marca de
+   *    verificación. Que no figure NO prueba que se haya resuelto.
+   *  - REPROCESANDO => no se toca: lo cierra POST /errores/resultado-reproceso.
+   *  - DESCARTADO   => se guarda el status, pero no vuelve a la bandeja.
+   *  - S            => se cierra con origen VERIFICACION_AUTOMATICA.
+   *  - E/D/B/X      => sigue abierto; y si estaba RESUELTO, se reabre.
+   *  - N o un status desconocido => sólo la marca de verificación.
+   */
+  async registrarVerificacion(
+    dto: VerificacionDto,
+  ): Promise<VerificacionResultadoDto> {
+    const modulo = parseModulo(dto.modulo);
+    const t = await this.repo.buscarPorOrigen(dto.empresa, modulo, dto.identi);
+    if (!t) {
+      throw new NotFoundException(
+        `No existe el error ${dto.empresa} / ${dto.modulo} / ${dto.identi}`,
+      );
+    }
+
+    const ahora = new Date();
+    const status = dto.statusSoftland ?? null;
+
+    /** Deja constancia de que se revisó, sin tocar el estado de gestión. */
+    const soloVerificar = async (
+      mensaje: string,
+      extra: Prisma.TransaccionErrorUpdateInput = {},
+    ): Promise<VerificacionResultadoDto> => {
+      await this.repo.actualizarTransaccion(t.id, {
+        ultimaVerificacionAt: ahora,
+        ...extra,
+      });
+      return {
+        ok: true,
+        estadoApp: t.estadoApp,
+        statusSoftland: status,
+        cerrado: false,
+        reabierto: false,
+        mensaje,
+      };
+    };
+
+    if (!status) {
+      return soloVerificar(
+        'La consulta no devolvió filas: se registró la verificación sin cerrar el error.',
+      );
+    }
+
+    if (t.estadoApp === EstadoApp.REPROCESANDO) {
+      return soloVerificar(
+        'Tiene un reproceso en curso: el resultado lo reporta POST /errores/resultado-reproceso.',
+      );
+    }
+
+    if (t.estadoApp === EstadoApp.DESCARTADO) {
+      return soloVerificar(
+        'Está descartado: se guardó el status sin cambiar el estado.',
+        { statusSoftland: status },
+      );
+    }
+
+    if (status === 'N') {
+      return soloVerificar('En cola en Softland (status N), sin cambios.', {
+        statusSoftland: status,
+      });
+    }
+
+    if (statusEsError(status)) {
+      // Sigue fallando. Si ya estaba cerrado, se reabre: no se silencia.
+      if (t.estadoApp !== EstadoApp.RESUELTO) {
+        return soloVerificar(`Sigue en error (status ${status}).`, {
+          statusSoftland: status,
+          ...(dto.error ? { errorMensaje: dto.error } : {}),
+        });
+      }
+
+      const cerradoPor =
+        t.origenCierre === OrigenCierre.VERIFICACION_AUTOMATICA
+          ? 'la verificación automática'
+          : 'un reproceso';
+
+      await this.repo.transaction(async (tx) => {
+        await this.repo.actualizarTransaccion(
+          t.id,
+          {
+            estadoApp: EstadoApp.ERROR,
+            statusSoftland: status,
+            ...(dto.error ? { errorMensaje: dto.error } : {}),
+            fechaResolucion: null,
+            origenCierre: null,
+            ultimaVerificacionAt: ahora,
+          },
+          tx,
+        );
+        await this.repo.crearEvento(
+          {
+            transaccionId: t.id,
+            tipo: 'error',
+            titulo: 'El error volvió a fallar en Softland',
+            detalle: `Estaba cerrado por ${cerradoPor} y hoy figura en status ${status}.`,
+          },
+          tx,
+        );
+      });
+
+      return {
+        ok: true,
+        estadoApp: EstadoApp.ERROR,
+        statusSoftland: status,
+        cerrado: false,
+        reabierto: true,
+        mensaje: 'Volvió a fallar: se reabrió el error.',
+      };
+    }
+
+    if (status !== 'S') {
+      // Un status que no conocemos no es prueba de que Softland lo procesó
+      // bien; se registra y se deja abierto.
+      this.logger.warn(
+        `Verificación de ${dto.empresa}/${dto.identi}: status desconocido "${status}", no se cierra.`,
+      );
+      return soloVerificar(
+        `Status desconocido ("${status}"): se registró la verificación sin cerrar el error.`,
+        { statusSoftland: status },
+      );
+    }
+
+    // Status S y nadie tocó el botón: se arregló por afuera => cierre automático.
+    await this.repo.transaction(async (tx) => {
+      await this.repo.actualizarTransaccion(
+        t.id,
+        {
+          estadoApp: EstadoApp.RESUELTO,
+          statusSoftland: status,
+          fechaResolucion: ahora,
+          origenCierre: OrigenCierre.VERIFICACION_AUTOMATICA,
+          ultimaVerificacionAt: ahora,
+        },
+        tx,
+      );
+      await this.cerrarIntentoAbierto(t.id, status, tx);
+      await this.repo.crearEvento(
+        {
+          transaccionId: t.id,
+          tipo: 'reproceso',
+          titulo: 'Resuelto fuera de la app',
+          detalle:
+            'La verificación automática encontró status S en Softland. No se pidió el reproceso desde el tablero.',
+        },
+        tx,
+      );
+    });
+
+    return {
+      ok: true,
+      estadoApp: EstadoApp.RESUELTO,
+      statusSoftland: status,
+      cerrado: true,
+      reabierto: false,
+      mensaje: 'Resuelto en Softland: se cerró por verificación automática.',
     };
   }
 
@@ -683,7 +885,10 @@ export class ErroresService {
 
     const data: Prisma.TransaccionErrorUpdateInput = { estadoApp: dto.estado };
     // Reabrir un RESUELTO a mano (p. ej. a EN_PROGRESO) limpia la resolución.
-    if (t.estadoApp === EstadoApp.RESUELTO) data.fechaResolucion = null;
+    if (t.estadoApp === EstadoApp.RESUELTO) {
+      data.fechaResolucion = null;
+      data.origenCierre = null;
+    }
     const reabre =
       t.estadoApp === EstadoApp.DESCARTADO &&
       dto.estado !== EstadoApp.DESCARTADO;

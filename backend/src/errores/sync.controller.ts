@@ -4,12 +4,14 @@ import {
   Get,
   HttpCode,
   Post,
+  Query,
   UseGuards,
 } from '@nestjs/common';
 import { ApiKeyGuard } from '../common/api-key.guard';
 import { ResultadoReprocesoDto } from './dto/resultado-reproceso.dto';
 import { SyncErrorDto } from './dto/sync-error.dto';
 import { SyncRequestDto } from './dto/sync-request.dto';
+import { VerificacionDto } from './dto/verificacion.dto';
 import { ErroresService } from './errores.service';
 import { SyncRequestPipe } from './pipes/sync-request.pipe';
 
@@ -25,6 +27,13 @@ import { SyncRequestPipe } from './pipes/sync-request.pipe';
  *   iFlow consulta qué transacciones esperan ser enviadas a Softland. El
  *   segmento `integracion/` no es decorativo: sin él la ruta la captura el
  *   `GET /errores/:id` de ErroresController (que pide JWT) y devuelve 401.
+ *
+ * Flujo 5 (verificación periódica) — GET /errores/integracion/verificacion-pendientes
+ *   Claves de los errores abiertos que hay que chequear contra Softland, y
+ *   POST /errores/verificacion para reportar el status encontrado. Sirve para
+ *   cerrar los errores que se arreglaron por fuera de la app. Igual que arriba,
+ *   el GET necesita el segmento `integracion/` para no chocar con
+ *   `GET /errores/:id`.
  *
  * Flujo 4 — POST /errores/resultado-reproceso
  *   Body: { empresa, modulo, identi, statusSoftland, error? }
@@ -48,6 +57,25 @@ export class SyncController {
   @Get('integracion/reproceso-pendiente')
   reprocesoPendiente() {
     return this.service.reprocesoPendiente();
+  }
+
+  /**
+   * Flujo 5, paso 1. `?limite=200` corta la corrida; como se sirve "lo menos
+   * verificado primero", la siguiente sigue por donde quedó ésta.
+   */
+  @Get('integracion/verificacion-pendientes')
+  verificacionPendientes(@Query('limite') limite?: string) {
+    const n = Number(limite);
+    return this.service.verificacionPendientes(
+      Number.isInteger(n) && n > 0 ? n : undefined,
+    );
+  }
+
+  /** Flujo 5, paso 3: el status que el integrador encontró en Softland. */
+  @Post('verificacion')
+  @HttpCode(200)
+  verificacion(@Body() dto: VerificacionDto) {
+    return this.service.registrarVerificacion(dto);
   }
 
   @Post('sync')

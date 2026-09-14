@@ -33,6 +33,13 @@ enum EstadoApp {
   DESCARTADO // no interesa (p. ej. restos de pruebas): sale de la bandeja y no se reprocesa
 }
 
+/// Cómo se cerró un error (estadoApp = RESUELTO). Distingue el cierre que
+/// disparó una persona del que detectó la verificación periódica (flujo 5).
+enum OrigenCierre {
+  MANUAL // alguien apretó "marcar como corregido" y Softland confirmó el reproceso
+  VERIFICACION_AUTOMATICA // se arregló por fuera de la app; lo detectó la verificación
+}
+
 model Empresa {
   codigo        String             @id
   nombre        String
@@ -84,6 +91,12 @@ model TransaccionError {
   fechaCorreccion     DateTime? // cuándo se mandó a reprocesar (Softland -> 'N')
   reprocesoNotificadoAt DateTime? // n8n confirmó (200) el webhook; null + fechaCorreccion => reintentar
   reprocesoDesaparecioAt DateTime? // ALARMA: estaba REPROCESANDO y dejó de figurar en el sync sin verificación
+
+  // --- Verificación (flujo 5: cierre automático) ---
+  /// Sólo se completa al pasar a RESUELTO; se limpia si el error se reabre.
+  origenCierre         OrigenCierre?
+  /// Última vez que se confirmó el status contra Softland, aunque siga en error.
+  ultimaVerificacionAt DateTime?
 
   // --- Fechas / sync ---
   fechaDeteccion       DateTime  @default(now())

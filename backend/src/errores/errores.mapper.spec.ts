@@ -60,6 +60,8 @@ describe('toErrorTransaccion', () => {
     fechaCorreccion: null,
     reprocesoNotificadoAt: null,
     reprocesoDesaparecioAt: null,
+    origenCierre: null,
+    ultimaVerificacionAt: null,
     fechaResolucion: null,
     fechaDeteccion: new Date('2026-08-28T15:00:00Z'),
     ultimaDeteccion: new Date('2026-08-28T18:00:00Z'),

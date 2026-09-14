@@ -52,6 +52,8 @@ class FakeRepo {
       fechaResolucion: null,
       reprocesoNotificadoAt: null,
       reprocesoDesaparecioAt: null,
+      origenCierre: null,
+      ultimaVerificacionAt: null,
       ...data,
       empresaCodigo: data.empresa.connect.codigo,
     };
@@ -145,6 +147,15 @@ class FakeRepo {
         where?.estadoApp ? t.estadoApp === where.estadoApp : true,
       ),
     );
+
+  listarParaVerificar = (limite?: number) => {
+    const abiertos = this.transacciones.filter((t) =>
+      ['ERROR', 'ASIGNADO', 'EN_PROGRESO', 'REQUIERE_CORRECCION'].includes(
+        t.estadoApp,
+      ),
+    );
+    return Promise.resolve(limite ? abiertos.slice(0, limite) : abiertos);
+  };
 
   buscarUsuario = () => Promise.resolve(null);
 }
@@ -500,5 +511,202 @@ describe('ErroresService — DESCARTADO', () => {
     expect(repo.transacciones[0].estadoApp).toBe('DESCARTADO');
     expect(repo.transacciones[0].statusSoftland).toBe('E');
     expect(repo.intentos[0].statusDespues).toBe('E');
+  });
+});
+
+describe('ErroresService — verificación (flujo 5)', () => {
+  let service: ErroresService;
+  let repo: FakeRepo;
+
+  const ultimoEvento = (): any => repo.eventos[repo.eventos.length - 1];
+  const clave = {
+    empresa: 'AMCARG',
+    modulo: '3. Compras',
+    identi: 'LIQ100',
+  };
+
+  beforeEach(async () => {
+    repo = new FakeRepo();
+    const moduleRef = await Test.createTestingModule({
+      providers: [
+        ErroresService,
+        { provide: ErroresRepository, useValue: repo },
+      ],
+    }).compile();
+    service = moduleRef.get(ErroresService);
+    delete process.env.N8N_REPROCESO_WEBHOOK_URL;
+  });
+
+  it('sirve la clave de los errores abiertos, sin el detalle', async () => {
+    await service.sync([registro()]);
+
+    const pendientes = await service.verificacionPendientes();
+
+    expect(pendientes).toHaveLength(1);
+    expect(pendientes[0]).toMatchObject({
+      empresa: 'AMCARG',
+      modulo: 'COMPRAS',
+      moduloOrigen: '3. Compras',
+      identi: 'LIQ100',
+      statusConocido: 'E',
+      ultimaVerificacion: null,
+    });
+  });
+
+  it('no ofrece a verificar lo que tiene un reproceso en curso', async () => {
+    await service.sync([registro()]);
+    await service.solicitarReproceso('t1', {});
+
+    expect(await service.verificacionPendientes()).toHaveLength(0);
+  });
+
+  it('status S => RESUELTO por verificación automática, sin intento de reproceso', async () => {
+    await service.sync([registro()]);
+
+    const res = await service.registrarVerificacion({
+      ...clave,
+      statusSoftland: 'S',
+    });
+
+    expect(res).toMatchObject({ cerrado: true, reabierto: false });
+    expect(repo.transacciones[0].estadoApp).toBe('RESUELTO');
+    expect(repo.transacciones[0].origenCierre).toBe('VERIFICACION_AUTOMATICA');
+    expect(repo.transacciones[0].fechaResolucion).toBeInstanceOf(Date);
+    expect(repo.transacciones[0].ultimaVerificacionAt).toBeInstanceOf(Date);
+    expect(repo.intentos).toHaveLength(0);
+    expect(ultimoEvento()).toMatchObject({
+      titulo: 'Resuelto fuera de la app',
+    });
+  });
+
+  it('un cierre por reproceso queda marcado como MANUAL, no como automático', async () => {
+    await service.sync([registro()]);
+    await service.solicitarReproceso('t1', {});
+
+    await service.registrarResultadoReproceso({
+      ...clave,
+      statusSoftland: 'S',
+    });
+
+    expect(repo.transacciones[0].estadoApp).toBe('RESUELTO');
+    expect(repo.transacciones[0].origenCierre).toBe('MANUAL');
+  });
+
+  it('sigue en E => no se toca, sólo queda la marca de verificación', async () => {
+    await service.sync([registro()]);
+    const eventosAntes = repo.eventos.length;
+
+    const res = await service.registrarVerificacion({
+      ...clave,
+      statusSoftland: 'E',
+    });
+
+    expect(res).toMatchObject({ cerrado: false, reabierto: false });
+    expect(repo.transacciones[0].estadoApp).toBe('ERROR');
+    expect(repo.transacciones[0].ultimaVerificacionAt).toBeInstanceOf(Date);
+    expect(repo.eventos).toHaveLength(eventosAntes);
+  });
+
+  it('sin status (la consulta no devolvió filas) NO cierra el error', async () => {
+    await service.sync([registro()]);
+
+    const res = await service.registrarVerificacion({
+      ...clave,
+      statusSoftland: null,
+    });
+
+    expect(res.cerrado).toBe(false);
+    expect(repo.transacciones[0].estadoApp).toBe('ERROR');
+    expect(repo.transacciones[0].ultimaVerificacionAt).toBeInstanceOf(Date);
+  });
+
+  it('status N => sigue en cola, sin cambios de estado', async () => {
+    await service.sync([registro()]);
+
+    const res = await service.registrarVerificacion({
+      ...clave,
+      statusSoftland: 'N',
+    });
+
+    expect(res.cerrado).toBe(false);
+    expect(repo.transacciones[0].estadoApp).toBe('ERROR');
+    expect(repo.transacciones[0].statusSoftland).toBe('N');
+  });
+
+  it('un status desconocido no cierra nada', async () => {
+    await service.sync([registro()]);
+
+    const res = await service.registrarVerificacion({
+      ...clave,
+      statusSoftland: 'Z',
+    });
+
+    expect(res.cerrado).toBe(false);
+    expect(repo.transacciones[0].estadoApp).toBe('ERROR');
+  });
+
+  it('no pisa un reproceso en curso: ese lo cierra el flujo 4', async () => {
+    await service.sync([registro()]);
+    await service.solicitarReproceso('t1', {});
+
+    const res = await service.registrarVerificacion({
+      ...clave,
+      statusSoftland: 'S',
+    });
+
+    expect(res.cerrado).toBe(false);
+    expect(repo.transacciones[0].estadoApp).toBe('REPROCESANDO');
+    expect(repo.transacciones[0].origenCierre).toBeNull();
+  });
+
+  it('un DESCARTADO no vuelve a la bandeja ni se cierra', async () => {
+    await service.sync([registro()]);
+    await service.cambiarEstado('t1', { estado: 'DESCARTADO' });
+
+    const res = await service.registrarVerificacion({
+      ...clave,
+      statusSoftland: 'S',
+    });
+
+    expect(res.cerrado).toBe(false);
+    expect(repo.transacciones[0].estadoApp).toBe('DESCARTADO');
+    expect(repo.transacciones[0].origenCierre).toBeNull();
+  });
+
+  it('reabre lo que se había cerrado solo y volvió a fallar', async () => {
+    await service.sync([registro()]);
+    await service.registrarVerificacion({ ...clave, statusSoftland: 'S' });
+
+    const res = await service.registrarVerificacion({
+      ...clave,
+      statusSoftland: 'E',
+      error: 'Volvió a fallar',
+    });
+
+    expect(res).toMatchObject({ reabierto: true, cerrado: false });
+    expect(repo.transacciones[0].estadoApp).toBe('ERROR');
+    expect(repo.transacciones[0].origenCierre).toBeNull();
+    expect(repo.transacciones[0].fechaResolucion).toBeNull();
+    expect(repo.transacciones[0].errorMensaje).toBe('Volvió a fallar');
+    expect(ultimoEvento()).toMatchObject({
+      titulo: 'El error volvió a fallar en Softland',
+    });
+  });
+
+  it('el sync también limpia el origen al reabrir un cierre automático', async () => {
+    await service.sync([registro()]);
+    await service.registrarVerificacion({ ...clave, statusSoftland: 'S' });
+
+    const res = await service.sync([registro()]);
+
+    expect(res.reaparecidos).toBe(1);
+    expect(repo.transacciones[0].estadoApp).toBe('ERROR');
+    expect(repo.transacciones[0].origenCierre).toBeNull();
+  });
+
+  it('404 si la clave no existe en la app', async () => {
+    await expect(
+      service.registrarVerificacion({ ...clave, statusSoftland: 'S' }),
+    ).rejects.toThrow(/No existe/i);
   });
 });

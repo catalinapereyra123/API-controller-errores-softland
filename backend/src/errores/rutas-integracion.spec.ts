@@ -28,6 +28,25 @@ describe('Rutas del integrador vs. /errores/:id', () => {
       notificado: false,
       intentos: 1,
     }),
+    verificacionPendientes: jest.fn().mockResolvedValue([
+      {
+        id: 'clx9',
+        empresa: 'PAE',
+        modulo: 'FACTURACION',
+        moduloOrigen: '1. Facturacion',
+        identi: 'F2H5077',
+        statusConocido: 'E',
+        ultimaVerificacion: null,
+      },
+    ]),
+    registrarVerificacion: jest.fn().mockResolvedValue({
+      ok: true,
+      estadoApp: 'RESUELTO',
+      statusSoftland: 'S',
+      cerrado: true,
+      reabierto: false,
+      mensaje: 'Resuelto en Softland: se cerró por verificación automática.',
+    }),
     detalle: jest.fn().mockResolvedValue({ id: 'abc123' }),
   };
 
@@ -106,5 +125,64 @@ describe('Rutas del integrador vs. /errores/:id', () => {
     expect(res.status).toBe(401);
     const body = res.body as { message?: string };
     expect(body.message).toBe('Falta el token de sesión.');
+  });
+  it('la lista a verificar entra con x-api-key y sin JWT', async () => {
+    const res = await request(app.getHttpServer())
+      .get('/errores/integracion/verificacion-pendientes')
+      .set('x-api-key', 'clave-de-prueba');
+
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual([
+      {
+        id: 'clx9',
+        empresa: 'PAE',
+        modulo: 'FACTURACION',
+        moduloOrigen: '1. Facturacion',
+        identi: 'F2H5077',
+        statusConocido: 'E',
+        ultimaVerificacion: null,
+      },
+    ]);
+  });
+
+  it('?limite llega como número al service', async () => {
+    await request(app.getHttpServer())
+      .get('/errores/integracion/verificacion-pendientes?limite=200')
+      .set('x-api-key', 'clave-de-prueba');
+
+    expect(service.verificacionPendientes).toHaveBeenCalledWith(200);
+  });
+
+  it('sin ?limite no se inventa un tope', async () => {
+    await request(app.getHttpServer())
+      .get('/errores/integracion/verificacion-pendientes')
+      .set('x-api-key', 'clave-de-prueba');
+
+    expect(service.verificacionPendientes).toHaveBeenCalledWith(undefined);
+  });
+
+  it('el POST de verificación también va por x-api-key', async () => {
+    const res = await request(app.getHttpServer())
+      .post('/errores/verificacion')
+      .set('x-api-key', 'clave-de-prueba')
+      .send({
+        empresa: 'PAE',
+        modulo: '1. Facturacion',
+        identi: 'F2H5077',
+        statusSoftland: 'S',
+      });
+
+    expect(res.status).toBe(200);
+    expect(res.body).toMatchObject({ ok: true, cerrado: true });
+  });
+
+  it('la verificación sin x-api-key corta en el ApiKeyGuard', async () => {
+    const res = await request(app.getHttpServer())
+      .post('/errores/verificacion')
+      .send({ empresa: 'PAE', modulo: '1. Facturacion', identi: 'F2H5077' });
+
+    expect(res.status).toBe(401);
+    const body = res.body as { message?: string };
+    expect(String(body.message)).toMatch(/API key/i);
   });
 });

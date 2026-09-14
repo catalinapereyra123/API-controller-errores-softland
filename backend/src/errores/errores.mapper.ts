@@ -6,7 +6,7 @@ import type {
   TransaccionError,
   Usuario,
 } from '../../generated/prisma/client';
-import { EstadoApp, Modulo } from '../../generated/prisma/client';
+import { EstadoApp, Modulo, OrigenCierre } from '../../generated/prisma/client';
 
 /** Etiqueta legible por módulo (la que muestra el front). */
 export const MODULO_LABEL: Record<Modulo, string> = {
@@ -34,6 +34,17 @@ export const ESTADOS_ABIERTOS: EstadoApp[] = [
   EstadoApp.REPROCESANDO,
   EstadoApp.REQUIERE_CORRECCION,
 ];
+
+/**
+ * Estados que verifica el flujo 5 contra Softland: los abiertos MENOS
+ * REPROCESANDO. Un reproceso en curso lo resuelve el flujo 2/4 (que sabe que
+ * el status 'N' es transitorio); si los dos tocaran el mismo registro se
+ * pisarían. Esto reemplaza al `en_reproceso` booleano de la especificación:
+ * el estado ya lo dice, y duplicarlo sería una segunda fuente de verdad.
+ */
+export const ESTADOS_VERIFICABLES: EstadoApp[] = ESTADOS_ABIERTOS.filter(
+  (e) => e !== EstadoApp.REPROCESANDO,
+);
 
 /**
  * Estados que se pueden setear a mano desde la app (PATCH /errores/:id/estado).
@@ -134,6 +145,12 @@ export function toErrorTransaccion(t: TransaccionConRelaciones) {
     fechaResolucion: t.fechaResolucion ? t.fechaResolucion.toISOString() : null,
     ultimaDeteccion: t.ultimaDeteccion.toISOString(),
     presenteEnUltimaSync: t.presenteEnUltimaSync,
+    origenCierre: t.origenCierre,
+    cerradoAutomaticamente:
+      t.origenCierre === OrigenCierre.VERIFICACION_AUTOMATICA,
+    ultimaVerificacion: t.ultimaVerificacionAt
+      ? t.ultimaVerificacionAt.toISOString()
+      : null,
   };
 }
 
