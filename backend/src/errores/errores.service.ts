@@ -16,6 +16,7 @@ import { ResultadoReprocesoDto } from './dto/resultado-reproceso.dto';
 import { SyncErrorDto } from './dto/sync-error.dto';
 import { VerificacionDto } from './dto/verificacion.dto';
 import {
+  ReprocesoPendienteDto,
   ResultadoReprocesoResultadoDto,
   SyncResultadoDto,
   VerificacionPendienteDto,
@@ -341,15 +342,34 @@ export class ErroresService {
   }
 
   /**
-   * Lo mismo pero de a uno: el pendiente más viejo (FIFO), o `null` si no hay
-   * ninguno. Es el que consume el flujo 2 de iFlow, que mapea campos sueltos a
+   * Lo mismo pero de a uno: el pendiente más viejo (FIFO) que todavía no se
+   * pasó a N. Es el que consume el flujo 2 de iFlow, que mapea campos sueltos a
    * la query y no sabe recorrer un array.
+   *
+   * El error sigue en REPROCESANDO hasta que llega el resultado final, así que
+   * sin el filtro por `reprocesoNotificadoAt` devolvería siempre el mismo y la
+   * cola no avanzaría. Nunca devuelve null: Nest lo manda como 200 sin body y
+   * iFlow no lo acepta.
    */
-  async reprocesoPendiente() {
+  async reprocesoPendiente(): Promise<ReprocesoPendienteDto> {
     const t = await this.repo.primerPendiente({
       estadoApp: EstadoApp.REPROCESANDO,
+      reprocesoNotificadoAt: null,
     });
-    return t ? this.aPendiente(t) : null;
+    if (!t) {
+      return {
+        hayPendiente: false,
+        id: null,
+        empresa: null,
+        modulo: null,
+        moduloOrigen: null,
+        identi: null,
+        solicitadoEn: null,
+        notificado: null,
+        intentos: null,
+      };
+    }
+    return { hayPendiente: true, ...this.aPendiente(t) };
   }
 
   /** Forma que ve el integrador: la clave de Softland + contexto del intento. */
@@ -380,12 +400,40 @@ export class ErroresService {
       );
     }
 
+    // N = Softland lo tiene en cola pero todavía no hay resultado: sigue
+    // REPROCESANDO y el intento queda abierto. La primera vez se registra que
+    // ya se pasó a N, para que GET reproceso-pendiente pase al siguiente.
     if (dto.statusSoftland === 'N') {
+      const primeraVez =
+        t.estadoApp === EstadoApp.REPROCESANDO &&
+        t.reprocesoNotificadoAt === null;
+
+      if (primeraVez) {
+        await this.repo.transaction(async (tx) => {
+          await this.repo.actualizarTransaccion(
+            t.id,
+            { reprocesoNotificadoAt: new Date() },
+            tx,
+          );
+          await this.repo.crearEvento(
+            {
+              transaccionId: t.id,
+              tipo: 'reproceso',
+              titulo: 'Enviado a reprocesar en Softland',
+              detalle: 'Quedó en status N. Falta el resultado del reproceso.',
+            },
+            tx,
+          );
+        });
+      }
+
       return {
         ok: true,
         estadoApp: t.estadoApp,
         statusSoftland: 'N',
-        mensaje: 'Sigue en cola (status N), sin cambios.',
+        mensaje: primeraVez
+          ? 'En cola en Softland (status N): ya no sale como pendiente.'
+          : 'Sigue en cola (status N), sin cambios.',
       };
     }
 

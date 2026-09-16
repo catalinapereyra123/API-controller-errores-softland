@@ -26,6 +26,23 @@ export interface SyncResultadoDto {
   procesadoEn: string;
 }
 
+/**
+ * Respuesta de GET /errores/integracion/reproceso-pendiente (flujo 2).
+ * Siempre trae los mismos campos: iFlow no acepta un 200 sin body. Si no hay
+ * nada para pasar a N, `hayPendiente` es false y el resto viene en null.
+ */
+export interface ReprocesoPendienteDto {
+  hayPendiente: boolean;
+  id: string | null;
+  empresa: string | null;
+  modulo: string | null;
+  moduloOrigen: string | null;
+  identi: string | null;
+  solicitadoEn: string | null;
+  notificado: boolean | null;
+  intentos: number | null;
+}
+
 /** Resultado de POST /errores/resultado-reproceso (flujo 4 de n8n). */
 export interface ResultadoReprocesoResultadoDto {
   ok: boolean;

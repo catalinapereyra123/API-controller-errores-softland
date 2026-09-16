@@ -89,7 +89,7 @@ model TransaccionError {
   corregidoPorId      String?
   corregidoPorNombre  String? // snapshot del nombre (sobrevive si el usuario cambia / se borra)
   fechaCorreccion     DateTime? // cuándo se mandó a reprocesar (Softland -> 'N')
-  reprocesoNotificadoAt DateTime? // n8n confirmó (200) el webhook; null + fechaCorreccion => reintentar
+  reprocesoNotificadoAt DateTime? // ya se pasó a N: el webhook respondió 200 o el integrador reportó status N; null + fechaCorreccion => falta mandarlo
   reprocesoDesaparecioAt DateTime? // ALARMA: estaba REPROCESANDO y dejó de figurar en el sync sin verificación
 
   // --- Verificación (flujo 5: cierre automático) ---

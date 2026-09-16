@@ -176,7 +176,9 @@ describe('AuthService', () => {
 
       expect(errorSinUsuario).toBeInstanceOf(UnauthorizedException);
       expect(errorPasswordMal).toBeInstanceOf(UnauthorizedException);
-      expect(errorSinUsuario.message).toBe(errorPasswordMal.message);
+      expect((errorSinUsuario as Error).message).toBe(
+        (errorPasswordMal as Error).message,
+      );
     });
   });
 

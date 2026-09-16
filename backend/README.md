@@ -96,8 +96,19 @@ Body: `{ observacion? }` + `Authorization: Bearer`. El backend:
 crea un `ErrorIntento`, evento de trazabilidad, y **POST al webhook de n8n**
 (`{ empresa, modulo, moduloCodigo, identi }`). Si el webhook falla, queda en
 `GET /errores/integracion/reproceso-pendientes` para que el integrador lo levante igual.
-`/errores/integracion/reproceso-pendiente` (singular) devuelve solo el más viejo,
-sin array, para los flujos que mapean campo por campo y no recorren listas.
+`/errores/integracion/reproceso-pendiente` (singular) devuelve solo el más viejo
+que **todavía no se pasó a N** (`reprocesoNotificadoAt` vacío), sin array, para los
+flujos que mapean campo por campo y no recorren listas. Siempre responde JSON,
+porque iFlow no acepta un 200 sin body:
+
+```json
+{ "hayPendiente": true, "id": "clx1", "empresa": "AMCARG", "modulo": "COMPRAS",
+  "moduloOrigen": "3. Compras", "identi": "LIQ100",
+  "solicitadoEn": "2026-09-16T13:14:19.688Z", "notificado": false, "intentos": 1 }
+```
+
+Si no hay pendientes: `hayPendiente: false` y el resto de los campos en `null`.
+El error deja de salir cuando el integrador informa `N` en el flujo 4 (ver abajo).
 
 ### Flujo 4 — `POST /errores/resultado-reproceso`  (header `x-api-key`)
 
@@ -108,7 +119,9 @@ sin array, para los flujos que mapean campo por campo y no recorren listas.
 
 - `S` → `estadoApp = RESUELTO`, `fechaResolucion`, cierra el `ErrorIntento`.
 - `E / B / D / X` → `estadoApp = REQUIERE_CORRECCION`, guarda el nuevo `errorMensaje`.
-- `N` → sin cambios (sigue procesándose).
+- `N` → sigue `REPROCESANDO` y el intento queda abierto (todavía no hay resultado).
+  La primera vez guarda `reprocesoNotificadoAt`: ya se pasó a N, así que el GET
+  singular pasa al siguiente. Los `N` que llegan después no cambian nada.
 - Si el error está `DESCARTADO`, se guarda el status y se cierra el intento, pero
   no cambia de estado (no vuelve a la bandeja).
 
@@ -193,7 +206,7 @@ duplicarlo sería una segunda fuente de verdad que puede quedar desfasada.
 | GET    | `/errores`                      | Bandeja plana (tipo `ErrorTransaccion` del front).          |
 | GET    | `/errores/agrupados`            | `[{ empresa, totalErrores, totalesPorModulo, modulos[] }]`. |
 | GET    | `/errores/integracion/reproceso-pendientes` | Reprocesos en curso para el integrador (`x-api-key`). |
-| GET    | `/errores/integracion/reproceso-pendiente` | Ídem pero de a uno, el más viejo (o `null`). |
+| GET    | `/errores/integracion/reproceso-pendiente` | Ídem pero de a uno: el más viejo sin pasar a N, con `hayPendiente`. |
 | GET    | `/errores/integracion/verificacion-pendientes` | Claves a verificar contra Softland (`x-api-key`). |
 | GET    | `/errores/:id`                  | Detalle + observaciones + trazabilidad + intentos.          |
 | GET    | `/empresas`                     | `[{ id, nombre }]`.                                         |

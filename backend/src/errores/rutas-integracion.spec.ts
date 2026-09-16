@@ -19,6 +19,7 @@ describe('Rutas del integrador vs. /errores/:id', () => {
   const service = {
     reprocesoPendientes: jest.fn().mockResolvedValue([]),
     reprocesoPendiente: jest.fn().mockResolvedValue({
+      hayPendiente: true,
       id: 'clx1',
       empresa: 'NORFLOW',
       modulo: 'COMPRAS',
@@ -87,6 +88,7 @@ describe('Rutas del integrador vs. /errores/:id', () => {
 
     expect(res.status).toBe(200);
     expect(res.body).toEqual({
+      hayPendiente: true,
       id: 'clx1',
       empresa: 'NORFLOW',
       modulo: 'COMPRAS',
@@ -96,6 +98,29 @@ describe('Rutas del integrador vs. /errores/:id', () => {
       notificado: false,
       intentos: 1,
     });
+  });
+
+  it('sin pendientes responde JSON con hayPendiente false, no un 200 vacío', async () => {
+    const sinPendiente = {
+      hayPendiente: false,
+      id: null,
+      empresa: null,
+      modulo: null,
+      moduloOrigen: null,
+      identi: null,
+      solicitadoEn: null,
+      notificado: null,
+      intentos: null,
+    };
+    service.reprocesoPendiente.mockResolvedValueOnce(sinPendiente);
+
+    const res = await request(app.getHttpServer())
+      .get('/errores/integracion/reproceso-pendiente')
+      .set('x-api-key', 'clave-de-prueba');
+
+    expect(res.status).toBe(200);
+    expect(res.type).toBe('application/json');
+    expect(res.body).toEqual(sinPendiente);
   });
 
   it('sin x-api-key corta el ApiKeyGuard, no el de sesión', async () => {

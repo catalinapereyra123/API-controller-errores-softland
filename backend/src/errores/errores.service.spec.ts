@@ -92,9 +92,12 @@ class FakeRepo {
     return Promise.resolve(row);
   };
 
+  /** Igualdad campo por campo: alcanza para el where simple del service. */
   primerPendiente = (where: any) =>
     Promise.resolve(
-      this.transacciones.find((t) => t.estadoApp === where.estadoApp) ?? null,
+      this.transacciones.find((t) =>
+        Object.entries(where).every(([campo, valor]) => t[campo] === valor),
+      ) ?? null,
     );
 
   intentoAbierto = (errorId: string) =>
@@ -324,7 +327,6 @@ describe('ErroresService.solicitarReproceso', () => {
     await service.sync([registro()]);
 
     const detalle = await service.solicitarReproceso('t1', {
-      autorId: undefined,
       observacion: 'Corregí la lista de precios',
     });
 
@@ -337,21 +339,60 @@ describe('ErroresService.solicitarReproceso', () => {
     expect(detalle.reprocesoNotificado).toBe(false);
   });
 
-  it('reprocesoPendiente devuelve un objeto, no un array', async () => {
+  it('reprocesoPendiente devuelve siempre un objeto, nunca null ni un array', async () => {
     await service.sync([registro()]);
-    expect(await service.reprocesoPendiente()).toBeNull();
+    expect(await service.reprocesoPendiente()).toEqual({
+      hayPendiente: false,
+      id: null,
+      empresa: null,
+      modulo: null,
+      moduloOrigen: null,
+      identi: null,
+      solicitadoEn: null,
+      notificado: null,
+      intentos: null,
+    });
 
     await service.solicitarReproceso('t1', {});
     const pendiente = await service.reprocesoPendiente();
 
     expect(Array.isArray(pendiente)).toBe(false);
     expect(pendiente).toMatchObject({
+      hayPendiente: true,
       empresa: 'AMCARG',
       modulo: 'COMPRAS',
       moduloOrigen: '3. Compras',
       identi: 'LIQ100',
       intentos: 1,
     });
+  });
+
+  it('reprocesoPendiente pasa al siguiente cuando el integrador informa N', async () => {
+    await service.sync([
+      registro({ identi: 'LIQ100' }),
+      registro({ identi: 'LIQ101' }),
+    ]);
+    await service.solicitarReproceso('t1', {});
+    await service.solicitarReproceso('t2', {});
+    const informarN = (identi: string) =>
+      service.registrarResultadoReproceso({
+        empresa: 'AMCARG',
+        modulo: '3. Compras',
+        identi,
+        statusSoftland: 'N',
+      });
+
+    expect((await service.reprocesoPendiente()).identi).toBe('LIQ100');
+
+    await informarN('LIQ100');
+    expect((await service.reprocesoPendiente()).identi).toBe('LIQ101');
+
+    await informarN('LIQ101');
+    expect((await service.reprocesoPendiente()).hayPendiente).toBe(false);
+
+    // Siguen en curso: N no es un resultado.
+    expect(repo.transacciones[0].estadoApp).toBe('REPROCESANDO');
+    expect(repo.transacciones[1].estadoApp).toBe('REPROCESANDO');
   });
 
   it('cambiarEstado rechaza RESUELTO manual', async () => {
@@ -418,9 +459,10 @@ describe('ErroresService.registrarResultadoReproceso', () => {
     );
   });
 
-  it('status N => sin cambios', async () => {
+  it('status N => sigue REPROCESANDO, registra que se pasó a N y no cierra el intento', async () => {
     await service.sync([registro()]);
     repo.transacciones[0].estadoApp = 'REPROCESANDO';
+    repo.intentos.push({ id: 'i1', errorId: 't1', cerradoAt: null });
 
     const res = await service.registrarResultadoReproceso({
       empresa: 'AMCARG',
@@ -431,6 +473,43 @@ describe('ErroresService.registrarResultadoReproceso', () => {
 
     expect(res.statusSoftland).toBe('N');
     expect(repo.transacciones[0].estadoApp).toBe('REPROCESANDO');
+    expect(repo.transacciones[0].reprocesoNotificadoAt).toBeInstanceOf(Date);
+    expect(repo.intentos[0].cerradoAt).toBeNull();
+  });
+
+  it('un segundo N no vuelve a registrar nada', async () => {
+    await service.sync([registro()]);
+    repo.transacciones[0].estadoApp = 'REPROCESANDO';
+    const statusN = {
+      empresa: 'AMCARG',
+      modulo: '3. Compras',
+      identi: 'LIQ100',
+      statusSoftland: 'N',
+    };
+
+    await service.registrarResultadoReproceso(statusN);
+    const primeraMarca = repo.transacciones[0].reprocesoNotificadoAt;
+    const eventos = repo.eventos.length;
+
+    const res = await service.registrarResultadoReproceso(statusN);
+
+    expect(res.mensaje).toMatch(/sin cambios/);
+    expect(repo.transacciones[0].reprocesoNotificadoAt).toBe(primeraMarca);
+    expect(repo.eventos).toHaveLength(eventos);
+  });
+
+  it('status N sobre un error que no está REPROCESANDO no marca nada', async () => {
+    await service.sync([registro()]);
+
+    const res = await service.registrarResultadoReproceso({
+      empresa: 'AMCARG',
+      modulo: '3. Compras',
+      identi: 'LIQ100',
+      statusSoftland: 'N',
+    });
+
+    expect(res.estadoApp).toBe('ERROR');
+    expect(repo.transacciones[0].reprocesoNotificadoAt).toBeNull();
   });
 });
 
