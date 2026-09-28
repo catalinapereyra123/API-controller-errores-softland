@@ -16,6 +16,7 @@ import {
   CrearObservacionDto,
   SolicitarReprocesoDto,
 } from './dto/mutaciones.dto';
+import { QueryHistorialDto } from './dto/historial.dto';
 import { QueryErroresDto } from './dto/query-errores.dto';
 import { ErroresService } from './errores.service';
 
@@ -71,10 +72,10 @@ export class ErroresController {
     return this.service.dashboard();
   }
 
-  /** Actividad de los últimos 7 días. GET /historial */
+  /** Actividad de los últimos N días (1, 7, 30 o 90). GET /historial?dias= */
   @Get('historial')
-  historial() {
-    return this.service.historial();
+  historial(@Query() query: QueryHistorialDto) {
+    return this.service.historial(query.dias);
   }
 
   /** Asigna / desasigna responsable. PATCH /errores/:id/asignacion */

@@ -9,7 +9,8 @@ interface UseHistorialResult {
   refetch: () => void
 }
 
-export function useHistorial(): UseHistorialResult {
+/** Carga el historial del período pedido; se vuelve a pedir al cambiar `dias`. */
+export function useHistorial(dias: number): UseHistorialResult {
   const [resumen, setResumen] = useState<HistorialResumen | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -22,7 +23,7 @@ export function useHistorial(): UseHistorialResult {
       setLoading(true)
       setError(null)
       try {
-        const datos = await getHistorial()
+        const datos = await getHistorial(dias)
         if (!cancelled) setResumen(datos)
       } catch (e) {
         if (!cancelled) {
@@ -41,7 +42,7 @@ export function useHistorial(): UseHistorialResult {
     return () => {
       cancelled = true
     }
-  }, [reloadToken])
+  }, [dias, reloadToken])
 
   const refetch = useCallback(() => setReloadToken((token) => token + 1), [])
 

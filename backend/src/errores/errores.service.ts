@@ -843,7 +843,8 @@ export class ErroresService {
 
     const [eventos, resueltos, reprocesos, observaciones, reasignaciones] =
       await Promise.all([
-        this.repo.eventosDesde(desde),
+        // Con períodos largos hay más eventos: se sube el tope para no cortar.
+        this.repo.eventosDesde(desde, Math.min(2000, Math.max(300, dias * 60))),
         this.repo.contar({
           estadoApp: EstadoApp.RESUELTO,
           fechaResolucion: { gte: desde },
@@ -881,7 +882,7 @@ export class ErroresService {
     }
 
     return {
-      periodo: `Últimos ${dias} días`,
+      periodo: dias === 1 ? 'Hoy' : `Últimos ${dias} días`,
       desde: desde.toISOString(),
       resueltos,
       reprocesos,

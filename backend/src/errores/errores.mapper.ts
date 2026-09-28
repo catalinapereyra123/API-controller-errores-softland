@@ -188,7 +188,11 @@ export function formatoFecha(fecha: Date): string {
   return `${dosDigitos(fecha.getDate())}/${dosDigitos(fecha.getMonth() + 1)}/${fecha.getFullYear()}`;
 }
 
-/** "Hoy", "Ayer" o el día de la semana. */
+/**
+ * "Hoy", "Ayer", el día de la semana si fue en los últimos 7 días, o la fecha
+ * (dd/mm/yyyy) si es más vieja: con períodos de 30/90 días el nombre del día
+ * se repetiría.
+ */
 export function etiquetaDia(fecha: Date, hoy: Date = new Date()): string {
   const clave = claveDia(fecha);
   if (clave === claveDia(hoy)) return 'Hoy';
@@ -197,5 +201,10 @@ export function etiquetaDia(fecha: Date, hoy: Date = new Date()): string {
   ayer.setDate(ayer.getDate() - 1);
   if (clave === claveDia(ayer)) return 'Ayer';
 
-  return DIAS_SEMANA[fecha.getDay()];
+  const haceUnaSemana = new Date(hoy);
+  haceUnaSemana.setHours(0, 0, 0, 0);
+  haceUnaSemana.setDate(haceUnaSemana.getDate() - 6);
+  if (fecha >= haceUnaSemana) return DIAS_SEMANA[fecha.getDay()];
+
+  return formatoFecha(fecha);
 }

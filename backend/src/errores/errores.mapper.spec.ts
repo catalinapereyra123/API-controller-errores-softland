@@ -2,6 +2,7 @@ import { BadRequestException } from '@nestjs/common';
 import { EstadoApp, Modulo } from '../../generated/prisma/client';
 import {
   MODULO_LABEL,
+  etiquetaDia,
   extractArchivoLog,
   parseModulo,
   toErrorTransaccion,
@@ -92,5 +93,23 @@ describe('toErrorTransaccion', () => {
       toErrorTransaccion({ ...base, errorMensaje: null, statusSoftland: 'X' })
         .descripcion,
     ).toMatch(/exclu/i);
+  });
+});
+
+describe('etiquetaDia', () => {
+  // Lunes 28/09/2026, mediodía.
+  const hoy = new Date(2026, 8, 28, 12, 0);
+
+  it('dice Hoy y Ayer', () => {
+    expect(etiquetaDia(new Date(2026, 8, 28, 8, 0), hoy)).toBe('Hoy');
+    expect(etiquetaDia(new Date(2026, 8, 27, 23, 0), hoy)).toBe('Ayer');
+  });
+
+  it('usa el día de la semana dentro de los últimos 7 días', () => {
+    expect(etiquetaDia(new Date(2026, 8, 22, 0, 30), hoy)).toBe('Martes');
+  });
+
+  it('usa la fecha para días más viejos', () => {
+    expect(etiquetaDia(new Date(2026, 8, 21, 18, 0), hoy)).toBe('21/09/2026');
   });
 });
