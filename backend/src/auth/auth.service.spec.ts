@@ -12,9 +12,9 @@ function usuarioFalso(over: Partial<Usuario> = {}): Usuario {
     id: 'usr_1',
     email: 'cata@iflow.com',
     passwordHash: 'hash',
-    nombre: 'Catalina Weiss',
+    nombre: 'Juan Pérez',
     rol: 'Soporte funcional',
-    avatarIniciales: 'CW',
+    avatarIniciales: 'JP',
     createdAt: new Date(),
     ...over,
   };
@@ -22,11 +22,11 @@ function usuarioFalso(over: Partial<Usuario> = {}): Usuario {
 
 describe('iniciales', () => {
   it('toma la primera letra del nombre y del apellido', () => {
-    expect(iniciales('Catalina Weiss')).toBe('CW');
+    expect(iniciales('Juan Pérez')).toBe('JP');
   });
 
   it('usa las dos primeras letras si hay una sola palabra', () => {
-    expect(iniciales('Catalina')).toBe('CA');
+    expect(iniciales('Juan')).toBe('JU');
   });
 
   it('ignora los espacios de más', () => {
@@ -91,7 +91,7 @@ describe('AuthService', () => {
       const sesion = await service.registrar({
         email: 'cata@iflow.com',
         password: 'contraseña-larga',
-        nombre: 'Catalina Weiss',
+        nombre: 'Juan Pérez',
       });
 
       const guardado = datosCreados(create);
@@ -103,9 +103,9 @@ describe('AuthService', () => {
       expect(sesion.usuario).toEqual({
         id: 'usr_1',
         email: 'cata@iflow.com',
-        nombre: 'Catalina Weiss',
+        nombre: 'Juan Pérez',
         rol: 'Soporte funcional',
-        avatarIniciales: 'CW',
+        avatarIniciales: 'JP',
       });
       expect(jwt.verify<{ sub: string }>(sesion.token).sub).toBe('usr_1');
     });
@@ -136,7 +136,7 @@ describe('AuthService', () => {
         service.registrar({
           email: 'cata@iflow.com',
           password: 'contraseña-larga',
-          nombre: 'Catalina Weiss',
+          nombre: 'Juan Pérez',
         }),
       ).rejects.toBeInstanceOf(ConflictException);
     });

@@ -95,7 +95,7 @@ export function toUsuarioDto(usuario: Usuario): UsuarioDto {
   };
 }
 
-/** "Catalina Weiss" -> "CW"; "Catalina" -> "CA". */
+/** "Juan Pérez" -> "JP"; "Juan" -> "JU". */
 export function iniciales(nombre: string): string {
   const palabras = nombre.trim().split(/\s+/).filter(Boolean);
   if (palabras.length === 0) return '??';

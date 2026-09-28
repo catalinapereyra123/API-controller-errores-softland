@@ -60,7 +60,7 @@ function Registro({ onIrALogin }: { onIrALogin: () => void }) {
       <FormField
         label="Nombre y apellido"
         autoComplete="name"
-        placeholder="Catalina Weiss"
+        placeholder="Juan Pérez"
         value={campos.nombre}
         error={errores.nombre}
         ayuda="Se usa para firmar las observaciones y la trazabilidad."
