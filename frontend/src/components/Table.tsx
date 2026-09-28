@@ -35,7 +35,10 @@ function Table({
   return (
     <div
       style={{ backgroundColor }}
-      className={cn('w-full rounded-xl shadow-md', className)}
+      className={cn(
+        'w-full overflow-hidden rounded-xl shadow-soft ring-1 ring-slate-900/5',
+        className,
+      )}
     >
       <div
         style={{ borderColor: dividerColor }}
@@ -80,7 +83,7 @@ function Table({
               <div
                 key={colIndex}
                 style={{ backgroundColor: cellPlaceholderColor }}
-                className="h-4 rounded-md"
+                className="h-4 animate-pulse rounded-md"
               />
             ))}
           </div>

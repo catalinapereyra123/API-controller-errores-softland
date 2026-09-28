@@ -278,3 +278,25 @@ export function UndoIcon(props: SVGProps<SVGSVGElement>) {
     </BaseIcon>
   )
 }
+
+/** Tres rayitas decrecientes: abre el panel de filtros. */
+export function FiltersIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <BaseIcon {...props}>
+      <path d="M4 6h16" />
+      <path d="M7 12h10" />
+      <path d="M10 18h4" />
+    </BaseIcon>
+  )
+}
+
+export function BuildingIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <BaseIcon {...props}>
+      <path d="M4 21V5a1 1 0 0 1 1-1h9a1 1 0 0 1 1 1v16" />
+      <path d="M15 9h4a1 1 0 0 1 1 1v11" />
+      <path d="M3 21h18" />
+      <path d="M8 8h3M8 12h3M8 16h3" />
+    </BaseIcon>
+  )
+}

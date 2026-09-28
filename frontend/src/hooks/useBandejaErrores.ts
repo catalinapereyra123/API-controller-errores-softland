@@ -47,6 +47,8 @@ interface UseBandejaErroresResult {
   loading: boolean
   error: string | null
   refetch: () => void
+  /** Cuántos quedan por empresa con el resto de los filtros; clave 'todas' = total. */
+  conteoPorEmpresa: Record<string, number>
   filters: BandejaFilters
   setFilters: (filters: Partial<BandejaFilters>) => void
 }
@@ -107,7 +109,9 @@ export function useBandejaErrores(): UseBandejaErroresResult {
     setFiltersState((prev) => ({ ...prev, ...partial }))
   }, [])
 
-  const erroresFiltrados = useMemo(() => {
+  // Sin el filtro de empresa: de acá salen tanto la lista como los contadores
+  // de cada pestaña de empresa.
+  const sinFiltroEmpresa = useMemo(() => {
     if (!data) return []
 
     const busqueda = filters.busqueda.trim().toLowerCase()
@@ -119,8 +123,6 @@ export function useBandejaErrores(): UseBandejaErroresResult {
         !item.codigo.toLowerCase().includes(busqueda) &&
         !item.descripcion.toLowerCase().includes(busqueda)
       )
-        return false
-      if (filters.empresaId !== 'todas' && item.empresaId !== filters.empresaId)
         return false
       if (filters.modulo !== 'todos' && item.moduloCodigo !== filters.modulo)
         return false
@@ -152,9 +154,28 @@ export function useBandejaErrores(): UseBandejaErroresResult {
     })
   }, [data, filters])
 
+  const erroresFiltrados = useMemo(
+    () =>
+      filters.empresaId === 'todas'
+        ? sinFiltroEmpresa
+        : sinFiltroEmpresa.filter(
+            (item) => item.empresaId === filters.empresaId,
+          ),
+    [sinFiltroEmpresa, filters.empresaId],
+  )
+
+  const conteoPorEmpresa = useMemo(() => {
+    const conteo: Record<string, number> = { todas: sinFiltroEmpresa.length }
+    for (const item of sinFiltroEmpresa) {
+      conteo[item.empresaId] = (conteo[item.empresaId] ?? 0) + 1
+    }
+    return conteo
+  }, [sinFiltroEmpresa])
+
   return {
     data,
     erroresFiltrados,
+    conteoPorEmpresa,
     loading,
     error,
     refetch,

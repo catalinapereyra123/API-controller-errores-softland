@@ -9,6 +9,8 @@ interface InputProps extends Omit<
   color: string
   borderColor: string
   backgroundColor?: string
+  /** Más alto y con bordes de pastilla (formularios de acceso). */
+  pill?: boolean
   className?: string
 }
 
@@ -17,6 +19,7 @@ function Input({
   color,
   borderColor,
   backgroundColor,
+  pill = false,
   className,
   ...props
 }: InputProps) {
@@ -24,7 +27,9 @@ function Input({
     <div
       style={{ borderColor, backgroundColor }}
       className={cn(
-        'inline-flex items-center gap-sm rounded-md border px-md py-sm',
+        'inline-flex items-center gap-sm border shadow-xs transition-shadow',
+        pill ? 'rounded-full px-lg py-md' : 'rounded-lg px-md py-sm',
+        'focus-within:ring-4 focus-within:ring-primary-light/60',
         className,
       )}
     >

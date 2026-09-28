@@ -1,4 +1,3 @@
-import { useState } from 'react'
 import Button from '../components/Button'
 import ChevronButton from '../components/ChevronButton'
 import {
@@ -7,7 +6,6 @@ import {
   ChevronRightIcon,
   ClockIcon,
   InboxIcon,
-  PanelLeftIcon,
   RefreshIcon,
   TrendingUpIcon,
   UserIcon,
@@ -15,8 +13,7 @@ import {
   XCircleIcon,
 } from '../components/icons'
 import { useAuth } from '../auth/useAuth'
-import AppSidebar from '../components/AppSidebar'
-import type { SidebarItemId, SidebarNavItem } from '../components/Sidebar'
+import AppLayout from '../components/AppLayout'
 import StatCard from '../components/StatCard'
 import Table from '../components/Table'
 import { estadoTagByEstado } from '../constants/estados'
@@ -59,8 +56,9 @@ function ErrorRow({
 
   return (
     <div
+      onClick={onOpen}
       style={{ borderColor: colors.background.border }}
-      className="grid grid-cols-[110px_110px_minmax(120px,1fr)_minmax(110px,1fr)_minmax(140px,1fr)_minmax(90px,1fr)_56px] items-center gap-md border-b px-lg py-md last:border-b-0"
+      className="group grid min-w-[880px] cursor-pointer grid-cols-[132px_110px_minmax(120px,1fr)_minmax(110px,1fr)_minmax(140px,1fr)_minmax(90px,1fr)_56px] items-center gap-md border-b px-lg py-md transition-colors last:border-b-0 hover:bg-background-page"
     >
       <EstadoTag />
       <span
@@ -97,7 +95,10 @@ function ErrorRow({
         color={colors.primary.dark}
         borderColor={colors.background.border}
         aria-label={`Abrir ${error.codigo}`}
-        onClick={onOpen}
+        onClick={(event) => {
+          event.stopPropagation()
+          onOpen()
+        }}
         className="justify-self-end"
       />
     </div>
@@ -113,262 +114,225 @@ function Home({
 }) {
   const { usuario } = useAuth()
   const { data, loading, error, refetch } = useHomeData()
-  const [sidebarOpen, setSidebarOpen] = useState(true)
-  const [activeNavItem, setActiveNavItem] = useState<SidebarItemId>('inicio')
-
-  function handleSelectNavItem(item: SidebarNavItem) {
-    const id = item.id
-    setActiveNavItem(id)
-    if (id === 'inicio') onNavigate('home')
-    if (id === 'bandeja') onNavigate('bandeja')
-    if (id === 'historial') onNavigate('historial')
-  }
 
   return (
-    <div
-      style={{ backgroundColor: colors.background.page }}
-      className="flex h-screen w-full"
+    <AppLayout
+      activeItem="inicio"
+      onNavigate={onNavigate}
+      migas={[{ label: 'Inicio' }]}
     >
-      <div
-        style={{ borderColor: colors.background.border }}
-        className={`shrink-0 overflow-hidden border-r transition-[width] duration-200 ease-in-out ${
-          sidebarOpen ? 'w-[280px]' : 'w-0 border-r-0'
-        }`}
-      >
-        <AppSidebar
-          activeItem={activeNavItem}
-          onItemSelect={handleSelectNavItem}
+      <div className="flex flex-wrap items-start justify-between gap-md">
+        <div className="flex flex-col gap-xxs">
+          <p
+            style={{
+              ...textStyles.bodySmall,
+              fontWeight: fontWeight.semibold,
+              color: colors.primary.dark,
+            }}
+          >
+            {formatTodayEs()}
+          </p>
+          <h1 style={{ ...textStyles.h1, color: colors.gray.darkest }}>
+            Hola, {usuario?.nombre.split(' ')[0] ?? 'equipo'}
+          </h1>
+        </div>
+        <Button
+          text=""
+          color={colors.primary.default}
+          onClick={refetch}
+          disabled={loading}
+          aria-label={loading ? 'Actualizando…' : 'Actualizar'}
+          title="Actualizar"
+          icon={
+            <RefreshIcon className={cn('h-5 w-5', loading && 'animate-spin')} />
+          }
+          size={{ padding: spacing.sm }}
         />
       </div>
 
-      <main className="flex-1 overflow-y-auto p-xl">
-        <div className="mx-auto flex max-w-[1400px] flex-col gap-xl">
-          <div className="flex flex-wrap items-start justify-between gap-md">
-            <div className="flex items-start gap-md">
-              <button
-                type="button"
-                onClick={() => setSidebarOpen((open) => !open)}
-                aria-label={sidebarOpen ? 'Ocultar menú' : 'Mostrar menú'}
-                aria-expanded={sidebarOpen}
+      {error && (
+        <div
+          style={{
+            ...textStyles.bodySmall,
+            fontWeight: fontWeight.semibold,
+            backgroundColor: colors.label.red.background,
+            color: colors.label.red.text,
+            borderColor: colors.label.red.outline,
+          }}
+          className="flex items-center justify-between gap-md rounded-xl border px-lg py-md"
+        >
+          {error}
+          <button type="button" className="underline" onClick={refetch}>
+            Reintentar
+          </button>
+        </div>
+      )}
+
+      <div className="grid grid-cols-1 gap-lg sm:grid-cols-2 xl:grid-cols-5">
+        <StatCard
+          label="Errores abiertos"
+          value={data ? data.stats.erroresAbiertos : '—'}
+          labelColor={colors.gray.default}
+          valueColor={colors.gray.darkest}
+          backgroundColor={colors.background.surface}
+          icon={<AlertTriangleIcon className="h-5 w-5" />}
+          iconColor={colors.label.red.text}
+          iconBackground={colors.label.red.background}
+          trend={
+            data
+              ? {
+                  text: `${data.stats.erroresAbiertosDelta} desde ayer`,
+                  color: colors.status.error,
+                  direction: 'up',
+                }
+              : undefined
+          }
+        />
+        <StatCard
+          label="Pend. de reproceso"
+          value={data ? data.stats.pendientesReproceso : '—'}
+          labelColor={colors.gray.default}
+          valueColor={colors.gray.darkest}
+          backgroundColor={colors.background.surface}
+          icon={<UsersIcon className="h-5 w-5" />}
+          iconColor={colors.label.orange.text}
+          iconBackground={colors.label.orange.background}
+          trend={{ text: 'En cola ahora', color: colors.gray.medium }}
+        />
+        <StatCard
+          label="Resueltos hoy"
+          value={data ? data.stats.resueltosHoy : '—'}
+          labelColor={colors.gray.default}
+          valueColor={colors.gray.darkest}
+          backgroundColor={colors.background.surface}
+          icon={<TrendingUpIcon className="h-5 w-5" />}
+          iconColor={colors.label.green.text}
+          iconBackground={colors.label.green.background}
+          trend={
+            data
+              ? {
+                  text: `${data.stats.resueltosHoyDelta} vs. promedio`,
+                  color: colors.status.success,
+                  direction: 'up',
+                }
+              : undefined
+          }
+        />
+        <StatCard
+          label="Sin responsable"
+          value={data ? data.stats.sinResponsable : '—'}
+          labelColor={colors.gray.default}
+          valueColor={colors.gray.darkest}
+          backgroundColor={colors.background.surface}
+          icon={<UserIcon className="h-5 w-5" />}
+          iconColor={colors.label.red.text}
+          iconBackground={colors.label.red.background}
+          trend={{
+            text: 'Requieren asignación',
+            color: colors.status.error,
+          }}
+        />
+        <StatCard
+          label="Tiempo prom. resolución"
+          value={
+            data ? (
+              <span className="whitespace-nowrap">
+                {formatMinutes(data.stats.tiempoPromedioResolucionMinutos)}
+              </span>
+            ) : (
+              '—'
+            )
+          }
+          labelColor={colors.gray.default}
+          valueColor={colors.gray.darkest}
+          backgroundColor={colors.background.surface}
+          icon={<ClockIcon className="h-5 w-5" />}
+          iconColor={colors.label.blue.text}
+          iconBackground={colors.label.blue.background}
+          trend={
+            data
+              ? {
+                  text: `${formatMinutes(
+                    Math.abs(data.stats.tiempoPromedioResolucionDeltaMinutos),
+                  )} esta semana`,
+                  color: colors.status.success,
+                  direction: 'down',
+                }
+              : undefined
+          }
+        />
+      </div>
+
+      {loading || !data ? (
+        <Table
+          title="Requiere atención inmediata"
+          subtitle="Errores sin asignar o abiertos hace más de 2 horas"
+          actionText="Ver bandeja completa →"
+          actionColor={colors.primary.dark}
+          rows={4}
+          columns={7}
+          backgroundColor={colors.background.surface}
+          titleColor={colors.gray.darkest}
+          subtitleColor={colors.gray.medium}
+          dividerColor={colors.background.border}
+          cellPlaceholderColor={colors.background.page}
+        />
+      ) : (
+        <div
+          style={{ backgroundColor: colors.background.surface }}
+          className="w-full overflow-hidden rounded-xl shadow-soft ring-1 ring-slate-900/5"
+        >
+          <div
+            style={{ borderColor: colors.background.border }}
+            className="flex items-start justify-between gap-md border-b px-lg py-lg"
+          >
+            <div className="flex flex-col gap-xxs">
+              <span
                 style={{
-                  color: colors.gray.medium,
-                  backgroundColor: colors.background.surface,
+                  ...textStyles.h3,
+                  fontWeight: fontWeight.bold,
+                  color: colors.gray.darkest,
                 }}
-                className="mt-xs flex h-9 w-9 shrink-0 items-center justify-center rounded-md shadow-md transition-colors hover:bg-background-page"
               >
-                <PanelLeftIcon className="h-5 w-5" />
-              </button>
-              <div className="flex flex-col gap-xxs">
-                <h1 style={{ ...textStyles.h1, color: colors.gray.darkest }}>
-                  Hola, {usuario?.nombre.split(' ')[0] ?? 'equipo'}
-                </h1>
-                <p style={{ ...textStyles.body, color: colors.gray.medium }}>
-                  {formatTodayEs()}
-                </p>
-              </div>
+                Requiere atención inmediata
+              </span>
+              <span
+                style={{
+                  ...textStyles.bodySmall,
+                  color: colors.gray.medium,
+                }}
+              >
+                Errores sin asignar o abiertos hace más de 2 horas
+              </span>
             </div>
             <Button
-              text=""
+              text="Ver bandeja completa"
               color={colors.primary.default}
-              onClick={refetch}
-              disabled={loading}
-              aria-label={loading ? 'Actualizando…' : 'Actualizar'}
-              icon={
-                <RefreshIcon
-                  className={cn('h-5 w-5', loading && 'animate-spin')}
-                />
-              }
-              size={{ padding: spacing.sm }}
-            />
-          </div>
-
-          {error && (
-            <div
-              style={{
+              variant="outline"
+              onClick={() => onNavigate('bandeja')}
+              icon={<InboxIcon className="h-4 w-4" />}
+              trailingIcon={<ChevronRightIcon className="h-4 w-4" />}
+              size={{
+                padding: `${spacing.sm} ${spacing.lg}`,
                 ...textStyles.bodySmall,
-                fontWeight: fontWeight.semibold,
-                backgroundColor: colors.label.red.background,
-                color: colors.label.red.text,
-                borderColor: colors.label.red.outline,
+                fontWeight: fontWeight.bold,
               }}
-              className="flex items-center justify-between gap-md rounded-xl border px-lg py-md"
-            >
-              {error}
-              <button type="button" className="underline" onClick={refetch}>
-                Reintentar
-              </button>
-            </div>
-          )}
-
-          <div className="grid grid-cols-1 gap-lg sm:grid-cols-2 xl:grid-cols-5">
-            <StatCard
-              label="Errores abiertos"
-              value={data ? data.stats.erroresAbiertos : '—'}
-              labelColor={colors.gray.default}
-              valueColor={colors.gray.darkest}
-              backgroundColor={colors.background.surface}
-              icon={<AlertTriangleIcon className="h-5 w-5" />}
-              iconColor={colors.label.red.text}
-              iconBackground={colors.label.red.background}
-              trend={
-                data
-                  ? {
-                      text: `${data.stats.erroresAbiertosDelta} desde ayer`,
-                      color: colors.status.error,
-                      direction: 'up',
-                    }
-                  : undefined
-              }
-            />
-            <StatCard
-              label="Pend. de reproceso"
-              value={data ? data.stats.pendientesReproceso : '—'}
-              labelColor={colors.gray.default}
-              valueColor={colors.gray.darkest}
-              backgroundColor={colors.background.surface}
-              icon={<UsersIcon className="h-5 w-5" />}
-              iconColor={colors.label.orange.text}
-              iconBackground={colors.label.orange.background}
-              trend={{ text: 'En cola ahora', color: colors.gray.medium }}
-            />
-            <StatCard
-              label="Resueltos hoy"
-              value={data ? data.stats.resueltosHoy : '—'}
-              labelColor={colors.gray.default}
-              valueColor={colors.gray.darkest}
-              backgroundColor={colors.background.surface}
-              icon={<TrendingUpIcon className="h-5 w-5" />}
-              iconColor={colors.label.green.text}
-              iconBackground={colors.label.green.background}
-              trend={
-                data
-                  ? {
-                      text: `${data.stats.resueltosHoyDelta} vs. promedio`,
-                      color: colors.status.success,
-                      direction: 'up',
-                    }
-                  : undefined
-              }
-            />
-            <StatCard
-              label="Sin responsable"
-              value={data ? data.stats.sinResponsable : '—'}
-              labelColor={colors.gray.default}
-              valueColor={colors.gray.darkest}
-              backgroundColor={colors.background.surface}
-              icon={<UserIcon className="h-5 w-5" />}
-              iconColor={colors.label.red.text}
-              iconBackground={colors.label.red.background}
-              trend={{
-                text: 'Requieren asignación',
-                color: colors.status.error,
-              }}
-            />
-            <StatCard
-              label="Tiempo prom. resolución"
-              value={
-                data ? (
-                  <span className="whitespace-nowrap">
-                    {formatMinutes(data.stats.tiempoPromedioResolucionMinutos)}
-                  </span>
-                ) : (
-                  '—'
-                )
-              }
-              labelColor={colors.gray.default}
-              valueColor={colors.gray.darkest}
-              backgroundColor={colors.background.surface}
-              icon={<ClockIcon className="h-5 w-5" />}
-              iconColor={colors.label.blue.text}
-              iconBackground={colors.label.blue.background}
-              trend={
-                data
-                  ? {
-                      text: `${formatMinutes(
-                        Math.abs(
-                          data.stats.tiempoPromedioResolucionDeltaMinutos,
-                        ),
-                      )} esta semana`,
-                      color: colors.status.success,
-                      direction: 'down',
-                    }
-                  : undefined
-              }
+              className="shrink-0"
             />
           </div>
 
-          {loading || !data ? (
-            <Table
-              title="Requiere atención inmediata"
-              subtitle="Errores sin asignar o abiertos hace más de 2 horas"
-              actionText="Ver bandeja completa →"
-              actionColor={colors.primary.dark}
-              rows={4}
-              columns={7}
-              backgroundColor={colors.background.surface}
-              titleColor={colors.gray.darkest}
-              subtitleColor={colors.gray.medium}
-              dividerColor={colors.background.border}
-              cellPlaceholderColor={colors.background.page}
-            />
-          ) : (
-            <div
-              style={{ backgroundColor: colors.background.surface }}
-              className="w-full rounded-xl shadow-md"
-            >
-              <div
-                style={{ borderColor: colors.background.border }}
-                className="flex items-start justify-between gap-md border-b px-lg py-lg"
-              >
-                <div className="flex flex-col gap-xxs">
-                  <span
-                    style={{
-                      ...textStyles.h3,
-                      fontWeight: fontWeight.bold,
-                      color: colors.gray.darkest,
-                    }}
-                  >
-                    Requiere atención inmediata
-                  </span>
-                  <span
-                    style={{
-                      ...textStyles.bodySmall,
-                      color: colors.gray.medium,
-                    }}
-                  >
-                    Errores sin asignar o abiertos hace más de 2 horas
-                  </span>
-                </div>
-                <Button
-                  text="Ver bandeja completa"
-                  color={colors.primary.default}
-                  variant="outline"
-                  onClick={() => onNavigate('bandeja')}
-                  icon={<InboxIcon className="h-4 w-4" />}
-                  trailingIcon={<ChevronRightIcon className="h-4 w-4" />}
-                  size={{
-                    padding: `${spacing.sm} ${spacing.lg}`,
-                    ...textStyles.bodySmall,
-                    fontWeight: fontWeight.bold,
-                  }}
-                  className="shrink-0"
-                />
-              </div>
-
-              <div>
-                {data.erroresPrioritarios.map((item) => (
-                  <ErrorRow
-                    key={item.id}
-                    error={item}
-                    onOpen={() => onOpenError(item.id)}
-                  />
-                ))}
-              </div>
-            </div>
-          )}
+          <div className="overflow-x-auto">
+            {data.erroresPrioritarios.map((item) => (
+              <ErrorRow
+                key={item.id}
+                error={item}
+                onOpen={() => onOpenError(item.id)}
+              />
+            ))}
+          </div>
         </div>
-      </main>
-    </div>
+      )}
+    </AppLayout>
   )
 }
 

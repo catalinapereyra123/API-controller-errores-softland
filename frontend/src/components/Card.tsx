@@ -42,7 +42,7 @@ function Card({
           ...style,
         } as CSSProperties
       }
-      className={cn(shadow && 'shadow-md', className)}
+      className={cn(shadow && 'shadow-soft ring-1 ring-slate-900/5', className)}
       {...props}
     >
       {children}

@@ -11,6 +11,9 @@ interface ChevronButtonProps extends Omit<
   backgroundColor?: string
 }
 
+/**
+ * Flecha "abrir". Dentro de una fila con `group` acompaña el hover de la fila.
+ */
 function ChevronButton({
   color,
   borderColor,
@@ -23,8 +26,9 @@ function ChevronButton({
       type="button"
       style={{ color, borderColor, backgroundColor }}
       className={cn(
-        'flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border transition-opacity hover:opacity-70',
-        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-default focus-visible:ring-offset-2',
+        'flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-full border transition-all duration-150',
+        'group-hover:translate-x-0.5 group-hover:border-primary-light group-hover:bg-primary-lightest hover:bg-primary-lightest',
+        'focus-visible:ring-2 focus-visible:ring-primary-default/50 focus-visible:ring-offset-2 focus-visible:outline-none',
         'disabled:pointer-events-none disabled:opacity-50',
         className,
       )}

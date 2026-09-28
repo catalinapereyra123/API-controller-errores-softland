@@ -19,7 +19,7 @@ export function Tag({
     <span
       style={{ backgroundColor, color }}
       className={cn(
-        'inline-flex w-fit min-w-[92px] shrink-0 items-center justify-center gap-xs rounded-full px-sm py-xxs text-caption font-bold tracking-wide uppercase',
+        'inline-flex w-fit min-w-[92px] shrink-0 items-center justify-center gap-xs rounded-full px-sm py-xxs text-caption font-bold tracking-wide whitespace-nowrap uppercase',
         className,
       )}
       {...props}

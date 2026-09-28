@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react'
+import { CheckIcon, ChevronDownIcon } from './icons'
 import { cn } from '../utils/cn'
 
 export interface DropdownOption {
@@ -62,54 +63,68 @@ function Dropdown({
       <button
         type="button"
         onClick={() => setOpen((prev) => !prev)}
+        aria-haspopup="listbox"
+        aria-expanded={open}
         style={{
           borderColor: color,
           color: textColor ?? color,
           backgroundColor,
           ...size,
         }}
-        className="flex w-full items-center justify-between gap-sm rounded-md border px-md py-sm text-body font-medium"
+        className={cn(
+          'flex w-full cursor-pointer items-center justify-between gap-sm rounded-lg border px-md py-sm text-body font-medium shadow-xs transition-shadow hover:shadow-soft',
+          'focus-visible:ring-4 focus-visible:ring-primary-light/60 focus-visible:outline-none',
+          open && 'ring-4 ring-primary-light/60',
+        )}
       >
         <span className="truncate">{selected?.label ?? text}</span>
-        <span
+        <ChevronDownIcon
           aria-hidden
-          className={cn('shrink-0 transition-transform', open && 'rotate-180')}
-        >
-          ▾
-        </span>
+          className={cn(
+            'h-4 w-4 shrink-0 text-gray-default transition-transform duration-200',
+            open && 'rotate-180',
+          )}
+        />
       </button>
 
       {open && (
         <ul
           role="listbox"
-          style={{ borderColor: color }}
-          className="absolute z-10 mt-xs min-w-full rounded-md border bg-background-surface py-xs shadow-lg"
+          className="absolute z-30 mt-xs max-h-72 min-w-full animate-aparecer overflow-y-auto rounded-xl border border-background-border bg-background-surface p-xs shadow-lift"
         >
-          {options.map((option) => (
-            <li key={option.value}>
-              <button
-                type="button"
-                role="option"
-                aria-selected={option.value === value}
-                onClick={() => {
-                  onChange?.(option.value)
-                  setOpen(false)
-                }}
-                className={cn(
-                  'flex w-full items-center gap-xs px-md py-xs text-left text-body whitespace-nowrap hover:bg-background-page',
-                  option.value === value && 'font-semibold',
-                )}
-              >
-                {option.color && (
-                  <span
-                    className="h-2 w-2 rounded-full"
-                    style={{ backgroundColor: option.color }}
-                  />
-                )}
-                {option.label}
-              </button>
-            </li>
-          ))}
+          {options.map((option) => {
+            const isSelected = option.value === value
+
+            return (
+              <li key={option.value}>
+                <button
+                  type="button"
+                  role="option"
+                  aria-selected={isSelected}
+                  onClick={() => {
+                    onChange?.(option.value)
+                    setOpen(false)
+                  }}
+                  className={cn(
+                    'flex w-full cursor-pointer items-center gap-xs rounded-lg px-sm py-sm text-left text-body whitespace-nowrap text-gray-dark transition-colors hover:bg-background-page',
+                    isSelected &&
+                      'bg-primary-lightest font-semibold text-primary-dark hover:bg-primary-lightest',
+                  )}
+                >
+                  {option.color && (
+                    <span
+                      className="h-2 w-2 rounded-full"
+                      style={{ backgroundColor: option.color }}
+                    />
+                  )}
+                  <span className="flex-1">{option.label}</span>
+                  {isSelected && (
+                    <CheckIcon aria-hidden className="ml-sm h-4 w-4 shrink-0" />
+                  )}
+                </button>
+              </li>
+            )
+          })}
         </ul>
       )}
     </div>

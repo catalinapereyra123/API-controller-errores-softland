@@ -1,26 +1,21 @@
+const PLUS_JAKARTA = [
+  'Plus Jakarta Sans',
+  'ui-sans-serif',
+  'system-ui',
+  '-apple-system',
+  'Segoe UI',
+  'Roboto',
+  'Helvetica Neue',
+  'Arial',
+  'sans-serif',
+] as const
+
+// Toda la app usa Plus Jakarta Sans. `mono` queda como alias para los
+// ids/códigos (VIS-29904, SAR_CORMVH, estados B/D/E/N/S): misma familia,
+// sin monoespaciada.
 export const fontFamily = {
-  sans: [
-    'Inter',
-    'ui-sans-serif',
-    'system-ui',
-    '-apple-system',
-    'Segoe UI',
-    'Roboto',
-    'Helvetica Neue',
-    'Arial',
-    'sans-serif',
-  ],
-  // Ids/codigos: VIS-29904, SAR_CORMVH, estados B/D/E/N/S
-  mono: [
-    'JetBrains Mono',
-    'ui-monospace',
-    'SFMono-Regular',
-    'SF Mono',
-    'Menlo',
-    'Consolas',
-    'Liberation Mono',
-    'monospace',
-  ],
+  sans: PLUS_JAKARTA,
+  mono: PLUS_JAKARTA,
 } as const
 
 export const fontWeight = {
@@ -28,6 +23,7 @@ export const fontWeight = {
   medium: '500',
   semibold: '600',
   bold: '700',
+  extrabold: '800',
 } as const
 
 export const fontSize = {
@@ -57,16 +53,19 @@ export const lineHeight = {
 } as const
 
 export const letterSpacing = {
-  display: '-0.02em',
-  h1: '-0.01em',
-  overline: '0.06em',
+  display: '-0.03em',
+  h1: '-0.025em',
+  h2: '-0.02em',
+  h3: '-0.015em',
+  h4: '-0.01em',
+  overline: '0.08em',
 } as const
 
 type TypeStyleKey = keyof typeof fontSize
 
 const weightByStyle: Record<TypeStyleKey, keyof typeof fontWeight> = {
-  display: 'bold',
-  h1: 'bold',
+  display: 'extrabold',
+  h1: 'extrabold',
   h2: 'semibold',
   h3: 'semibold',
   h4: 'semibold',

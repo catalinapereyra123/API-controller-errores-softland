@@ -1,12 +1,13 @@
-import { useMemo, useState } from 'react'
+import { useMemo } from 'react'
 import Button from '../components/Button'
 import ChevronButton from '../components/ChevronButton'
 import Dropdown, { type DropdownOption } from '../components/Dropdown'
-import { PanelLeftIcon, PlusIcon, SearchIcon } from '../components/icons'
+import FiltrosPopover from '../components/FiltrosPopover'
+import { PlusIcon, SearchIcon, XIcon } from '../components/icons'
 import Input from '../components/Input'
-import AppSidebar from '../components/AppSidebar'
-import type { SidebarItemId, SidebarNavItem } from '../components/Sidebar'
+import AppLayout from '../components/AppLayout'
 import Table from '../components/Table'
+import Tabs, { type TabItem } from '../components/Tabs'
 import { cn } from '../utils/cn'
 import {
   ESTADOS_CERRADOS,
@@ -14,7 +15,11 @@ import {
   estadoOrder,
   estadoTagByEstado,
 } from '../constants/estados'
-import { useBandejaErrores } from '../hooks/useBandejaErrores'
+import {
+  FILTROS_INICIALES,
+  useBandejaErrores,
+  type BandejaFilters,
+} from '../hooks/useBandejaErrores'
 import { colors, fontFamily, fontWeight, textStyles } from '../styles'
 import type { AppPage, ErrorTransaccion, Usuario } from '../types'
 import { usuarioNombre } from '../utils/labels'
@@ -38,8 +43,11 @@ const BANDEJA_COLUMNS = [
 function BandejaTableHeader() {
   return (
     <div
-      style={{ backgroundColor: colors.background.subtle }}
-      className={`grid ${BANDEJA_GRID_COLS} gap-md rounded-t-xl px-lg py-sm`}
+      style={{
+        backgroundColor: colors.background.subtle,
+        borderColor: colors.background.border,
+      }}
+      className={`grid ${BANDEJA_GRID_COLS} min-w-[1100px] gap-md border-b px-lg py-sm`}
     >
       {BANDEJA_COLUMNS.map((label, index) => (
         <span
@@ -72,8 +80,9 @@ function BandejaRow({
 
   return (
     <div
+      onClick={onOpen}
       style={{ borderColor: colors.background.border }}
-      className={`grid ${BANDEJA_GRID_COLS} items-start gap-md border-b px-lg py-md last:border-b-0`}
+      className={`group grid ${BANDEJA_GRID_COLS} min-w-[1100px] cursor-pointer items-start gap-md border-b px-lg py-md transition-colors last:border-b-0 hover:bg-background-page`}
     >
       <div className="flex flex-col gap-xxs">
         <EstadoTag />
@@ -152,7 +161,10 @@ function BandejaRow({
         color={colors.primary.dark}
         borderColor={colors.background.border}
         aria-label={`Abrir ${error.codigo}`}
-        onClick={onOpen}
+        onClick={(event) => {
+          event.stopPropagation()
+          onOpen()
+        }}
         className="justify-self-end"
       />
     </div>
@@ -169,22 +181,13 @@ function BandejaErrores({
   const {
     data,
     erroresFiltrados,
+    conteoPorEmpresa,
     loading,
     error,
     refetch,
     filters,
     setFilters,
   } = useBandejaErrores()
-  const [sidebarOpen, setSidebarOpen] = useState(true)
-  const [activeNavItem, setActiveNavItem] = useState<SidebarItemId>('bandeja')
-
-  function handleSelectNavItem(item: SidebarNavItem) {
-    const id = item.id
-    setActiveNavItem(id)
-    if (id === 'inicio') onNavigate('home')
-    if (id === 'bandeja') onNavigate('bandeja')
-    if (id === 'historial') onNavigate('historial')
-  }
 
   // Los módulos salen de los errores que llegaron: se filtra por código
   // (FACTURACION, COMPRAS…) y se muestra la etiqueta legible.
@@ -196,11 +199,13 @@ function BandejaErrores({
     return [...porCodigo.entries()].sort((a, b) => a[1].localeCompare(b[1]))
   }, [data])
 
-  const empresaOptions: DropdownOption[] = [
-    { value: 'todas', label: 'Empresa: Todas' },
+  // La empresa va a la vista como pestañas; el resto, detrás de "Filtros".
+  const empresaTabs: TabItem[] = [
+    { id: 'todas', label: 'Todas', badge: conteoPorEmpresa.todas ?? 0 },
     ...(data?.empresas ?? []).map((empresa) => ({
-      value: empresa.id,
-      label: `Empresa: ${empresa.nombre}`,
+      id: empresa.id,
+      label: empresa.nombre,
+      badge: conteoPorEmpresa[empresa.id] ?? 0,
     })),
   ]
 
@@ -237,182 +242,195 @@ function BandejaErrores({
     { value: '30d', label: 'Fecha: Últimos 30 días' },
   ]
 
+  const filtrosSecundarios: {
+    key: Exclude<keyof BandejaFilters, 'busqueda' | 'empresaId'>
+    text: string
+    options: DropdownOption[]
+  }[] = [
+    { key: 'modulo', text: 'Proceso: Todos', options: moduloOptions },
+    {
+      key: 'responsableId',
+      text: 'Responsable: Todos',
+      options: responsableOptions,
+    },
+    {
+      key: 'periodo',
+      text: 'Fecha: Todo el historial',
+      options: periodoOptions,
+    },
+    { key: 'estado', text: 'Estado: Abiertos', options: estadoOptions },
+  ]
+
+  const filtrosActivos = filtrosSecundarios.filter(
+    ({ key }) => filters[key] !== FILTROS_INICIALES[key],
+  )
+
+  function limpiarFiltros() {
+    setFilters(
+      Object.fromEntries(
+        filtrosSecundarios.map(({ key }) => [key, FILTROS_INICIALES[key]]),
+      ),
+    )
+  }
+
   return (
-    <div
-      style={{ backgroundColor: colors.background.page }}
-      className="flex h-screen w-full"
+    <AppLayout
+      activeItem="bandeja"
+      onNavigate={onNavigate}
+      migas={[
+        { label: 'Inicio', page: 'home' },
+        { label: 'Bandeja de errores' },
+      ]}
     >
-      <div
-        style={{ borderColor: colors.background.border }}
-        className={`shrink-0 overflow-hidden border-r transition-[width] duration-200 ease-in-out ${
-          sidebarOpen ? 'w-[280px]' : 'w-0 border-r-0'
-        }`}
-      >
-        <AppSidebar
-          activeItem={activeNavItem}
-          onItemSelect={handleSelectNavItem}
+      <div className="flex flex-wrap items-start justify-between gap-md">
+        <h1 style={{ ...textStyles.h1, color: colors.gray.darkest }}>
+          Bandeja de errores
+        </h1>
+        <Button
+          text="Registrar seguimiento manual"
+          color={colors.primary.default}
+          icon={<PlusIcon className="h-4 w-4" />}
+          size={{ ...textStyles.bodySmall, fontWeight: fontWeight.bold }}
+          className="px-lg py-sm"
         />
       </div>
 
-      <main className="flex-1 overflow-y-auto p-xl">
-        <div className="mx-auto flex max-w-[1400px] flex-col gap-xl">
-          <div className="flex flex-wrap items-start justify-between gap-md">
-            <div className="flex items-start gap-md">
+      {error && (
+        <div
+          style={{
+            ...textStyles.bodySmall,
+            fontWeight: fontWeight.semibold,
+            backgroundColor: colors.label.red.background,
+            color: colors.label.red.text,
+            borderColor: colors.label.red.outline,
+          }}
+          className="flex items-center justify-between gap-md rounded-xl border px-lg py-md"
+        >
+          {error}
+          <button type="button" className="underline" onClick={refetch}>
+            Reintentar
+          </button>
+        </div>
+      )}
+
+      <div className="flex flex-col gap-md">
+        <Tabs
+          variant="underline"
+          items={empresaTabs}
+          value={filters.empresaId}
+          onChange={(id) => setFilters({ empresaId: id })}
+          activeColor={colors.primary.dark}
+          inactiveColor={colors.gray.medium}
+          dividerColor={colors.background.border}
+        />
+
+        <div className="flex flex-wrap items-stretch gap-sm">
+          <Input
+            icon={
+              <SearchIcon
+                className="h-4 w-4"
+                style={{ color: colors.gray.default }}
+              />
+            }
+            color={colors.gray.darkest}
+            borderColor={colors.background.border}
+            backgroundColor={colors.background.surface}
+            placeholder="Buscar por ID..."
+            value={filters.busqueda}
+            onChange={(event) => setFilters({ busqueda: event.target.value })}
+            className="max-w-[420px] min-w-[220px] flex-1"
+          />
+
+          <FiltrosPopover
+            activos={filtrosActivos.length}
+            onLimpiar={limpiarFiltros}
+          >
+            {filtrosSecundarios.map(({ key, text, options }) => (
+              <Dropdown
+                key={key}
+                text={text}
+                options={options}
+                color={colors.background.border}
+                textColor={colors.gray.dark}
+                backgroundColor={colors.background.surface}
+                value={filters[key]}
+                onChange={(value) => setFilters({ [key]: value })}
+              />
+            ))}
+          </FiltrosPopover>
+
+          {/* Filtros aplicados a la vista, cada uno se saca con su cruz. */}
+          {filtrosActivos.map(({ key, text, options }) => (
+            <span
+              key={key}
+              className="inline-flex animate-aparecer items-center gap-xs self-center rounded-full bg-primary-lightest py-xxs pr-xxs pl-sm text-bodySmall font-semibold text-primary-dark"
+            >
+              {options.find((option) => option.value === filters[key])?.label ??
+                text}
               <button
                 type="button"
-                onClick={() => setSidebarOpen((open) => !open)}
-                aria-label={sidebarOpen ? 'Ocultar menú' : 'Mostrar menú'}
-                aria-expanded={sidebarOpen}
-                style={{
-                  color: colors.gray.medium,
-                  backgroundColor: colors.background.surface,
-                }}
-                className="mt-xs flex h-9 w-9 shrink-0 items-center justify-center rounded-md shadow-md transition-colors hover:bg-background-page"
+                aria-label={`Quitar filtro ${text.split(':')[0]}`}
+                onClick={() => setFilters({ [key]: FILTROS_INICIALES[key] })}
+                className="flex h-5 w-5 cursor-pointer items-center justify-center rounded-full transition-colors hover:bg-primary-light"
               >
-                <PanelLeftIcon className="h-5 w-5" />
+                <XIcon className="h-3 w-3" />
               </button>
-              <div className="flex flex-col gap-xxs">
-                <h1 style={{ ...textStyles.h1, color: colors.gray.darkest }}>
-                  Bandeja de errores
-                </h1>
-              </div>
-            </div>
-            <Button
-              text="Registrar seguimiento manual"
-              color={colors.primary.default}
-              icon={<PlusIcon className="h-4 w-4" />}
-              size={{ ...textStyles.bodySmall, fontWeight: fontWeight.bold }}
-              className="px-lg py-sm"
-            />
-          </div>
+            </span>
+          ))}
+        </div>
+      </div>
 
-          {error && (
+      {loading || !data ? (
+        <Table
+          title="Bandeja de errores"
+          subtitle="Cargando transacciones…"
+          actionText=""
+          actionColor={colors.primary.dark}
+          rows={6}
+          columns={9}
+          backgroundColor={colors.background.surface}
+          titleColor={colors.gray.darkest}
+          subtitleColor={colors.gray.medium}
+          dividerColor={colors.background.border}
+          cellPlaceholderColor={colors.background.page}
+        />
+      ) : (
+        <div
+          style={{ backgroundColor: colors.background.surface }}
+          className="w-full overflow-x-auto rounded-xl shadow-soft ring-1 ring-slate-900/5"
+        >
+          <BandejaTableHeader />
+          {erroresFiltrados.length === 0 ? (
             <div
-              style={{
-                ...textStyles.bodySmall,
-                fontWeight: fontWeight.semibold,
-                backgroundColor: colors.label.red.background,
-                color: colors.label.red.text,
-                borderColor: colors.label.red.outline,
-              }}
-              className="flex items-center justify-between gap-md rounded-xl border px-lg py-md"
+              style={{ ...textStyles.body, color: colors.gray.medium }}
+              className="flex flex-col items-center gap-sm px-lg py-xxl text-center"
             >
-              {error}
-              <button type="button" className="underline" onClick={refetch}>
-                Reintentar
-              </button>
+              <span
+                style={{
+                  color: colors.gray.default,
+                  backgroundColor: colors.background.subtle,
+                }}
+                className="flex h-12 w-12 items-center justify-center rounded-full"
+              >
+                <SearchIcon className="h-5 w-5" />
+              </span>
+              No hay transacciones que coincidan con los filtros.
             </div>
-          )}
-
-          <div
-            className={`flex flex-wrap items-center gap-md lg:grid ${BANDEJA_GRID_COLS} lg:items-center lg:gap-md lg:px-lg`}
-          >
-            <Input
-              icon={
-                <SearchIcon
-                  className="h-4 w-4"
-                  style={{ color: colors.gray.default }}
-                />
-              }
-              color={colors.gray.darkest}
-              borderColor={colors.background.border}
-              backgroundColor={colors.background.surface}
-              placeholder="Buscar por ID..."
-              value={filters.busqueda}
-              onChange={(event) => setFilters({ busqueda: event.target.value })}
-              className="min-w-[220px] flex-1 lg:col-span-2 lg:w-full lg:flex-none"
-            />
-            <Dropdown
-              text="Empresa: Todas"
-              options={empresaOptions}
-              color={colors.background.border}
-              textColor={colors.gray.dark}
-              backgroundColor={colors.background.surface}
-              value={filters.empresaId}
-              onChange={(value) => setFilters({ empresaId: value })}
-            />
-            <Dropdown
-              text="Proceso: Todos"
-              options={moduloOptions}
-              color={colors.background.border}
-              textColor={colors.gray.dark}
-              backgroundColor={colors.background.surface}
-              value={filters.modulo}
-              onChange={(value) => setFilters({ modulo: value })}
-            />
-            <Dropdown
-              text="Responsable: Todos"
-              options={responsableOptions}
-              color={colors.background.border}
-              textColor={colors.gray.dark}
-              backgroundColor={colors.background.surface}
-              value={filters.responsableId}
-              onChange={(value) => setFilters({ responsableId: value })}
-            />
-            <Dropdown
-              text="Fecha: Todo el historial"
-              options={periodoOptions}
-              color={colors.background.border}
-              textColor={colors.gray.dark}
-              backgroundColor={colors.background.surface}
-              value={filters.periodo}
-              onChange={(value) => setFilters({ periodo: value })}
-            />
-            <Dropdown
-              text="Estado: Abiertos"
-              options={estadoOptions}
-              color={colors.background.border}
-              textColor={colors.gray.dark}
-              backgroundColor={colors.background.surface}
-              value={filters.estado}
-              onChange={(value) => setFilters({ estado: value })}
-            />
-          </div>
-
-          {loading || !data ? (
-            <Table
-              title="Bandeja de errores"
-              subtitle="Cargando transacciones…"
-              actionText=""
-              actionColor={colors.primary.dark}
-              rows={6}
-              columns={9}
-              backgroundColor={colors.background.surface}
-              titleColor={colors.gray.darkest}
-              subtitleColor={colors.gray.medium}
-              dividerColor={colors.background.border}
-              cellPlaceholderColor={colors.background.page}
-            />
           ) : (
-            <div
-              style={{ backgroundColor: colors.background.surface }}
-              className="w-full rounded-xl shadow-md"
-            >
-              <BandejaTableHeader />
-              {erroresFiltrados.length === 0 ? (
-                <div
-                  style={{ ...textStyles.body, color: colors.gray.medium }}
-                  className="px-lg py-xxl text-center"
-                >
-                  No hay transacciones que coincidan con los filtros.
-                </div>
-              ) : (
-                <div>
-                  {erroresFiltrados.map((item) => (
-                    <BandejaRow
-                      key={item.id}
-                      error={item}
-                      usuarios={data.usuarios}
-                      onOpen={() => onOpenError(item.id)}
-                    />
-                  ))}
-                </div>
-              )}
+            <div>
+              {erroresFiltrados.map((item) => (
+                <BandejaRow
+                  key={item.id}
+                  error={item}
+                  usuarios={data.usuarios}
+                  onOpen={() => onOpenError(item.id)}
+                />
+              ))}
             </div>
           )}
         </div>
-      </main>
-    </div>
+      )}
+    </AppLayout>
   )
 }
 

@@ -36,11 +36,13 @@ function Button({
         ...size,
       }}
       className={cn(
-        'inline-flex items-center justify-center gap-xs font-medium transition-opacity hover:opacity-90',
-        isOutline && 'rounded-full border',
-        isText && 'rounded-md',
-        !isOutline && !isText && 'rounded-md text-white',
-        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-default focus-visible:ring-offset-2',
+        'inline-flex cursor-pointer items-center justify-center gap-xs font-medium transition-all duration-150 active:scale-[0.98]',
+        isOutline && 'rounded-full border hover:bg-slate-900/[0.04]',
+        isText && 'rounded-md hover:opacity-75',
+        !isOutline &&
+          !isText &&
+          'rounded-lg text-white shadow-sm hover:shadow-md hover:brightness-95',
+        'focus-visible:ring-2 focus-visible:ring-primary-default/50 focus-visible:ring-offset-2 focus-visible:outline-none',
         'disabled:pointer-events-none disabled:opacity-50',
         className,
       )}

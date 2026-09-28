@@ -45,6 +45,7 @@ function FormField({ label, error, ayuda, icon, ...props }: FormFieldProps) {
         aria-invalid={error ? true : undefined}
         aria-describedby={mensaje ? mensajeId : undefined}
         className="w-full"
+        pill
         {...props}
       />
 

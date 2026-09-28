@@ -5,12 +5,22 @@ export const colors = {
     default: '#16a34a',
     dark: '#15803d',
     darkest: '#052e16',
+    /** Logo y acentos de marca. */
+    gradient: 'linear-gradient(135deg, #22c55e, #15803d)',
+  },
+
+  // Paleta iFlow para el panel de acceso: verde profundo + lima de la marca.
+  brand: {
+    lime: '#8dc63f',
+    limeSoft: '#c5e79a',
+    forest: '#1c4a1f',
+    deep: '#0d2410',
   },
 
   background: {
     page: '#f8fafc',
     surface: '#ffffff',
-    subtle: '#ede9fe',
+    subtle: '#f1f5f9',
     border: '#e2e8f0',
   },
 
