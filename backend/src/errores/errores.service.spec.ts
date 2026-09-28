@@ -498,20 +498,16 @@ describe('ErroresService.registrarResultadoReproceso', () => {
     expect(repo.eventos).toHaveLength(eventos);
   });
 
-  it('N con error después de pasarlo a N => falló el reproceso (E)', async () => {
+  it('N con error => falló el reproceso (E), aunque sea el primer N', async () => {
     await service.sync([registro()]);
     repo.transacciones[0].estadoApp = 'REPROCESANDO';
     repo.intentos.push({ id: 'i1', errorId: 't1', cerradoAt: null });
-    const statusN = {
+
+    const res = await service.registrarResultadoReproceso({
       empresa: 'AMCARG',
       modulo: '3. Compras',
       identi: 'LIQ100',
       statusSoftland: 'N',
-    };
-
-    await service.registrarResultadoReproceso(statusN);
-    const res = await service.registrarResultadoReproceso({
-      ...statusN,
       error:
         'Se ha producido un error, verificar el archivo c:\\padron\\CO_Err.txt',
     });

@@ -400,13 +400,15 @@ export class ErroresService {
       );
     }
 
-    // N con ERRMSG después de haberlo pasado a N = Softland ya lo reprocesó y
-    // volvió a fallar (deja el N y escribe el error). Para la app es un E.
+    // N con ERRMSG = Softland ya lo reprocesó y volvió a fallar (deja el N y
+    // escribe el error). Para la app es un E. El flujo 2 consulta el resultado
+    // una sola vez, justo después de pasarlo a N, así que no se puede esperar
+    // a un segundo N: el UPDATE a N vacía el ERRMSG, y si vuelve con texto es
+    // un fallo nuevo.
     if (
       dto.statusSoftland === 'N' &&
       dto.error &&
-      t.estadoApp === EstadoApp.REPROCESANDO &&
-      t.reprocesoNotificadoAt !== null
+      t.estadoApp === EstadoApp.REPROCESANDO
     ) {
       dto = { ...dto, statusSoftland: 'E' };
     }

@@ -122,8 +122,9 @@ El error deja de salir cuando el integrador informa `N` en el flujo 4 (ver abajo
 - `N` → sigue `REPROCESANDO` y el intento queda abierto (todavía no hay resultado).
   La primera vez guarda `reprocesoNotificadoAt`: ya se pasó a N, así que el GET
   singular pasa al siguiente. Los `N` que llegan después no cambian nada.
-- `N` **con `error`**, después de ese primer `N` → se toma como `E`: Softland ya
-  lo reprocesó y volvió a fallar (deja el N y escribe el ERRMSG). Por eso el
+- `N` **con `error`** (sobre un error en `REPROCESANDO`) → se toma como `E`:
+  Softland ya lo reprocesó y volvió a fallar (deja el N y escribe el ERRMSG).
+  El flujo consulta una sola vez, justo después de pasarlo a N. Por eso el
   UPDATE que lo pasa a N tiene que vaciar el ERRMSG; si no, el mensaje viejo
   haría pasar un reproceso en cola por fallido. La consulta del integrador ya
   manda `E` en ese caso; esto queda de respaldo.
