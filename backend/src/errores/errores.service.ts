@@ -400,6 +400,17 @@ export class ErroresService {
       );
     }
 
+    // N con ERRMSG después de haberlo pasado a N = Softland ya lo reprocesó y
+    // volvió a fallar (deja el N y escribe el error). Para la app es un E.
+    if (
+      dto.statusSoftland === 'N' &&
+      dto.error &&
+      t.estadoApp === EstadoApp.REPROCESANDO &&
+      t.reprocesoNotificadoAt !== null
+    ) {
+      dto = { ...dto, statusSoftland: 'E' };
+    }
+
     // N = Softland lo tiene en cola pero todavía no hay resultado: sigue
     // REPROCESANDO y el intento queda abierto. La primera vez se registra que
     // ya se pasó a N, para que GET reproceso-pendiente pase al siguiente.

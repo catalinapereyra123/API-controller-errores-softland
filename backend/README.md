@@ -122,6 +122,14 @@ El error deja de salir cuando el integrador informa `N` en el flujo 4 (ver abajo
 - `N` → sigue `REPROCESANDO` y el intento queda abierto (todavía no hay resultado).
   La primera vez guarda `reprocesoNotificadoAt`: ya se pasó a N, así que el GET
   singular pasa al siguiente. Los `N` que llegan después no cambian nada.
+- `N` **con `error`**, después de ese primer `N` → se toma como `E`: Softland ya
+  lo reprocesó y volvió a fallar (deja el N y escribe el ERRMSG). Por eso el
+  UPDATE que lo pasa a N tiene que vaciar el ERRMSG; si no, el mensaje viejo
+  haría pasar un reproceso en cola por fallido. La consulta del integrador ya
+  manda `E` en ese caso; esto queda de respaldo.
+- El texto de `error` tiene que llegar sin `\`, comillas ni saltos de línea si
+  el body se arma como plantilla (`"{{error}}"`): si no, el JSON se rompe en
+  iFlow y el pedido nunca llega. La consulta los reemplaza con `REPLACE`.
 - Si el error está `DESCARTADO`, se guarda el status y se cierra el intento, pero
   no cambia de estado (no vuelve a la bandeja).
 
