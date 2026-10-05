@@ -1085,6 +1085,12 @@ export class ErroresService {
     }
   }
 
+  /**
+   * Avisa al integrador que hay un reproceso. Con IFLOW_REPROCESO_EXECUTION_KEY
+   * dispara directamente el flujo de iFlow Studio (POST a
+   * /api/v1/spOrchestrator/execute con el código del primer nodo, que pasa a N,
+   * consulta el resultado y lo informa). Sin ella manda el body histórico.
+   */
   private async notificarN8nReproceso(t: TransaccionError): Promise<boolean> {
     const url = process.env.N8N_REPROCESO_WEBHOOK_URL?.trim();
     if (!url) {
@@ -1093,21 +1099,38 @@ export class ErroresService {
       );
       return false;
     }
+    const executionKey = process.env.IFLOW_REPROCESO_EXECUTION_KEY?.trim();
     const apiKey = process.env.INGEST_API_KEY?.trim();
+    // `modulo` va como el código del enum (FACTURACION...), igual que lo
+    // devolvía GET reproceso-pendiente, que es lo que el SQL del flujo espera.
+    const body = executionKey
+      ? {
+          executionKey,
+          parameters: {
+            empresa: t.empresaCodigo,
+            modulo: t.modulo,
+            identi: t.identi,
+          },
+          isFile: false,
+        }
+      : {
+          empresa: t.empresaCodigo,
+          modulo: t.moduloOrigen,
+          moduloCodigo: t.modulo,
+          identi: t.identi,
+        };
     try {
       const res = await fetch(url, {
         method: 'POST',
         headers: {
           'content-type': 'application/json',
-          ...(apiKey ? { 'x-api-key': apiKey } : {}),
+          // La clave de ingesta es nuestra: no se le manda a iFlow.
+          ...(apiKey && !executionKey ? { 'x-api-key': apiKey } : {}),
         },
-        body: JSON.stringify({
-          empresa: t.empresaCodigo,
-          modulo: t.moduloOrigen,
-          moduloCodigo: t.modulo,
-          identi: t.identi,
-        }),
-        signal: AbortSignal.timeout(8000),
+        body: JSON.stringify(body),
+        // iFlow puede correr la cadena entera (UPDATE, consulta e informe)
+        // antes de responder.
+        signal: AbortSignal.timeout(executionKey ? 60_000 : 8000),
       });
       if (!res.ok) {
         this.logger.error(

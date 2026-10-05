@@ -377,6 +377,55 @@ describe('ErroresService.solicitarReproceso', () => {
     expect(detalle.reprocesoNotificado).toBe(false);
   });
 
+  describe('con IFLOW_REPROCESO_EXECUTION_KEY', () => {
+    let fetchMock: jest.SpyInstance;
+
+    beforeEach(() => {
+      process.env.N8N_REPROCESO_WEBHOOK_URL =
+        'https://api-studio.iflow21.com/api/v1/spOrchestrator/execute';
+      process.env.IFLOW_REPROCESO_EXECUTION_KEY = 'FSOF-0003-P6';
+      process.env.INGEST_API_KEY = 'clave-propia';
+      fetchMock = jest
+        .spyOn(global, 'fetch')
+        .mockResolvedValue(new Response('{}', { status: 200 }));
+    });
+
+    afterEach(() => {
+      fetchMock.mockRestore();
+      delete process.env.N8N_REPROCESO_WEBHOOK_URL;
+      delete process.env.IFLOW_REPROCESO_EXECUTION_KEY;
+      delete process.env.INGEST_API_KEY;
+    });
+
+    it('dispara el flujo de iFlow con el contrato de spOrchestrator', async () => {
+      await service.sync([registro()]);
+
+      const detalle = await service.solicitarReproceso('t1', {});
+
+      expect(detalle.reprocesoNotificado).toBe(true);
+      const [url, init] = fetchMock.mock.calls[0];
+      expect(url).toBe(
+        'https://api-studio.iflow21.com/api/v1/spOrchestrator/execute',
+      );
+      expect(JSON.parse(init.body)).toEqual({
+        executionKey: 'FSOF-0003-P6',
+        parameters: { empresa: 'AMCARG', modulo: 'COMPRAS', identi: 'LIQ100' },
+        isFile: false,
+      });
+      expect(init.headers['x-api-key']).toBeUndefined();
+    });
+
+    it('si iFlow responde error, queda sin notificar', async () => {
+      fetchMock.mockResolvedValue(new Response('{}', { status: 400 }));
+      await service.sync([registro()]);
+
+      const detalle = await service.solicitarReproceso('t1', {});
+
+      expect(detalle.reprocesoNotificado).toBe(false);
+      expect(repo.transacciones[0].estadoApp).toBe('REPROCESANDO');
+    });
+  });
+
   it('reprocesoPendiente devuelve siempre un objeto, nunca null ni un array', async () => {
     await service.sync([registro()]);
     expect(await service.reprocesoPendiente()).toEqual({
