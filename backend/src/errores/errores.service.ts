@@ -1100,6 +1100,9 @@ export class ErroresService {
       return false;
     }
     const executionKey = process.env.IFLOW_REPROCESO_EXECUTION_KEY?.trim();
+    // Token Bearer de un "Usuario API" de iFlow (rol API_EXECUTOR). Sin él,
+    // spOrchestrator/execute responde 403.
+    const iflowToken = process.env.IFLOW_API_TOKEN?.trim();
     const apiKey = process.env.INGEST_API_KEY?.trim();
     // `modulo` va como el código del enum (FACTURACION...), igual que lo
     // devolvía GET reproceso-pendiente, que es lo que el SQL del flujo espera.
@@ -1126,6 +1129,9 @@ export class ErroresService {
           'content-type': 'application/json',
           // La clave de ingesta es nuestra: no se le manda a iFlow.
           ...(apiKey && !executionKey ? { 'x-api-key': apiKey } : {}),
+          ...(iflowToken && executionKey
+            ? { authorization: `Bearer ${iflowToken}` }
+            : {}),
         },
         body: JSON.stringify(body),
         // iFlow puede correr la cadena entera (UPDATE, consulta e informe)

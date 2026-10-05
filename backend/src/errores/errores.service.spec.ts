@@ -384,6 +384,7 @@ describe('ErroresService.solicitarReproceso', () => {
       process.env.N8N_REPROCESO_WEBHOOK_URL =
         'https://api-studio.iflow21.com/api/v1/spOrchestrator/execute';
       process.env.IFLOW_REPROCESO_EXECUTION_KEY = 'FSOF-0003-P6';
+      process.env.IFLOW_API_TOKEN = 'token-iflow';
       process.env.INGEST_API_KEY = 'clave-propia';
       fetchMock = jest
         .spyOn(global, 'fetch')
@@ -394,6 +395,7 @@ describe('ErroresService.solicitarReproceso', () => {
       fetchMock.mockRestore();
       delete process.env.N8N_REPROCESO_WEBHOOK_URL;
       delete process.env.IFLOW_REPROCESO_EXECUTION_KEY;
+      delete process.env.IFLOW_API_TOKEN;
       delete process.env.INGEST_API_KEY;
     });
 
@@ -413,6 +415,7 @@ describe('ErroresService.solicitarReproceso', () => {
         isFile: false,
       });
       expect(init.headers['x-api-key']).toBeUndefined();
+      expect(init.headers.authorization).toBe('Bearer token-iflow');
     });
 
     it('si iFlow responde error, queda sin notificar', async () => {
