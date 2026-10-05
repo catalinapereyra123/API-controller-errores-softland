@@ -305,6 +305,44 @@ describe('ErroresService.sync', () => {
     expect(liq200.estadoApp).toBe('REPROCESANDO');
     expect(liq200.reprocesoDesaparecioAt).not.toBeNull();
   });
+
+  describe('parcial (iFlow: un POST por error)', () => {
+    it('no marca como desaparecido lo que no vino en esta llamada', async () => {
+      await service.sync([registro(), registro({ identi: 'LIQ200' })]);
+      const res = await service.sync([registro()], [], { parcial: true });
+
+      expect(res.desaparecidos).toBe(0);
+      expect(
+        repo.transacciones.find((t) => t.identi === 'LIQ200')
+          .presenteEnUltimaSync,
+      ).toBe(true);
+    });
+
+    it('no dispara la alarma de reproceso desaparecido', async () => {
+      await service.sync([registro(), registro({ identi: 'LIQ200' })]);
+      const liq200 = repo.transacciones.find((t) => t.identi === 'LIQ200');
+      liq200.estadoApp = 'REPROCESANDO';
+
+      const res = await service.sync([registro()], [], { parcial: true });
+
+      expect(res.reprocesandoSinConfirmar).toBe(0);
+      expect(liq200.reprocesoDesaparecioAt).toBeNull();
+    });
+
+    it('igual crea y concilia el error que llega', async () => {
+      await service.sync([registro()], [], { parcial: true });
+      repo.transacciones[0].estadoApp = 'REPROCESANDO';
+
+      const res = await service.sync(
+        [registro({ statusSoftland: 'S', error: null })],
+        [],
+        { parcial: true },
+      );
+
+      expect(res.reprocesadosOk).toBe(1);
+      expect(repo.transacciones[0].estadoApp).toBe('RESUELTO');
+    });
+  });
 });
 
 describe('ErroresService.solicitarReproceso', () => {

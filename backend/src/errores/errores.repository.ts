@@ -13,9 +13,13 @@ type Db = PrismaService | Prisma.TransactionClient;
 export class ErroresRepository {
   constructor(private readonly prisma: PrismaService) {}
 
-  /** Ejecuta un bloque dentro de una transacción de base. */
+  /**
+   * Ejecuta un bloque dentro de una transacción de base. Los defaults de
+   * Prisma (2 s para conseguir conexión, 5 s de duración) quedan cortos en el
+   * plan free (Render + Neon) cuando iFlow manda decenas de POST a la vez.
+   */
   transaction<T>(fn: (tx: Prisma.TransactionClient) => Promise<T>): Promise<T> {
-    return this.prisma.$transaction(fn);
+    return this.prisma.$transaction(fn, { maxWait: 15_000, timeout: 30_000 });
   }
 
   // ---------- Sync (flujo 1) ----------

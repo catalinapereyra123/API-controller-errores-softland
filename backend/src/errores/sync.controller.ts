@@ -128,7 +128,7 @@ export class SyncController {
       fecha: item.FechaMovimiento,
     }));
 
-    const empresas = [...new Set(arr.map((item) => item.EmpresaCodigo))];
-    return this.service.sync(dtos, empresas);
+    // iFlow llama una vez por error y en paralelo: no es la foto completa.
+    return this.service.sync(dtos, [], { parcial: true });
   }
 }

@@ -56,9 +56,17 @@ export class ErroresService {
   // ==========================================================================
   //  FLUJO 1 — SYNC (n8n manda TODOS los errores en un POST, cada 3 h)
   // ==========================================================================
+  /**
+   * `parcial`: los registros NO son la foto completa de las empresas (iFlow
+   * manda un POST por error, en paralelo). Entonces no se marca nada como
+   * "no visto" ni se dispara la alarma de desaparecidos: con un solo error por
+   * llamada todo lo demás parecería desaparecido, y el updateMany sobre toda
+   * la empresa bloqueaba las llamadas concurrentes hasta el timeout (500).
+   */
   async sync(
     registros: SyncErrorDto[],
     empresasConsultadas: string[] = [],
+    { parcial = false }: { parcial?: boolean } = {},
   ): Promise<SyncResultadoDto> {
     const empresas = new Map<string, string>();
     for (const r of registros) {
@@ -86,7 +94,7 @@ export class ErroresService {
       }
 
       // Todo lo de estas empresas pasa a "no visto"; abajo se re-marca lo que llegó.
-      await this.repo.marcarNoPresentes(empresaCodigos, tx);
+      if (!parcial) await this.repo.marcarNoPresentes(empresaCodigos, tx);
 
       for (const r of registros) {
         let modulo: Modulo;
@@ -209,6 +217,7 @@ export class ErroresService {
       // solo: desaparecer del listado de errores no prueba status S (pudo pasar
       // a N u otro estado fuera del WHERE). Es una ALARMA; la verdad la trae el
       // flujo 4 (POST /errores/resultado-reproceso) consultando el IDENTI.
+      if (parcial) return;
       for (const t of await this.repo.reprocesandoDesaparecidos(
         empresaCodigos,
         tx,
