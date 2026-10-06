@@ -1,2 +1,5 @@
 node_modules
 .DS_Store
+
+# variables de Coolify con secretos (solo locales)
+.env.coolify.*
