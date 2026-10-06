@@ -53,6 +53,8 @@ services:
         # API hay que redeployar el front.
         VITE_API_URL: ${VITE_API_URL:?}
     restart: unless-stopped
+    expose:
+      - "8080"
     depends_on:
       - backend
 
