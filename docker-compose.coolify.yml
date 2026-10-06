@@ -28,10 +28,12 @@ services:
     build:
       context: ./backend
     restart: unless-stopped
+    expose:
+      - "3001"
     environment:
       # POSTGRES_PASSWORD va dentro de la URL: usar solo letras y números.
       DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:?}@db:5432/errores_softland?schema=public
-      PORT: "3000"
+      PORT: "3001"
       NODE_ENV: production
       CORS_ORIGIN: ${CORS_ORIGIN:?}
       INGEST_API_KEY: ${INGEST_API_KEY:?}
