@@ -1,0 +1,58 @@
+# Compose para el deploy en Coolify (server IFLOW DEPLOYS).
+# El docker-compose.yml de al lado es para levantar todo en local.
+#
+# Diferencias con el local:
+#  - sin `ports`: el server es compartido; Traefik (el proxy de Coolify) enruta
+#    por dominio, y la DB no queda expuesta afuera.
+#  - sin `container_name`: chocaría con otros proyectos del mismo server.
+#  - los secretos salen de las Environment Variables de Coolify (`${VAR:?}` =
+#    obligatoria; Coolify la marca en la UI hasta que se le dé valor).
+
+services:
+  db:
+    image: postgres:17
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?}
+      POSTGRES_DB: errores_softland
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d errores_softland"]
+      interval: 5s
+      timeout: 5s
+      retries: 15
+
+  backend:
+    build:
+      context: ./backend
+    restart: unless-stopped
+    environment:
+      # POSTGRES_PASSWORD va dentro de la URL: usar solo letras y números.
+      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:?}@db:5432/errores_softland?schema=public
+      PORT: "3000"
+      NODE_ENV: production
+      CORS_ORIGIN: ${CORS_ORIGIN:?}
+      INGEST_API_KEY: ${INGEST_API_KEY:?}
+      JWT_SECRET: ${JWT_SECRET:?}
+      N8N_REPROCESO_WEBHOOK_URL: ${N8N_REPROCESO_WEBHOOK_URL:-}
+      IFLOW_REPROCESO_EXECUTION_KEY: ${IFLOW_REPROCESO_EXECUTION_KEY:-}
+      IFLOW_API_TOKEN: ${IFLOW_API_TOKEN:-}
+    depends_on:
+      db:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        # Vite la mete en el bundle al buildear: si cambia el dominio de la
+        # API hay que redeployar el front.
+        VITE_API_URL: ${VITE_API_URL:?}
+    restart: unless-stopped
+    depends_on:
+      - backend
+
+volumes:
+  db-data:
