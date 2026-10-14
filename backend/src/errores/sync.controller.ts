@@ -50,12 +50,12 @@ export class SyncController {
   }
 
   /**
-   * Flujo 4: los que ya se pasaron a N y esperan resultado. A diferencia de
-   * `reproceso-pendientes`, deja afuera los que todavía no se mandaron.
+   * Flujo 4, de a uno: el próximo ya pasado a N cuyo resultado hay que
+   * consultar en Softland. Mismo formato que `reproceso-pendiente`.
    */
-  @Get('integracion/reproceso-pendientes-lista')
-  reprocesoPendientesLista() {
-    return this.service.reprocesoPendientesLista();
+  @Get('integracion/resultado-pendiente')
+  resultadoPendiente() {
+    return this.service.resultadoPendiente();
   }
 
   /**

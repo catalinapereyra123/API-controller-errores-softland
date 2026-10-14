@@ -47,6 +47,24 @@ const ORDEN_MODULOS: Modulo[] = [
   Modulo.COBRANZAS,
 ];
 
+/**
+ * Respuesta de los GET de a uno cuando no hay nada: siempre un objeto, nunca
+ * null (Nest lo manda como 200 sin body y iFlow no lo acepta).
+ */
+function sinPendiente(): ReprocesoPendienteDto {
+  return {
+    hayPendiente: false,
+    id: null,
+    empresa: null,
+    modulo: null,
+    moduloOrigen: null,
+    identi: null,
+    solicitadoEn: null,
+    notificado: null,
+    intentos: null,
+  };
+}
+
 @Injectable()
 export class ErroresService {
   private readonly logger = new Logger(ErroresService.name);
@@ -351,17 +369,25 @@ export class ErroresService {
   }
 
   /**
-   * Lo que el flujo 4 tiene que consultar en Softland: los que ya se pasaron a
-   * N y esperan resultado. Los que todavía no se mandaron quedan afuera; si no,
-   * los vería en E y los marcaría "requiere corrección" sin haberse
-   * reprocesado. El nodo de iFlow lo recorre con "ciclo de resultados".
+   * Flujo 4, de a uno: entre los que ya se pasaron a N, el que hace más tiempo
+   * que no se consulta en Softland. Cada resultado informado (aunque sea otro
+   * N) actualiza `ultimaVerificacionAt` y lo manda al final, así uno que sigue
+   * en cola no tapa a los demás. Los que todavía no se mandaron quedan afuera:
+   * el flujo los vería en E y los marcaría "requiere corrección" sin haberse
+   * reprocesado.
    */
-  async reprocesoPendientesLista() {
-    const items = await this.repo.listar({
-      estadoApp: EstadoApp.REPROCESANDO,
-      reprocesoNotificadoAt: { not: null },
-    });
-    return items.map((t) => this.aPendiente(t));
+  async resultadoPendiente(): Promise<ReprocesoPendienteDto> {
+    const t = await this.repo.primerPendiente(
+      {
+        estadoApp: EstadoApp.REPROCESANDO,
+        reprocesoNotificadoAt: { not: null },
+      },
+      [
+        { ultimaVerificacionAt: { sort: 'asc', nulls: 'first' } },
+        { fechaCorreccion: 'asc' },
+      ],
+    );
+    return t ? { hayPendiente: true, ...this.aPendiente(t) } : sinPendiente();
   }
 
   /**
@@ -379,20 +405,7 @@ export class ErroresService {
       estadoApp: EstadoApp.REPROCESANDO,
       reprocesoNotificadoAt: null,
     });
-    if (!t) {
-      return {
-        hayPendiente: false,
-        id: null,
-        empresa: null,
-        modulo: null,
-        moduloOrigen: null,
-        identi: null,
-        solicitadoEn: null,
-        notificado: null,
-        intentos: null,
-      };
-    }
-    return { hayPendiente: true, ...this.aPendiente(t) };
+    return t ? { hayPendiente: true, ...this.aPendiente(t) } : sinPendiente();
   }
 
   /** Forma que ve el integrador: la clave de Softland + contexto del intento. */
@@ -444,11 +457,12 @@ export class ErroresService {
         t.estadoApp === EstadoApp.REPROCESANDO &&
         t.reprocesoNotificadoAt === null;
 
+      const ahora = new Date();
       if (primeraVez) {
         await this.repo.transaction(async (tx) => {
           await this.repo.actualizarTransaccion(
             t.id,
-            { reprocesoNotificadoAt: new Date() },
+            { reprocesoNotificadoAt: ahora, ultimaVerificacionAt: ahora },
             tx,
           );
           await this.repo.crearEvento(
@@ -460,6 +474,11 @@ export class ErroresService {
             },
             tx,
           );
+        });
+      } else {
+        // Sin evento: sólo pasa al final de la cola de GET resultado-pendiente.
+        await this.repo.actualizarTransaccion(t.id, {
+          ultimaVerificacionAt: ahora,
         });
       }
 
@@ -504,6 +523,7 @@ export class ErroresService {
     const esOk = dto.statusSoftland === 'S';
     const data: Prisma.TransaccionErrorUpdateInput = {
       statusSoftland: dto.statusSoftland,
+      ultimaVerificacionAt: new Date(),
     };
     let evento: { tipo: string; titulo: string; detalle: string };
 

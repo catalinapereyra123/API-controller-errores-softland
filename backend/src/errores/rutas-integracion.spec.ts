@@ -18,7 +18,17 @@ describe('Rutas del integrador vs. /errores/:id', () => {
   let app: INestApplication<App>;
   const service = {
     reprocesoPendientes: jest.fn().mockResolvedValue([]),
-    reprocesoPendientesLista: jest.fn().mockResolvedValue([]),
+    resultadoPendiente: jest.fn().mockResolvedValue({
+      hayPendiente: true,
+      id: 'clx2',
+      empresa: 'NORFLOW',
+      modulo: 'COMPRAS',
+      moduloOrigen: '3. Compras',
+      identi: 'LIQ30289',
+      solicitadoEn: '2026-10-14T13:48:59.222Z',
+      notificado: true,
+      intentos: 1,
+    }),
     reprocesoPendiente: jest.fn().mockResolvedValue({
       hayPendiente: true,
       id: 'clx1',
@@ -82,14 +92,15 @@ describe('Rutas del integrador vs. /errores/:id', () => {
     expect(service.reprocesoPendientes).toHaveBeenCalled();
   });
 
-  it('la lista del flujo 4 entra con x-api-key y no la captura /errores/:id', async () => {
+  it('el resultado pendiente del flujo 4 es un objeto plano, con x-api-key', async () => {
     const res = await request(app.getHttpServer())
-      .get('/errores/integracion/reproceso-pendientes-lista')
+      .get('/errores/integracion/resultado-pendiente')
       .set('x-api-key', 'clave-de-prueba');
 
     expect(res.status).toBe(200);
-    expect(res.body).toEqual([]);
-    expect(service.reprocesoPendientesLista).toHaveBeenCalled();
+    expect(Array.isArray(res.body)).toBe(false);
+    expect(res.body).toMatchObject({ hayPendiente: true, identi: 'LIQ30289' });
+    expect(service.resultadoPendiente).toHaveBeenCalled();
   });
 
   it('el singular devuelve un objeto plano, mapeable campo por campo', async () => {

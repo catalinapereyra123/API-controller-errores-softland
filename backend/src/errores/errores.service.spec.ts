@@ -92,13 +92,25 @@ class FakeRepo {
     return Promise.resolve(row);
   };
 
-  /** Igualdad campo por campo: alcanza para el where simple del service. */
-  primerPendiente = (where: any) =>
-    Promise.resolve(
-      this.transacciones.find((t) =>
-        Object.entries(where).every(([campo, valor]) => t[campo] === valor),
-      ) ?? null,
+  /**
+   * Igualdad campo por campo (o `{ not: null }`). Con orderBy sólo respeta
+   * `ultimaVerificacionAt` asc, nulls primero: lo que usa resultadoPendiente.
+   */
+  primerPendiente = (where: any, orderBy?: any[]) => {
+    const matchean = this.transacciones.filter((t) =>
+      Object.entries(where).every(([campo, valor]: [string, any]) =>
+        valor && typeof valor === 'object' && 'not' in valor
+          ? t[campo] != valor.not
+          : t[campo] === valor,
+      ),
     );
+    if (orderBy?.some((o) => 'ultimaVerificacionAt' in o)) {
+      const ms = (t: { ultimaVerificacionAt?: Date | null }) =>
+        t.ultimaVerificacionAt?.getTime() ?? -Infinity;
+      matchean.sort((a, b) => ms(a) - ms(b));
+    }
+    return Promise.resolve(matchean[0] ?? null);
+  };
 
   intentoAbierto = (errorId: string) =>
     Promise.resolve(
@@ -461,31 +473,55 @@ describe('ErroresService.solicitarReproceso', () => {
     });
   });
 
-  it('reprocesoPendientesLista trae sólo los ya pasados a N', async () => {
+  it('resultadoPendiente trae de a uno los ya pasados a N y rota los que siguen en N', async () => {
     await service.sync([
       registro({ identi: 'LIQ100' }),
       registro({ identi: 'LIQ101' }),
+      registro({ identi: 'LIQ102' }),
     ]);
     // Sin webhook configurado ninguno queda notificado.
     await service.solicitarReproceso('t1', {});
     await service.solicitarReproceso('t2', {});
-    expect(await service.reprocesoPendientesLista()).toEqual([]);
-
-    await service.registrarResultadoReproceso({
-      empresa: 'AMCARG',
-      modulo: '3. Compras',
-      identi: 'LIQ100',
-      statusSoftland: 'N',
+    await service.solicitarReproceso('t3', {});
+    expect(await service.resultadoPendiente()).toMatchObject({
+      hayPendiente: false,
+      identi: null,
     });
-    const pendientes = await service.reprocesoPendientesLista();
 
-    expect(pendientes).toHaveLength(1);
-    expect(pendientes[0]).toMatchObject({
-      empresa: 'AMCARG',
-      modulo: 'COMPRAS',
-      identi: 'LIQ100',
-      notificado: true,
-    });
+    // Cada informe un segundo después del anterior: la rotación depende de
+    // ultimaVerificacionAt y dos en el mismo milisegundo empatarían.
+    jest.useFakeTimers({ now: new Date('2026-10-14T12:00:00Z') });
+    try {
+      const informar = (identi: string, statusSoftland: string) => {
+        jest.setSystemTime(Date.now() + 1000);
+        return service.registrarResultadoReproceso({
+          empresa: 'AMCARG',
+          modulo: '3. Compras',
+          identi,
+          statusSoftland,
+        });
+      };
+      // LIQ102 no se pasó a N: nunca sale, aunque esté en REPROCESANDO.
+      await informar('LIQ100', 'N');
+      await informar('LIQ101', 'N');
+
+      const primero = await service.resultadoPendiente();
+      expect(primero).toMatchObject({
+        hayPendiente: true,
+        identi: 'LIQ100',
+        notificado: true,
+      });
+
+      // El que sigue en N va al final; el otro pasa adelante.
+      await informar('LIQ100', 'N');
+      expect((await service.resultadoPendiente()).identi).toBe('LIQ101');
+
+      // Con S sale de la cola: queda sólo el otro.
+      await informar('LIQ101', 'S');
+      expect((await service.resultadoPendiente()).identi).toBe('LIQ100');
+    } finally {
+      jest.useRealTimers();
+    }
   });
 
   it('reprocesoPendiente pasa al siguiente cuando el integrador informa N', async () => {
