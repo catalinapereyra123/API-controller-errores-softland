@@ -3,7 +3,7 @@ import { colors, fontWeight, spacing, textStyles } from '../styles'
 import type { ErrorEstado } from '../types'
 import Button from './Button'
 import Card from './Card'
-import { BanIcon, CheckCircleIcon, ClockIcon, UndoIcon } from './icons'
+import { BanIcon, CheckCircleIcon, RefreshIcon, UndoIcon } from './icons'
 
 interface ErrorActionsCardProps {
   estado: ErrorEstado
@@ -12,6 +12,12 @@ interface ErrorActionsCardProps {
   onMarkAsFixed: () => void
   onDiscard: () => void
   onReopen: () => void
+  /** Sólo en REPROCESANDO: pide a iFlow el status nuevo de Softland. */
+  onConsultarResultado: () => void
+  /** true mientras se espera la respuesta de iFlow. */
+  consultando?: boolean
+  /** Qué pasó con la última consulta (p. ej. "sigue en N"). */
+  avisoConsulta?: string | null
 }
 
 const BOTON_PRINCIPAL = {
@@ -33,7 +39,7 @@ function Nota({ children }: { children: ReactNode }) {
 
 /**
  * Bloque de acciones del detalle de error. Cambia según el estado: mientras
- * se espera el resultado del reproceso no hay nada que tocar, y un error
+ * se espera el resultado del reproceso sólo se puede consultarlo, y un error
  * descartado solo se puede reabrir.
  */
 function ErrorActionsCard({
@@ -42,6 +48,9 @@ function ErrorActionsCard({
   onMarkAsFixed,
   onDiscard,
   onReopen,
+  onConsultarResultado,
+  consultando,
+  avisoConsulta,
 }: ErrorActionsCardProps) {
   const titulo = (
     <span style={{ ...textStyles.h3, color: colors.gray.darkest }}>
@@ -77,10 +86,15 @@ function ErrorActionsCard({
       {titulo}
       {esperando ? (
         <Button
-          text="Esperando resultado"
+          text={consultando ? 'Consultando…' : 'Consultar nuevo resultado'}
           color={colors.label.purple.text}
-          icon={<ClockIcon className="h-4 w-4" />}
-          disabled
+          icon={
+            <RefreshIcon
+              className={consultando ? 'h-4 w-4 animate-spin' : 'h-4 w-4'}
+            />
+          }
+          onClick={onConsultarResultado}
+          disabled={disabled}
           size={BOTON_PRINCIPAL}
           className="mt-md w-full"
         />
@@ -95,9 +109,23 @@ function ErrorActionsCard({
           className="mt-md w-full"
         />
       )}
+      {esperando && avisoConsulta && (
+        <p
+          role="status"
+          style={{
+            ...textStyles.bodySmall,
+            fontWeight: fontWeight.semibold,
+            color: colors.label.purple.text,
+            backgroundColor: colors.label.purple.background,
+          }}
+          className="mt-sm rounded-xl px-md py-sm"
+        >
+          {avisoConsulta}
+        </p>
+      )}
       <Nota>
         {esperando
-          ? 'Ya se marcó como corregido. Cuando llegue el resultado del reproceso pasa a Resuelto (S) o vuelve a “A corregir” (E).'
+          ? 'Ya se marcó como corregido. “Consultar nuevo resultado” le pide a Softland el status actual: si ya terminó, pasa a Resuelto (S) o vuelve a “A corregir” (E).'
           : 'Al marcar como corregido, la transacción se reprocesa y vuelve a estado N. Si el reproceso finaliza en S, quedará resuelta. Si no, deberá corregirse nuevamente.'}
       </Nota>
 

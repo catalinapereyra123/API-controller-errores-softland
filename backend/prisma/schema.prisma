@@ -91,6 +91,7 @@ model TransaccionError {
   fechaCorreccion     DateTime? // cuándo se mandó a reprocesar (Softland -> 'N')
   reprocesoNotificadoAt DateTime? // ya se pasó a N: el webhook respondió 200 o el integrador reportó status N; null + fechaCorreccion => falta mandarlo
   reprocesoDesaparecioAt DateTime? // ALARMA: estaba REPROCESANDO y dejó de figurar en el sync sin verificación
+  resultadoSolicitadoAt DateTime? // botón "Consultar resultado": GET resultado-pendiente lo devuelve primero; se limpia al llegar el resultado
 
   // --- Verificación (flujo 5: cierre automático) ---
   /// Sólo se completa al pasar a RESUELTO; se limpia si el error se reabre.

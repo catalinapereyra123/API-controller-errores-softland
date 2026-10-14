@@ -108,6 +108,16 @@ export class ErroresController {
     return this.service.agregarObservacion(id, dto, autorId);
   }
 
+  /**
+   * "Consultar resultado": dispara en iFlow el flujo que trae el status de
+   * Softland de un error que se está reprocesando.
+   * POST /errores/:id/consultar-resultado
+   */
+  @Post('errores/:id/consultar-resultado')
+  consultarResultado(@Param('id') id: string) {
+    return this.service.consultarResultado(id);
+  }
+
   /** Mandar a reprocesar (n8n pone status 'N' en Softland). POST /errores/:id/reproceso */
   @Post('errores/:id/reproceso')
   reprocesar(

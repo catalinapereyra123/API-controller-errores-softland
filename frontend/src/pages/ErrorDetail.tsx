@@ -180,7 +180,14 @@ function ErrorDetail({
     cambiarEstadoManual,
     observar,
     reprocesar,
+    consultarResultado,
   } = useErrorDetail(errorId)
+  const [consultando, setConsultando] = useState(false)
+  // Con el id, para no mostrarlo en otro error si cambia el que está abierto.
+  const [avisoConsulta, setAvisoConsulta] = useState<{
+    id: string
+    texto: string
+  } | null>(null)
   const [tab, setTab] = useState('resumen')
   const [comentario, setComentario] = useState('')
   const [estadosOpen, setEstadosOpen] = useState(false)
@@ -189,6 +196,22 @@ function ErrorDetail({
   function irATrazabilidad() {
     setTab('trazabilidad')
     tabsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
+
+  async function handleConsultarResultado() {
+    setConsultando(true)
+    setAvisoConsulta(null)
+    const detalle = await consultarResultado()
+    setConsultando(false)
+    // Si cambió de estado ya lo muestra el detalle; si sigue en violeta,
+    // se avisa que la consulta se hizo y Softland todavía no terminó.
+    if (detalle?.estado === 'REPROCESANDO') {
+      setAvisoConsulta({
+        id: detalle.id,
+        texto:
+          'Consultado: Softland todavía no terminó de reprocesarlo (sigue en N). Probá de nuevo en un rato.',
+      })
+    }
   }
 
   async function handleComentar() {
@@ -775,6 +798,11 @@ function ErrorDetail({
                     estado={detalle.estado}
                     disabled={saving}
                     onMarkAsFixed={() => void reprocesar()}
+                    onConsultarResultado={() => void handleConsultarResultado()}
+                    consultando={consultando}
+                    avisoConsulta={
+                      avisoConsulta?.id === errorId ? avisoConsulta.texto : null
+                    }
                     onDiscard={() => void cambiarEstadoManual('DESCARTADO')}
                     onReopen={() =>
                       void cambiarEstadoManual(

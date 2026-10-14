@@ -1,8 +1,10 @@
 import {
+  BadGatewayException,
   BadRequestException,
   Injectable,
   Logger,
   NotFoundException,
+  ServiceUnavailableException,
 } from '@nestjs/common';
 import type { Prisma, TransaccionError } from '../../generated/prisma/client';
 import { EstadoApp, Modulo, OrigenCierre } from '../../generated/prisma/client';
@@ -64,6 +66,10 @@ function sinPendiente(): ReprocesoPendienteDto {
     intentos: null,
   };
 }
+
+/** Endpoint de iFlow Studio para disparar un nodo desde afuera. */
+const IFLOW_EXECUTE_URL =
+  'https://api-studio.iflow21.com/api/v1/spOrchestrator/execute';
 
 @Injectable()
 export class ErroresService {
@@ -313,6 +319,7 @@ export class ErroresService {
           fechaCorreccion: new Date(),
           reprocesoNotificadoAt: null,
           reprocesoDesaparecioAt: null,
+          resultadoSolicitadoAt: null,
           intentos: { increment: 1 },
         },
         tx,
@@ -375,6 +382,9 @@ export class ErroresService {
    * en cola no tapa a los demás. Los que todavía no se mandaron quedan afuera:
    * el flujo los vería en E y los marcaría "requiere corrección" sin haberse
    * reprocesado.
+   *
+   * Antes que nada va el que alguien pidió con "Consultar resultado"
+   * (`resultadoSolicitadoAt`): esa corrida tiene que consultar ése.
    */
   async resultadoPendiente(): Promise<ReprocesoPendienteDto> {
     const t = await this.repo.primerPendiente(
@@ -383,11 +393,58 @@ export class ErroresService {
         reprocesoNotificadoAt: { not: null },
       },
       [
+        { resultadoSolicitadoAt: { sort: 'desc', nulls: 'last' } },
         { ultimaVerificacionAt: { sort: 'asc', nulls: 'first' } },
         { fechaCorreccion: 'asc' },
       ],
     );
     return t ? { hayPendiente: true, ...this.aPendiente(t) } : sinPendiente();
+  }
+
+  /**
+   * Botón "Consultar resultado" del detalle: dispara en iFlow el flujo que
+   * consulta el status en Softland y lo informa (FSOF-0004 "Enviar resultado a
+   * API"; su nodo 1 es GET resultado-pendiente). Antes marca el error con
+   * `resultadoSolicitadoAt` para que ese GET lo devuelva primero y la corrida
+   * consulte éste y no el siguiente de la cola.
+   */
+  async consultarResultado(id: string) {
+    const t = await this.requerir(id);
+    if (t.estadoApp !== EstadoApp.REPROCESANDO) {
+      throw new BadRequestException(
+        'Sólo se puede consultar el resultado de un error que se está reprocesando.',
+      );
+    }
+    if (!t.reprocesoNotificadoAt) {
+      throw new BadRequestException(
+        'Todavía no se pasó a N en Softland: no hay resultado para consultar.',
+      );
+    }
+    const executionKey = process.env.IFLOW_RESULTADO_EXECUTION_KEY?.trim();
+    if (!executionKey) {
+      throw new ServiceUnavailableException(
+        'Falta configurar IFLOW_RESULTADO_EXECUTION_KEY: no se puede disparar el flujo de resultado.',
+      );
+    }
+
+    await this.repo.actualizarTransaccion(id, {
+      resultadoSolicitadoAt: new Date(),
+    });
+    const falla = await this.ejecutarIflow(executionKey, {
+      empresa: t.empresaCodigo,
+      modulo: t.modulo,
+      identi: t.identi,
+    });
+    if (falla) {
+      this.logger.error(`Consultar resultado de ${t.identi}: ${falla}`);
+      throw new BadGatewayException(
+        `No se pudo disparar el flujo de resultado en iFlow (${falla}).`,
+      );
+    }
+
+    // Si iFlow corrió la cadena entera antes de responder, el detalle ya trae
+    // el resultado; si no, sigue REPROCESANDO hasta que llegue.
+    return this.detalle(id);
   }
 
   /**
@@ -462,7 +519,11 @@ export class ErroresService {
         await this.repo.transaction(async (tx) => {
           await this.repo.actualizarTransaccion(
             t.id,
-            { reprocesoNotificadoAt: ahora, ultimaVerificacionAt: ahora },
+            {
+              reprocesoNotificadoAt: ahora,
+              ultimaVerificacionAt: ahora,
+              resultadoSolicitadoAt: null,
+            },
             tx,
           );
           await this.repo.crearEvento(
@@ -479,6 +540,7 @@ export class ErroresService {
         // Sin evento: sólo pasa al final de la cola de GET resultado-pendiente.
         await this.repo.actualizarTransaccion(t.id, {
           ultimaVerificacionAt: ahora,
+          resultadoSolicitadoAt: null,
         });
       }
 
@@ -498,7 +560,7 @@ export class ErroresService {
       await this.repo.transaction(async (tx) => {
         await this.repo.actualizarTransaccion(
           t.id,
-          { statusSoftland: dto.statusSoftland },
+          { statusSoftland: dto.statusSoftland, resultadoSolicitadoAt: null },
           tx,
         );
         await this.cerrarIntentoAbierto(t.id, dto.statusSoftland, tx);
@@ -524,6 +586,7 @@ export class ErroresService {
     const data: Prisma.TransaccionErrorUpdateInput = {
       statusSoftland: dto.statusSoftland,
       ultimaVerificacionAt: new Date(),
+      resultadoSolicitadoAt: null,
     };
     let evento: { tipo: string; titulo: string; detalle: string };
 
@@ -1184,6 +1247,37 @@ export class ErroresService {
         `No se pudo avisar a n8n el reproceso de ${t.identi}: ${String(e)}`,
       );
       return false;
+    }
+  }
+
+  /**
+   * Ejecuta un nodo de iFlow Studio por spOrchestrator/execute. Devuelve null
+   * si salió bien o un texto corto con qué falló.
+   */
+  private async ejecutarIflow(
+    executionKey: string,
+    parameters: Record<string, string>,
+  ): Promise<string | null> {
+    const url = process.env.IFLOW_EXECUTE_URL?.trim() || IFLOW_EXECUTE_URL;
+    // Token Bearer del "Usuario API" de iFlow, asociado al servicio que se
+    // dispara. Sin él, spOrchestrator/execute responde 403.
+    const iflowToken = process.env.IFLOW_API_TOKEN?.trim();
+    try {
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          ...(iflowToken ? { authorization: `Bearer ${iflowToken}` } : {}),
+        },
+        body: JSON.stringify({ executionKey, parameters, isFile: false }),
+        // iFlow puede correr la cadena entera antes de responder.
+        signal: AbortSignal.timeout(60_000),
+      });
+      return res.ok ? null : `iFlow respondió ${res.status}`;
+    } catch (e) {
+      return e instanceof Error && e.name === 'TimeoutError'
+        ? 'iFlow no respondió a tiempo'
+        : `no se pudo conectar con iFlow: ${String(e)}`;
     }
   }
 

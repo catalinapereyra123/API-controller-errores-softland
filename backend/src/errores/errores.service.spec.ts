@@ -54,6 +54,7 @@ class FakeRepo {
       reprocesoDesaparecioAt: null,
       origenCierre: null,
       ultimaVerificacionAt: null,
+      resultadoSolicitadoAt: null,
       ...data,
       empresaCodigo: data.empresa.connect.codigo,
     };
@@ -94,7 +95,8 @@ class FakeRepo {
 
   /**
    * Igualdad campo por campo (o `{ not: null }`). Con orderBy sólo respeta
-   * `ultimaVerificacionAt` asc, nulls primero: lo que usa resultadoPendiente.
+   * lo que usa resultadoPendiente: `resultadoSolicitadoAt` desc (nulls al
+   * final) y después `ultimaVerificacionAt` asc (nulls primero).
    */
   primerPendiente = (where: any, orderBy?: any[]) => {
     const matchean = this.transacciones.filter((t) =>
@@ -108,6 +110,12 @@ class FakeRepo {
       const ms = (t: { ultimaVerificacionAt?: Date | null }) =>
         t.ultimaVerificacionAt?.getTime() ?? -Infinity;
       matchean.sort((a, b) => ms(a) - ms(b));
+    }
+    if (orderBy?.some((o) => 'resultadoSolicitadoAt' in o)) {
+      const ms = (t: { resultadoSolicitadoAt?: Date | null }) =>
+        t.resultadoSolicitadoAt?.getTime() ?? -Infinity;
+      // sort es estable: entre los no pedidos queda el orden anterior.
+      matchean.sort((a, b) => ms(b) - ms(a));
     }
     return Promise.resolve(matchean[0] ?? null);
   };
@@ -563,6 +571,120 @@ describe('ErroresService.solicitarReproceso', () => {
     await service.sync([registro()]);
     await service.cambiarEstado('t1', { estado: 'EN_PROGRESO' });
     expect(repo.transacciones[0].estadoApp).toBe('EN_PROGRESO');
+  });
+});
+
+describe('ErroresService.consultarResultado', () => {
+  let service: ErroresService;
+  let repo: FakeRepo;
+  let fetchMock: jest.SpyInstance;
+
+  /** Error en REPROCESANDO que el flujo ya pasó a N. */
+  async function reprocesandoEnN(identi = 'LIQ100') {
+    await service.sync([registro({ identi })]);
+    const t: {
+      id: string;
+      estadoApp: string;
+      resultadoSolicitadoAt: Date | null;
+    } = repo.transacciones.find((x) => x.identi === identi);
+    await service.solicitarReproceso(t.id, {});
+    await service.registrarResultadoReproceso({
+      empresa: 'AMCARG',
+      modulo: '3. Compras',
+      identi,
+      statusSoftland: 'N',
+    });
+    return t;
+  }
+
+  beforeEach(async () => {
+    repo = new FakeRepo();
+    const moduleRef = await Test.createTestingModule({
+      providers: [
+        ErroresService,
+        { provide: ErroresRepository, useValue: repo },
+      ],
+    }).compile();
+    service = moduleRef.get(ErroresService);
+    delete process.env.N8N_REPROCESO_WEBHOOK_URL;
+    process.env.IFLOW_RESULTADO_EXECUTION_KEY = 'FSOF-0004-P1';
+    process.env.IFLOW_API_TOKEN = 'token-iflow';
+    fetchMock = jest
+      .spyOn(global, 'fetch')
+      .mockResolvedValue(new Response('{}', { status: 200 }));
+  });
+
+  afterEach(() => {
+    fetchMock.mockRestore();
+    delete process.env.IFLOW_RESULTADO_EXECUTION_KEY;
+    delete process.env.IFLOW_API_TOKEN;
+  });
+
+  it('dispara el nodo 1 del flujo de resultado en iFlow', async () => {
+    const t = await reprocesandoEnN();
+
+    await service.consultarResultado(t.id);
+
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(url).toBe(
+      'https://api-studio.iflow21.com/api/v1/spOrchestrator/execute',
+    );
+    expect(JSON.parse(init.body)).toEqual({
+      executionKey: 'FSOF-0004-P1',
+      parameters: { empresa: 'AMCARG', modulo: 'COMPRAS', identi: 'LIQ100' },
+      isFile: false,
+    });
+    expect(init.headers.authorization).toBe('Bearer token-iflow');
+  });
+
+  it('el GET resultado-pendiente devuelve primero el que se pidió consultar', async () => {
+    await reprocesandoEnN('LIQ100');
+    const pedido = await reprocesandoEnN('LIQ101');
+    // Sin pedido saldría LIQ100 (el que hace más que no se consulta).
+    expect((await service.resultadoPendiente()).identi).toBe('LIQ100');
+
+    await service.consultarResultado(pedido.id);
+    expect((await service.resultadoPendiente()).identi).toBe('LIQ101');
+
+    // Cuando llega su resultado deja de tener prioridad.
+    await service.registrarResultadoReproceso({
+      empresa: 'AMCARG',
+      modulo: '3. Compras',
+      identi: 'LIQ101',
+      statusSoftland: 'N',
+    });
+    expect(pedido.resultadoSolicitadoAt).toBeNull();
+    expect((await service.resultadoPendiente()).identi).toBe('LIQ100');
+  });
+
+  it('rechaza un error que no está reprocesando', async () => {
+    await service.sync([registro()]);
+    await expect(service.consultarResultado('t1')).rejects.toThrow(
+      /reprocesando/i,
+    );
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('rechaza uno que todavía no se pasó a N', async () => {
+    await service.sync([registro()]);
+    await service.solicitarReproceso('t1', {});
+    await expect(service.consultarResultado('t1')).rejects.toThrow(/a N/);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('avisa si falta la executionKey', async () => {
+    const t = await reprocesandoEnN();
+    delete process.env.IFLOW_RESULTADO_EXECUTION_KEY;
+    await expect(service.consultarResultado(t.id)).rejects.toThrow(
+      /IFLOW_RESULTADO_EXECUTION_KEY/,
+    );
+  });
+
+  it('si iFlow responde error, lo informa con el status', async () => {
+    const t = await reprocesandoEnN();
+    fetchMock.mockResolvedValue(new Response('{}', { status: 403 }));
+    await expect(service.consultarResultado(t.id)).rejects.toThrow(/403/);
+    expect(t.estadoApp).toBe('REPROCESANDO');
   });
 });
 

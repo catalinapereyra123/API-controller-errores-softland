@@ -32,6 +32,15 @@ export function agregarObservacion(
 }
 
 /**
+ * POST /errores/:id/consultar-resultado — dispara en iFlow el flujo que trae
+ * el status nuevo de Softland. Devuelve el detalle: si el flujo ya terminó,
+ * viene con el resultado; si no, sigue REPROCESANDO.
+ */
+export function consultarResultado(id: string): Promise<ErrorDetalle> {
+  return apiPost<ErrorDetalle>(`/errores/${id}/consultar-resultado`)
+}
+
+/**
  * POST /errores/:id/reproceso — "marcar como corregido".
  * El back avisa a n8n y devuelve el detalle con `reprocesoNotificado`.
  */

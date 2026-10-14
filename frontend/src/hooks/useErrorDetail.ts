@@ -3,6 +3,7 @@ import {
   agregarObservacion,
   asignarResponsable,
   cambiarEstado,
+  consultarResultado as consultarResultadoRequest,
   getErrorDetail,
   solicitarReproceso,
 } from '../services/errorDetail.service'
@@ -26,6 +27,8 @@ interface UseErrorDetailResult {
   cambiarEstadoManual: (estado: ErrorEstado) => Promise<void>
   observar: (texto: string) => Promise<void>
   reprocesar: (observacion?: string) => Promise<void>
+  /** Devuelve el detalle actualizado, o null si falló (queda en actionError). */
+  consultarResultado: () => Promise<ErrorDetalle | null>
 }
 
 export function useErrorDetail(id: string | null): UseErrorDetailResult {
@@ -86,34 +89,47 @@ export function useErrorDetail(id: string | null): UseErrorDetailResult {
     try {
       const detalle = await accion()
       setData((prev) => (prev ? { ...prev, detalle } : prev))
+      return detalle
     } catch (e) {
       setActionError(
         e instanceof Error ? e.message : 'No pudimos guardar el cambio.',
       )
+      return null
     } finally {
       setSaving(false)
     }
   }, [])
 
   const asignar = useCallback(
-    (responsableId: string | null) =>
-      ejecutar(() => asignarResponsable(id!, responsableId)),
+    async (responsableId: string | null) => {
+      await ejecutar(() => asignarResponsable(id!, responsableId))
+    },
     [ejecutar, id],
   )
 
   const cambiarEstadoManual = useCallback(
-    (estado: ErrorEstado) => ejecutar(() => cambiarEstado(id!, estado)),
+    async (estado: ErrorEstado) => {
+      await ejecutar(() => cambiarEstado(id!, estado))
+    },
     [ejecutar, id],
   )
 
   const observar = useCallback(
-    (texto: string) => ejecutar(() => agregarObservacion(id!, texto)),
+    async (texto: string) => {
+      await ejecutar(() => agregarObservacion(id!, texto))
+    },
     [ejecutar, id],
   )
 
   const reprocesar = useCallback(
-    (observacion?: string) =>
-      ejecutar(() => solicitarReproceso(id!, observacion)),
+    async (observacion?: string) => {
+      await ejecutar(() => solicitarReproceso(id!, observacion))
+    },
+    [ejecutar, id],
+  )
+
+  const consultarResultado = useCallback(
+    () => ejecutar(() => consultarResultadoRequest(id!)),
     [ejecutar, id],
   )
 
@@ -128,5 +144,6 @@ export function useErrorDetail(id: string | null): UseErrorDetailResult {
     cambiarEstadoManual,
     observar,
     reprocesar,
+    consultarResultado,
   }
 }

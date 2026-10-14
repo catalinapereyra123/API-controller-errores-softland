@@ -61,6 +61,7 @@ describe('toErrorTransaccion', () => {
     fechaCorreccion: null,
     reprocesoNotificadoAt: null,
     reprocesoDesaparecioAt: null,
+    resultadoSolicitadoAt: null,
     origenCierre: null,
     ultimaVerificacionAt: null,
     fechaResolucion: null,
