@@ -18,6 +18,9 @@ describe('Rutas del integrador vs. /errores/:id', () => {
   let app: INestApplication<App>;
   const service = {
     reprocesoPendientes: jest.fn().mockResolvedValue([]),
+    reprocesoPendientesLista: jest
+      .fn()
+      .mockResolvedValue({ cantidad: 0, pendientes: '[]' }),
     reprocesoPendiente: jest.fn().mockResolvedValue({
       hayPendiente: true,
       id: 'clx1',
@@ -79,6 +82,16 @@ describe('Rutas del integrador vs. /errores/:id', () => {
     expect(res.status).toBe(200);
     expect(res.body).toEqual([]);
     expect(service.reprocesoPendientes).toHaveBeenCalled();
+  });
+
+  it('la lista envuelta entra con x-api-key y no la captura /errores/:id', async () => {
+    const res = await request(app.getHttpServer())
+      .get('/errores/integracion/reproceso-pendientes-lista')
+      .set('x-api-key', 'clave-de-prueba');
+
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual({ cantidad: 0, pendientes: '[]' });
+    expect(service.reprocesoPendientesLista).toHaveBeenCalled();
   });
 
   it('el singular devuelve un objeto plano, mapeable campo por campo', async () => {

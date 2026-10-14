@@ -351,6 +351,26 @@ export class ErroresService {
   }
 
   /**
+   * Lo que el flujo 4 tiene que consultar en Softland: los que ya se pasaron a
+   * N y esperan resultado. Los que todavía no se mandaron quedan afuera; si no,
+   * los vería en E y los marcaría "requiere corrección" sin haberse
+   * reprocesado.
+   *
+   * Va envuelto, con el array serializado en `pendientes`: iFlow no reparte el
+   * array de un Endpoint si el nodo no tiene "ciclo de resultados", y así el
+   * SQL lo abre con OPENJSON.
+   */
+  async reprocesoPendientesLista() {
+    const items = (
+      await this.repo.listar({
+        estadoApp: EstadoApp.REPROCESANDO,
+        reprocesoNotificadoAt: { not: null },
+      })
+    ).map((t) => this.aPendiente(t));
+    return { cantidad: items.length, pendientes: JSON.stringify(items) };
+  }
+
+  /**
    * Lo mismo pero de a uno: el pendiente más viejo (FIFO) que todavía no se
    * pasó a N. Es el que consume el flujo 2 de iFlow, que mapea campos sueltos a
    * la query y no sabe recorrer un array.

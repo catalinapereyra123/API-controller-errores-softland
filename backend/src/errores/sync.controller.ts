@@ -50,6 +50,16 @@ export class SyncController {
   }
 
   /**
+   * Flujo 4: los que ya se pasaron a N y esperan resultado, como
+   * `{ cantidad, pendientes }` con el array en texto JSON (sin ciclo, iFlow no
+   * recorre el array de un Endpoint).
+   */
+  @Get('integracion/reproceso-pendientes-lista')
+  reprocesoPendientesLista() {
+    return this.service.reprocesoPendientesLista();
+  }
+
+  /**
    * Un solo pendiente (el más viejo que todavía no se pasó a N) en vez del
    * array, para los flujos que mapean campo por campo y no saben recorrer
    * listas. Siempre responde JSON: sin pendientes, `hayPendiente: false`.

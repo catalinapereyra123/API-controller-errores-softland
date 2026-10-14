@@ -146,8 +146,12 @@ class FakeRepo {
 
   listar = (where: any) =>
     Promise.resolve(
-      this.transacciones.filter((t) =>
-        where?.estadoApp ? t.estadoApp === where.estadoApp : true,
+      this.transacciones.filter(
+        (t) =>
+          (where?.estadoApp ? t.estadoApp === where.estadoApp : true) &&
+          (where?.reprocesoNotificadoAt?.not === null
+            ? t.reprocesoNotificadoAt != null
+            : true),
       ),
     );
 
@@ -454,6 +458,40 @@ describe('ErroresService.solicitarReproceso', () => {
       moduloOrigen: '3. Compras',
       identi: 'LIQ100',
       intentos: 1,
+    });
+  });
+
+  it('reprocesoPendientesLista trae sólo los ya pasados a N, envueltos en texto', async () => {
+    await service.sync([
+      registro({ identi: 'LIQ100' }),
+      registro({ identi: 'LIQ101' }),
+    ]);
+    // Sin webhook configurado ninguno queda notificado.
+    await service.solicitarReproceso('t1', {});
+    await service.solicitarReproceso('t2', {});
+    expect(await service.reprocesoPendientesLista()).toEqual({
+      cantidad: 0,
+      pendientes: '[]',
+    });
+
+    await service.registrarResultadoReproceso({
+      empresa: 'AMCARG',
+      modulo: '3. Compras',
+      identi: 'LIQ100',
+      statusSoftland: 'N',
+    });
+    const lista = await service.reprocesoPendientesLista();
+
+    expect(lista.cantidad).toBe(1);
+    const pendientes = JSON.parse(lista.pendientes) as Array<{
+      identi: string;
+    }>;
+    expect(pendientes).toHaveLength(1);
+    expect(pendientes[0]).toMatchObject({
+      empresa: 'AMCARG',
+      modulo: 'COMPRAS',
+      identi: 'LIQ100',
+      notificado: true,
     });
   });
 
