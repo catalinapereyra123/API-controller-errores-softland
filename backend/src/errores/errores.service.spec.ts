@@ -461,7 +461,7 @@ describe('ErroresService.solicitarReproceso', () => {
     });
   });
 
-  it('reprocesoPendientesLista trae sólo los ya pasados a N, envueltos en texto', async () => {
+  it('reprocesoPendientesLista trae sólo los ya pasados a N', async () => {
     await service.sync([
       registro({ identi: 'LIQ100' }),
       registro({ identi: 'LIQ101' }),
@@ -469,10 +469,7 @@ describe('ErroresService.solicitarReproceso', () => {
     // Sin webhook configurado ninguno queda notificado.
     await service.solicitarReproceso('t1', {});
     await service.solicitarReproceso('t2', {});
-    expect(await service.reprocesoPendientesLista()).toEqual({
-      cantidad: 0,
-      pendientes: '[]',
-    });
+    expect(await service.reprocesoPendientesLista()).toEqual([]);
 
     await service.registrarResultadoReproceso({
       empresa: 'AMCARG',
@@ -480,12 +477,8 @@ describe('ErroresService.solicitarReproceso', () => {
       identi: 'LIQ100',
       statusSoftland: 'N',
     });
-    const lista = await service.reprocesoPendientesLista();
+    const pendientes = await service.reprocesoPendientesLista();
 
-    expect(lista.cantidad).toBe(1);
-    const pendientes = JSON.parse(lista.pendientes) as Array<{
-      identi: string;
-    }>;
     expect(pendientes).toHaveLength(1);
     expect(pendientes[0]).toMatchObject({
       empresa: 'AMCARG',

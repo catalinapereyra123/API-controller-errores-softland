@@ -354,20 +354,14 @@ export class ErroresService {
    * Lo que el flujo 4 tiene que consultar en Softland: los que ya se pasaron a
    * N y esperan resultado. Los que todavía no se mandaron quedan afuera; si no,
    * los vería en E y los marcaría "requiere corrección" sin haberse
-   * reprocesado.
-   *
-   * Va envuelto, con el array serializado en `pendientes`: iFlow no reparte el
-   * array de un Endpoint si el nodo no tiene "ciclo de resultados", y así el
-   * SQL lo abre con OPENJSON.
+   * reprocesado. El nodo de iFlow lo recorre con "ciclo de resultados".
    */
   async reprocesoPendientesLista() {
-    const items = (
-      await this.repo.listar({
-        estadoApp: EstadoApp.REPROCESANDO,
-        reprocesoNotificadoAt: { not: null },
-      })
-    ).map((t) => this.aPendiente(t));
-    return { cantidad: items.length, pendientes: JSON.stringify(items) };
+    const items = await this.repo.listar({
+      estadoApp: EstadoApp.REPROCESANDO,
+      reprocesoNotificadoAt: { not: null },
+    });
+    return items.map((t) => this.aPendiente(t));
   }
 
   /**

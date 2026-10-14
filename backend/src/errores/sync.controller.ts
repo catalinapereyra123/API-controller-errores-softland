@@ -50,9 +50,8 @@ export class SyncController {
   }
 
   /**
-   * Flujo 4: los que ya se pasaron a N y esperan resultado, como
-   * `{ cantidad, pendientes }` con el array en texto JSON (sin ciclo, iFlow no
-   * recorre el array de un Endpoint).
+   * Flujo 4: los que ya se pasaron a N y esperan resultado. A diferencia de
+   * `reproceso-pendientes`, deja afuera los que todavía no se mandaron.
    */
   @Get('integracion/reproceso-pendientes-lista')
   reprocesoPendientesLista() {
