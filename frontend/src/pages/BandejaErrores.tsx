@@ -182,7 +182,6 @@ function BandejaErrores({
     data,
     erroresFiltrados,
     conteoPorEmpresa,
-    loading,
     error,
     refetch,
     filters,
@@ -277,6 +276,7 @@ function BandejaErrores({
     <AppLayout
       activeItem="bandeja"
       onNavigate={onNavigate}
+      recordarScroll="bandeja"
       migas={[
         { label: 'Inicio', page: 'home' },
         { label: 'Bandeja de errores' },
@@ -380,7 +380,9 @@ function BandejaErrores({
         </div>
       </div>
 
-      {loading || !data ? (
+      {/* Con datos guardados de la visita anterior no se muestra el esqueleto
+          mientras se refrescan: así se vuelve al mismo lugar de la lista. */}
+      {!data ? (
         <Table
           title="Bandeja de errores"
           subtitle="Cargando transacciones…"

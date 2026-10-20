@@ -1,4 +1,11 @@
-import { Fragment, useState, useSyncExternalStore, type ReactNode } from 'react'
+import {
+  Fragment,
+  useLayoutEffect,
+  useRef,
+  useState,
+  useSyncExternalStore,
+  type ReactNode,
+} from 'react'
 import { colors } from '../styles'
 import type { AppPage } from '../types'
 import { cn } from '../utils/cn'
@@ -20,6 +27,8 @@ interface AppLayoutProps {
   migas: Miga[]
   /** Ancho máximo del contenido (cualquier unidad CSS). */
   maxWidth?: string
+  /** Si viene, el scroll de la pantalla se guarda con esta clave y se repone al volver. */
+  recordarScroll?: string
   children: ReactNode
 }
 
@@ -48,6 +57,9 @@ function useEsEscritorio() {
 // nivel módulo para que no se pierda al navegar.
 let sidebarExpandidoGuardado = true
 
+// Por la misma razón, el scroll de las pantallas que lo piden (clave → px).
+const scrollGuardado = new Map<string, number>()
+
 /**
  * Marco de las pantallas con sesión: sidebar (expandido, riel de íconos o
  * cajón en celulares) + barra superior fija con la ubicación actual.
@@ -57,11 +69,19 @@ function AppLayout({
   onNavigate,
   migas,
   maxWidth = '1400px',
+  recordarScroll,
   children,
 }: AppLayoutProps) {
   const esEscritorio = useEsEscritorio()
   const [expandido, setExpandido] = useState(sidebarExpandidoGuardado)
   const [cajonAbierto, setCajonAbierto] = useState(false)
+  const mainRef = useRef<HTMLElement>(null)
+
+  // Antes de pintar, para que no se vea el salto desde arriba.
+  useLayoutEffect(() => {
+    const guardado = recordarScroll && scrollGuardado.get(recordarScroll)
+    if (guardado && mainRef.current) mainRef.current.scrollTop = guardado
+  }, [recordarScroll])
 
   function toggleSidebar() {
     if (!esEscritorio) {
@@ -117,7 +137,15 @@ function AppLayout({
         )
       )}
 
-      <main className="relative min-w-0 flex-1 overflow-y-auto">
+      <main
+        ref={mainRef}
+        onScroll={(event) => {
+          if (recordarScroll) {
+            scrollGuardado.set(recordarScroll, event.currentTarget.scrollTop)
+          }
+        }}
+        className="relative min-w-0 flex-1 overflow-y-auto"
+      >
         {/* Luz verde muy suave arriba: le quita lo plano al fondo. */}
         <div
           aria-hidden

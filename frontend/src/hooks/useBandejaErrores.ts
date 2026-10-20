@@ -53,12 +53,41 @@ interface UseBandejaErroresResult {
   setFilters: (filters: Partial<BandejaFilters>) => void
 }
 
+// La bandeja se desmonta al abrir un error: los filtros y los últimos datos
+// viven a nivel módulo para que al volver quede como estaba (los datos se
+// muestran al toque y se refrescan por detrás). Los filtros además van a
+// sessionStorage, así sobreviven a una recarga de la pestaña.
+const CLAVE_FILTROS = 'errores-softland:filtros-bandeja'
+
+function leerFiltros(): BandejaFilters {
+  try {
+    const guardados = sessionStorage.getItem(CLAVE_FILTROS)
+    return guardados
+      ? { ...FILTROS_INICIALES, ...(JSON.parse(guardados) as BandejaFilters) }
+      : FILTROS_INICIALES
+  } catch {
+    return FILTROS_INICIALES
+  }
+}
+
+function guardarFiltros(filtros: BandejaFilters) {
+  filtrosGuardados = filtros
+  try {
+    sessionStorage.setItem(CLAVE_FILTROS, JSON.stringify(filtros))
+  } catch {
+    // Sin storage (modo privado, cuota): quedan sólo en memoria.
+  }
+}
+
+let filtrosGuardados: BandejaFilters = leerFiltros()
+let datosGuardados: BandejaData | null = null
+
 export function useBandejaErrores(): UseBandejaErroresResult {
-  const [data, setData] = useState<BandejaData | null>(null)
+  const [data, setData] = useState<BandejaData | null>(datosGuardados)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [reloadToken, setReloadToken] = useState(0)
-  const [filters, setFiltersState] = useState<BandejaFilters>(FILTROS_INICIALES)
+  const [filters, setFiltersState] = useState<BandejaFilters>(filtrosGuardados)
 
   useEffect(() => {
     let cancelled = false
@@ -76,13 +105,14 @@ export function useBandejaErrores(): UseBandejaErroresResult {
           getBandejaErrores({ soloAbiertos: 'false' }),
         ])
         if (!cancelled) {
-          setData({
+          datosGuardados = {
             empresas,
             usuarios,
             totalAbiertos: stats.erroresAbiertos,
             bandejaPendientes: stats.bandejaPendientes,
             errores,
-          })
+          }
+          setData(datosGuardados)
         }
       } catch (e) {
         if (!cancelled) {
@@ -106,7 +136,10 @@ export function useBandejaErrores(): UseBandejaErroresResult {
   const refetch = useCallback(() => setReloadToken((token) => token + 1), [])
 
   const setFilters = useCallback((partial: Partial<BandejaFilters>) => {
-    setFiltersState((prev) => ({ ...prev, ...partial }))
+    setFiltersState((prev) => {
+      guardarFiltros({ ...prev, ...partial })
+      return filtrosGuardados
+    })
   }, [])
 
   // Sin el filtro de empresa: de acá salen tanto la lista como los contadores

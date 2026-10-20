@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { AuthProvider } from './auth/AuthProvider'
 import { useAuth } from './auth/useAuth'
 import { colors, textStyles } from './styles'
@@ -36,29 +36,71 @@ function PantallasDeAuth() {
   )
 }
 
+/** Lo que se ve: cada navegación es una entrada del historial del navegador. */
+interface Vista {
+  page: AppPage
+  /** Qué error está abierto en la pantalla de detalle. */
+  errorId: string | null
+  /** Desde dónde se llegó; null si se entró directo (no hay a dónde volver). */
+  origen: AppPage | null
+}
+
+const VISTA_INICIO: Vista = { page: 'home', errorId: null, origen: null }
+
+/** Al recargar, el navegador conserva el estado de la entrada actual. */
+function vistaGuardada(): Vista {
+  const estado = window.history.state as Partial<Vista> | null
+  return estado?.page ? { ...VISTA_INICIO, ...estado } : VISTA_INICIO
+}
+
 function AppAutenticada() {
-  const [page, setPage] = useState<AppPage>('home')
-  // Qué error está abierto en la pantalla de detalle.
-  const [errorId, setErrorId] = useState<string | null>(null)
+  const [vista, setVista] = useState<Vista>(vistaGuardada)
 
-  function abrirDetalle(id: string) {
-    setErrorId(id)
-    setPage('detalle')
+  // Así el "atrás" del navegador (o del mouse) recorre las pantallas de la app.
+  useEffect(() => {
+    window.history.replaceState(vistaGuardada(), '')
+    function alVolver(event: PopStateEvent) {
+      setVista((event.state as Vista | null) ?? VISTA_INICIO)
+    }
+    window.addEventListener('popstate', alVolver)
+    return () => window.removeEventListener('popstate', alVolver)
+  }, [])
+
+  function navegar(page: AppPage, errorId: string | null = null) {
+    if (page === vista.page && errorId === vista.errorId) return
+    const nueva: Vista = { page, errorId, origen: vista.page }
+    window.history.pushState(nueva, '')
+    setVista(nueva)
   }
 
-  if (page === 'bandeja') {
-    return <BandejaErrores onNavigate={setPage} onOpenError={abrirDetalle} />
+  const abrirDetalle = (id: string) => navegar('detalle', id)
+
+  // Volver = la entrada anterior del historial, con sus filtros y su scroll.
+  function volverDelDetalle() {
+    if (vista.origen) window.history.back()
+    else navegar('bandeja')
   }
 
-  if (page === 'detalle') {
-    return <ErrorDetail errorId={errorId} onNavigate={setPage} />
+  if (vista.page === 'bandeja') {
+    return <BandejaErrores onNavigate={navegar} onOpenError={abrirDetalle} />
   }
 
-  if (page === 'historial') {
-    return <Historial onNavigate={setPage} />
+  if (vista.page === 'detalle') {
+    return (
+      <ErrorDetail
+        errorId={vista.errorId}
+        onNavigate={navegar}
+        volverA={vista.origen === 'home' ? 'home' : 'bandeja'}
+        onVolver={volverDelDetalle}
+      />
+    )
   }
 
-  return <Home onNavigate={setPage} onOpenError={abrirDetalle} />
+  if (vista.page === 'historial') {
+    return <Historial onNavigate={navegar} />
+  }
+
+  return <Home onNavigate={navegar} onOpenError={abrirDetalle} />
 }
 
 function Pantalla({ texto }: { texto: string }) {

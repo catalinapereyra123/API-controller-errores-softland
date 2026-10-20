@@ -1,6 +1,7 @@
-# API Errores Softland
+# IRIS
 
-Tablero para gestionar los errores de integración de Softland.
+**I**ntegraciones, **R**eprocesos e **I**ncidencias de **S**oftland: tablero
+para gestionar los errores de integración de Softland.
 `backend/` (NestJS + Prisma + Postgres) · `frontend/` (React + Vite).
 
 ## Levantar todo con Docker

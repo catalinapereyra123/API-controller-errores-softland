@@ -54,7 +54,7 @@ function AuthLayout({
                 }}
                 className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl text-h4 font-extrabold shadow-md"
               >
-                S
+                I
               </span>
               <div className="flex flex-col gap-xs">
                 <h1 style={{ ...textStyles.h1, color: colors.gray.darkest }}>
@@ -148,10 +148,13 @@ function PanelMarca() {
           style={{ color: colors.brand.limeSoft }}
           className="text-bodySmall font-semibold tracking-[0.3em] uppercase"
         >
-          API Errores
+          Errores de Softland
         </span>
         <span className="text-[3.25rem] leading-none font-light tracking-tight">
-          Softland
+          IRIS
+        </span>
+        <span className="text-bodySmall text-white/70">
+          Integraciones, Reprocesos e Incidencias de Softland
         </span>
       </div>
     </div>

@@ -17,11 +17,11 @@ function AppSidebar({ activeItem, onItemSelect, collapsed }: AppSidebarProps) {
 
   return (
     <Sidebar
-      logoText="S"
+      logoText="I"
       logoColor={colors.gray.white}
       logoBackground={colors.primary.gradient}
-      title="API Errores Softland"
-      subtitle="Softland · Errores"
+      title="IRIS"
+      subtitle="Incidencias de Softland"
       titleColor={colors.gray.darkest}
       subtitleColor={colors.gray.medium}
       backgroundColor={colors.background.surface}

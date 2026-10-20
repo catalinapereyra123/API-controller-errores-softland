@@ -165,9 +165,15 @@ function CollapsibleCard({
 function ErrorDetail({
   errorId,
   onNavigate,
+  volverA,
+  onVolver,
 }: {
   errorId: string | null
   onNavigate: (page: AppPage) => void
+  /** Pantalla desde la que se abrió el error (define el texto de "Volver"). */
+  volverA: 'home' | 'bandeja'
+  /** Vuelve a esa pantalla tal como estaba (filtros, scroll). */
+  onVolver: () => void
 }) {
   const {
     data,
@@ -260,10 +266,14 @@ function ErrorDetail({
       <div className="flex flex-col gap-lg">
         <div className="flex items-start gap-md">
           <Button
-            text="Volver a la bandeja de errores"
+            text={
+              volverA === 'home'
+                ? 'Volver al inicio'
+                : 'Volver a la bandeja de errores'
+            }
             color={colors.gray.medium}
             variant="text"
-            onClick={() => onNavigate('bandeja')}
+            onClick={onVolver}
             icon={
               <ArrowLeftIcon className="h-4 w-4 transition-transform group-hover:-translate-x-0.5" />
             }
