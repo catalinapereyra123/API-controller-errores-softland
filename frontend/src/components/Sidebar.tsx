@@ -34,7 +34,8 @@ export interface SidebarUser {
 }
 
 interface SidebarProps {
-  logoText: string
+  /** Lo que va dentro del cuadrado del logo (una letra o un ícono). */
+  logoText: ReactNode
   logoColor: string
   /** Color o gradiente CSS del cuadrado del logo. */
   logoBackground: string
@@ -106,7 +107,7 @@ function Sidebar({
           <div className="flex min-w-0 flex-col">
             <span
               style={{ color: titleColor }}
-              className="truncate text-body font-bold whitespace-nowrap"
+              className="truncate text-[1.375rem] leading-tight font-extrabold tracking-tight whitespace-nowrap"
             >
               {title}
             </span>

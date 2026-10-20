@@ -46,24 +46,13 @@ function AuthLayout({
 
         <div className="flex items-center justify-center px-md py-xl md:px-xl">
           <div className="flex w-full max-w-[380px] flex-col gap-xl">
-            <div className="flex flex-col items-center gap-md text-center">
-              <span
-                style={{
-                  color: colors.gray.white,
-                  background: colors.primary.gradient,
-                }}
-                className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl text-h4 font-extrabold shadow-md"
-              >
-                I
-              </span>
-              <div className="flex flex-col gap-xs">
-                <h1 style={{ ...textStyles.h1, color: colors.gray.darkest }}>
-                  {titulo}
-                </h1>
-                <p style={{ ...textStyles.body, color: colors.gray.medium }}>
-                  {subtitulo}
-                </p>
-              </div>
+            <div className="flex flex-col gap-xs text-center">
+              <h1 style={{ ...textStyles.h1, color: colors.gray.darkest }}>
+                {titulo}
+              </h1>
+              <p style={{ ...textStyles.body, color: colors.gray.medium }}>
+                {subtitulo}
+              </p>
             </div>
 
             <form onSubmit={handleSubmit} className="flex flex-col gap-md">
@@ -150,11 +139,24 @@ function PanelMarca() {
         >
           Errores de Softland
         </span>
-        <span className="text-[3.25rem] leading-none font-light tracking-tight">
-          IRIS
+        <span className="text-[4.5rem] leading-none font-extrabold tracking-tight">
+          IRIS<span style={{ color: colors.brand.lime }}>.</span>
         </span>
-        <span className="text-bodySmall text-white/70">
-          Integraciones, Reprocesos e Incidencias de Softland
+        {/* Las iniciales en lima: de dónde sale el nombre. */}
+        <span className="text-body text-white/75">
+          {[
+            'Integraciones, ',
+            'Reprocesos e ',
+            'Incidencias de ',
+            'Softland',
+          ].map((palabra) => (
+            <span key={palabra}>
+              <span style={{ color: colors.brand.lime }} className="font-bold">
+                {palabra[0]}
+              </span>
+              {palabra.slice(1)}
+            </span>
+          ))}
         </span>
       </div>
     </div>
