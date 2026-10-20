@@ -1,3 +1,4 @@
+import iflowGlobo from '../assets/iflow-globo.png'
 import { useAuth } from '../auth/useAuth'
 import { colors } from '../styles'
 import Sidebar, { type SidebarItemId, type SidebarNavItem } from './Sidebar'
@@ -17,9 +18,11 @@ function AppSidebar({ activeItem, onItemSelect, collapsed }: AppSidebarProps) {
 
   return (
     <Sidebar
-      logoText="I"
+      logoText={
+        <img src={iflowGlobo} alt="" className="h-full w-full object-contain" />
+      }
       logoColor={colors.gray.white}
-      logoBackground={colors.primary.gradient}
+      logoBackground="transparent"
       title="IRIS"
       subtitle="Incidencias de Softland"
       titleColor={colors.gray.darkest}

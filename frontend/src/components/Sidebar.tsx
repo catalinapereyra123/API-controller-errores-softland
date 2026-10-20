@@ -99,7 +99,7 @@ function Sidebar({
       >
         <span
           style={{ color: logoColor, background: logoBackground }}
-          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-bodyLarge font-extrabold shadow-sm"
+          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-bodyLarge font-extrabold"
         >
           {logoText}
         </span>
