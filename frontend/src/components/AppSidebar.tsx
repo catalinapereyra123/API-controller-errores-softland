@@ -1,6 +1,5 @@
 import { useAuth } from '../auth/useAuth'
 import { colors } from '../styles'
-import IrisLogo from './IrisLogo'
 import Sidebar, { type SidebarItemId, type SidebarNavItem } from './Sidebar'
 
 interface AppSidebarProps {
@@ -18,7 +17,7 @@ function AppSidebar({ activeItem, onItemSelect, collapsed }: AppSidebarProps) {
 
   return (
     <Sidebar
-      logoText={<IrisLogo className="h-5 w-7" />}
+      logoText="I"
       logoColor={colors.gray.white}
       logoBackground={colors.primary.gradient}
       title="IRIS"
