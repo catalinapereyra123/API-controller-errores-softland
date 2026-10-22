@@ -247,6 +247,19 @@ export class ErroresRepository {
     return this.prisma.empresa.findMany({ orderBy: { nombre: 'asc' } });
   }
 
+  buscarEmpresa(codigo: string) {
+    return this.prisma.empresa.findUnique({ where: { codigo } });
+  }
+
+  /** Observaciones, intentos y trazabilidad caen por el onDelete: Cascade. */
+  borrarErroresDeEmpresa(codigo: string, tx: Prisma.TransactionClient) {
+    return tx.transaccionError.deleteMany({ where: { empresaCodigo: codigo } });
+  }
+
+  borrarEmpresa(codigo: string, tx: Prisma.TransactionClient) {
+    return tx.empresa.delete({ where: { codigo } });
+  }
+
   contarPorEstado(where: Prisma.TransaccionErrorWhereInput = {}) {
     return this.prisma.transaccionError.groupBy({
       by: ['estadoApp'],

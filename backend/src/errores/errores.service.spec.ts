@@ -185,6 +185,28 @@ class FakeRepo {
   };
 
   buscarUsuario = () => Promise.resolve(null);
+
+  buscarEmpresa = (codigo: string) =>
+    Promise.resolve(this.empresas.get(codigo) ?? null);
+
+  contar = (where: { empresaCodigo: string }) =>
+    Promise.resolve(
+      this.transacciones.filter((t) => t.empresaCodigo === where.empresaCodigo)
+        .length,
+    );
+
+  borrarErroresDeEmpresa = (codigo: string) => {
+    const antes = this.transacciones.length;
+    this.transacciones = this.transacciones.filter(
+      (t) => t.empresaCodigo !== codigo,
+    );
+    return Promise.resolve({ count: antes - this.transacciones.length });
+  };
+
+  borrarEmpresa = (codigo: string) => {
+    this.empresas.delete(codigo);
+    return Promise.resolve({ codigo });
+  };
 }
 
 const registro = (over: Partial<SyncErrorDto> = {}): SyncErrorDto => ({
@@ -1087,5 +1109,68 @@ describe('ErroresService — verificación (flujo 5)', () => {
     await expect(
       service.registrarVerificacion({ ...clave, statusSoftland: 'S' }),
     ).rejects.toThrow(/No existe/i);
+  });
+});
+
+describe('ErroresService — borrar empresa', () => {
+  let service: ErroresService;
+  let repo: FakeRepo;
+
+  beforeEach(async () => {
+    repo = new FakeRepo();
+    const moduleRef = await Test.createTestingModule({
+      providers: [
+        ErroresService,
+        { provide: ErroresRepository, useValue: repo },
+      ],
+    }).compile();
+    service = moduleRef.get(ErroresService);
+
+    await service.sync([
+      registro({ empresa: 'IFLOW2', empresaNombre: 'I FLOW S.A.2' }),
+      registro({
+        empresa: 'IFLOW2',
+        empresaNombre: 'I FLOW S.A.2',
+        identi: 'LIQ101',
+      }),
+      registro({ empresa: 'NORFLOW', empresaNombre: 'NORFLOW S.A.' }),
+    ]);
+  });
+
+  it('el resumen cuenta los errores sin borrar nada', async () => {
+    const res = await service.resumenEmpresa('IFLOW2');
+
+    expect(res).toEqual({
+      codigo: 'IFLOW2',
+      nombre: 'I FLOW S.A.2',
+      errores: 2,
+    });
+    expect(repo.transacciones).toHaveLength(3);
+  });
+
+  it('borra la empresa y sus errores, sin tocar las demás', async () => {
+    const res = await service.borrarEmpresa('IFLOW2');
+
+    expect(res).toEqual({
+      codigo: 'IFLOW2',
+      nombre: 'I FLOW S.A.2',
+      erroresBorrados: 2,
+    });
+    expect(repo.empresas.has('IFLOW2')).toBe(false);
+    expect(repo.empresas.has('NORFLOW')).toBe(true);
+    const quedan = repo.transacciones.map(
+      (t: { empresaCodigo: string }) => t.empresaCodigo,
+    );
+    expect(quedan).toEqual(['NORFLOW']);
+  });
+
+  it('una empresa que no existe da 404 y no borra nada', async () => {
+    await expect(service.borrarEmpresa('NOEXISTE')).rejects.toThrow(
+      /No existe la empresa NOEXISTE/,
+    );
+    await expect(service.resumenEmpresa('NOEXISTE')).rejects.toThrow(
+      /No existe/,
+    );
+    expect(repo.transacciones).toHaveLength(3);
   });
 });

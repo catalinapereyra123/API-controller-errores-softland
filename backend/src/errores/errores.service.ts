@@ -925,6 +925,36 @@ export class ErroresService {
     return empresas.map((e) => ({ id: e.codigo, nombre: e.nombre }));
   }
 
+  /** Lo que se llevaría `borrarEmpresa`, para revisarlo antes de borrar. */
+  async resumenEmpresa(codigo: string) {
+    const empresa = await this.repo.buscarEmpresa(codigo);
+    if (!empresa)
+      throw new NotFoundException(`No existe la empresa ${codigo}.`);
+    const errores = await this.repo.contar({ empresaCodigo: codigo });
+    return { codigo: empresa.codigo, nombre: empresa.nombre, errores };
+  }
+
+  /**
+   * Borra una empresa con todos sus errores (y en cascada sus observaciones,
+   * intentos y trazabilidad). Es para empresas de prueba que entraron por el
+   * sync: si el integrador la vuelve a mandar, se crea de nuevo, así que
+   * primero hay que excluirla en el flujo.
+   */
+  async borrarEmpresa(codigo: string) {
+    const empresa = await this.repo.buscarEmpresa(codigo);
+    if (!empresa)
+      throw new NotFoundException(`No existe la empresa ${codigo}.`);
+    const erroresBorrados = await this.repo.transaction(async (tx) => {
+      const { count } = await this.repo.borrarErroresDeEmpresa(codigo, tx);
+      await this.repo.borrarEmpresa(codigo, tx);
+      return count;
+    });
+    this.logger.warn(
+      `Empresa ${codigo} (${empresa.nombre}) borrada con ${erroresBorrados} errores.`,
+    );
+    return { codigo, nombre: empresa.nombre, erroresBorrados };
+  }
+
   // ==========================================================================
   //  MUTACIONES (desde la app: se guardan en la DB, no vienen de n8n)
   // ==========================================================================

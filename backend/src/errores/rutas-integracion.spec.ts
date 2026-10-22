@@ -60,6 +60,16 @@ describe('Rutas del integrador vs. /errores/:id', () => {
       mensaje: 'Resuelto en Softland: se cerró por verificación automática.',
     }),
     detalle: jest.fn().mockResolvedValue({ id: 'abc123' }),
+    resumenEmpresa: jest.fn().mockResolvedValue({
+      codigo: 'IFLOW2',
+      nombre: 'I FLOW S.A.2',
+      errores: 31,
+    }),
+    borrarEmpresa: jest.fn().mockResolvedValue({
+      codigo: 'IFLOW2',
+      nombre: 'I FLOW S.A.2',
+      erroresBorrados: 31,
+    }),
   };
 
   beforeAll(async () => {
@@ -231,5 +241,40 @@ describe('Rutas del integrador vs. /errores/:id', () => {
     expect(res.status).toBe(401);
     const body = res.body as { message?: string };
     expect(String(body.message)).toMatch(/API key/i);
+  });
+
+  it('el resumen de una empresa entra con x-api-key', async () => {
+    const res = await request(app.getHttpServer())
+      .get('/errores/integracion/empresas/IFLOW2')
+      .set('x-api-key', 'clave-de-prueba');
+
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual({
+      codigo: 'IFLOW2',
+      nombre: 'I FLOW S.A.2',
+      errores: 31,
+    });
+    expect(service.resumenEmpresa).toHaveBeenCalledWith('IFLOW2');
+  });
+
+  it('el DELETE de una empresa entra con x-api-key', async () => {
+    const res = await request(app.getHttpServer())
+      .delete('/errores/integracion/empresas/IFLOW2')
+      .set('x-api-key', 'clave-de-prueba');
+
+    expect(res.status).toBe(200);
+    expect(res.body).toMatchObject({ erroresBorrados: 31 });
+    expect(service.borrarEmpresa).toHaveBeenCalledWith('IFLOW2');
+  });
+
+  it('el DELETE de una empresa sin x-api-key no borra nada', async () => {
+    service.borrarEmpresa.mockClear();
+
+    const res = await request(app.getHttpServer()).delete(
+      '/errores/integracion/empresas/IFLOW2',
+    );
+
+    expect(res.status).toBe(401);
+    expect(service.borrarEmpresa).not.toHaveBeenCalled();
   });
 });

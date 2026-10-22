@@ -1,8 +1,10 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   HttpCode,
+  Param,
   Post,
   Query,
   UseGuards,
@@ -38,6 +40,10 @@ import { SyncRequestPipe } from './pipes/sync-request.pipe';
  * Flujo 4 — POST /errores/resultado-reproceso
  *   Body: { empresa, modulo, identi, statusSoftland, error? }
  *   n8n reporta el status que devolvió Softland tras el reproceso.
+ *
+ * Mantenimiento — GET / DELETE /errores/integracion/empresas/:codigo
+ *   Sacar de la bandeja una empresa de prueba que entró por el sync. El GET
+ *   muestra cuántos errores tiene; el DELETE la borra con todos ellos.
  */
 @Controller('errores')
 @UseGuards(ApiKeyGuard)
@@ -78,6 +84,16 @@ export class SyncController {
     return this.service.verificacionPendientes(
       Number.isInteger(n) && n > 0 ? n : undefined,
     );
+  }
+
+  @Get('integracion/empresas/:codigo')
+  resumenEmpresa(@Param('codigo') codigo: string) {
+    return this.service.resumenEmpresa(codigo);
+  }
+
+  @Delete('integracion/empresas/:codigo')
+  borrarEmpresa(@Param('codigo') codigo: string) {
+    return this.service.borrarEmpresa(codigo);
   }
 
   /** Flujo 5, paso 3: el status que el integrador encontró en Softland. */
