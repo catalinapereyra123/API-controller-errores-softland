@@ -1,9 +1,8 @@
 import { useMemo } from 'react'
-import Button from '../components/Button'
 import ChevronButton from '../components/ChevronButton'
 import Dropdown, { type DropdownOption } from '../components/Dropdown'
 import FiltrosPopover from '../components/FiltrosPopover'
-import { PlusIcon, SearchIcon, XIcon } from '../components/icons'
+import { SearchIcon, XIcon } from '../components/icons'
 import Input from '../components/Input'
 import AppLayout from '../components/AppLayout'
 import Table from '../components/Table'
@@ -282,18 +281,9 @@ function BandejaErrores({
         { label: 'Bandeja de errores' },
       ]}
     >
-      <div className="flex flex-wrap items-start justify-between gap-md">
-        <h1 style={{ ...textStyles.h1, color: colors.gray.darkest }}>
-          Bandeja de errores
-        </h1>
-        <Button
-          text="Registrar seguimiento manual"
-          color={colors.primary.default}
-          icon={<PlusIcon className="h-4 w-4" />}
-          size={{ ...textStyles.bodySmall, fontWeight: fontWeight.bold }}
-          className="px-lg py-sm"
-        />
-      </div>
+      <h1 style={{ ...textStyles.h1, color: colors.gray.darkest }}>
+        Bandeja de errores
+      </h1>
 
       {error && (
         <div
