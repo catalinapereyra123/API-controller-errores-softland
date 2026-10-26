@@ -94,6 +94,17 @@ export function ResueltoTag() {
   )
 }
 
+/** Status X de Softland: fuera del proceso, no es un error a resolver. */
+export function ExcluidaTag() {
+  return (
+    <Tag
+      text="Excluida"
+      color={colors.gray.medium}
+      backgroundColor={colors.background.subtle}
+    />
+  )
+}
+
 /** No interesa (p. ej. restos de pruebas): queda fuera de la bandeja. */
 export function DescartadoTag() {
   return (

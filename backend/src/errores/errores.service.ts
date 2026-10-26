@@ -1148,6 +1148,12 @@ export class ErroresService {
     const abiertoWhere: Prisma.TransaccionErrorWhereInput = {
       estadoApp: { in: ESTADOS_ABIERTOS },
     };
+    // Status X = excluida del proceso en Softland: no es un error a resolver,
+    // así que no infla los indicadores y se informa aparte.
+    const erroresWhere: Prisma.TransaccionErrorWhereInput = {
+      ...abiertoWhere,
+      statusSoftland: { not: 'X' },
+    };
     const hace24h = new Date(Date.now() - 24 * 60 * 60 * 1000);
     const inicioHoy = new Date();
     inicioHoy.setHours(0, 0, 0, 0);
@@ -1157,13 +1163,15 @@ export class ErroresService {
       erroresAbiertos,
       sinResponsable,
       nuevos24h,
+      excluidasAbiertas,
       resueltosHoy,
       resueltosPromedio,
     ] = await Promise.all([
       this.repo.contarPorEstado(),
-      this.repo.contar(abiertoWhere),
-      this.repo.contar({ ...abiertoWhere, responsableId: null }),
-      this.repo.contar({ ...abiertoWhere, fechaDeteccion: { gte: hace24h } }),
+      this.repo.contar(erroresWhere),
+      this.repo.contar({ ...erroresWhere, responsableId: null }),
+      this.repo.contar({ ...erroresWhere, fechaDeteccion: { gte: hace24h } }),
+      this.repo.contar({ ...abiertoWhere, statusSoftland: 'X' }),
       this.repo.resueltosDesde(inicioHoy),
       this.repo.resueltosParaPromedio(),
     ]);
@@ -1186,6 +1194,7 @@ export class ErroresService {
     return {
       erroresAbiertos,
       erroresAbiertosDelta: nuevos24h,
+      excluidasAbiertas,
       pendientesReproceso: conteo(EstadoApp.REPROCESANDO),
       resueltosHoy: resueltosHoy.length,
       resueltosHoyDelta: 0,

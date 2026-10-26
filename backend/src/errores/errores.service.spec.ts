@@ -1174,3 +1174,35 @@ describe('ErroresService — borrar empresa', () => {
     expect(repo.transacciones).toHaveLength(3);
   });
 });
+
+describe('ErroresService.dashboard — status X', () => {
+  it('no cuenta los X como errores abiertos y los informa aparte', async () => {
+    const contar = jest.fn((where: { statusSoftland?: unknown }) =>
+      Promise.resolve(where.statusSoftland === 'X' ? 13 : 19),
+    );
+    const repo = {
+      contarPorEstado: jest.fn().mockResolvedValue([]),
+      contar,
+      resueltosDesde: jest.fn().mockResolvedValue([]),
+      resueltosParaPromedio: jest.fn().mockResolvedValue([]),
+    };
+    const moduleRef = await Test.createTestingModule({
+      providers: [
+        ErroresService,
+        { provide: ErroresRepository, useValue: repo },
+      ],
+    }).compile();
+
+    const res = await moduleRef.get(ErroresService).dashboard();
+
+    expect(res.erroresAbiertos).toBe(19);
+    expect(res.sinResponsable).toBe(19);
+    expect(res.excluidasAbiertas).toBe(13);
+    expect(contar).toHaveBeenCalledWith(
+      expect.objectContaining({
+        statusSoftland: { not: 'X' },
+        responsableId: null,
+      }),
+    );
+  });
+});

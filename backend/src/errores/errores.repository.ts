@@ -206,13 +206,16 @@ export class ErroresRepository {
 
   /**
    * Errores que requieren atención inmediata en el dashboard:
-   * abiertos y sin responsable, o abiertos hace más de `horas` horas.
+   * abiertos (sin los de status X) y sin responsable, o abiertos hace más de
+   * `horas` horas.
    */
   prioritarios(horas = 2, limite = 10) {
     const desde = new Date(Date.now() - horas * 60 * 60 * 1000);
     return this.prisma.transaccionError.findMany({
       where: {
         estadoApp: { in: ESTADOS_ABIERTOS },
+        // Los X (excluidos del proceso) no requieren atención.
+        statusSoftland: { not: 'X' },
         OR: [{ responsableId: null }, { fechaDeteccion: { lt: desde } }],
       },
       include: { responsable: true, empresa: true },

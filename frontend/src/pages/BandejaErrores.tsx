@@ -6,10 +6,12 @@ import { SearchIcon, XIcon } from '../components/icons'
 import Input from '../components/Input'
 import AppLayout from '../components/AppLayout'
 import Table from '../components/Table'
+import { ExcluidaTag } from '../components/Tag'
 import Tabs, { type TabItem } from '../components/Tabs'
 import { cn } from '../utils/cn'
 import {
   ESTADOS_CERRADOS,
+  esExcluida,
   estadoLabels,
   estadoOrder,
   estadoTagByEstado,
@@ -74,14 +76,22 @@ function BandejaRow({
   usuarios: Usuario[]
   onOpen: () => void
 }) {
-  const EstadoTag = estadoTagByEstado[error.estado]
+  const excluida = esExcluida(error)
+  // Un reproceso en curso sigue mostrando "Reprocesando" aunque venga de X.
+  const EstadoTag =
+    excluida && error.estado !== 'REPROCESANDO'
+      ? ExcluidaTag
+      : estadoTagByEstado[error.estado]
   const responsable = usuarioNombre(usuarios, error.responsableId)
 
   return (
     <div
       onClick={onOpen}
       style={{ borderColor: colors.background.border }}
-      className={`group grid ${BANDEJA_GRID_COLS} min-w-[1100px] cursor-pointer items-start gap-md border-b px-lg py-md transition-colors last:border-b-0 hover:bg-background-page`}
+      className={cn(
+        `group grid ${BANDEJA_GRID_COLS} min-w-[1100px] cursor-pointer items-start gap-md border-b px-lg py-md transition-colors last:border-b-0 hover:bg-background-page`,
+        excluida && 'opacity-70',
+      )}
     >
       <div className="flex flex-col gap-xxs">
         <EstadoTag />
@@ -130,7 +140,7 @@ function BandejaRow({
           style={{
             ...textStyles.bodySmall,
             fontWeight: fontWeight.bold,
-            color: colors.status.error,
+            color: excluida ? colors.gray.medium : colors.status.error,
           }}
         >
           Sin asignar
@@ -186,6 +196,10 @@ function BandejaErrores({
     filters,
     setFilters,
   } = useBandejaErrores()
+
+  // Los excluidos (status X) van al final, separados de los errores reales.
+  const reales = erroresFiltrados.filter((item) => !esExcluida(item))
+  const excluidas = erroresFiltrados.filter(esExcluida)
 
   // Los módulos salen de los errores que llegaron: se filtra por código
   // (FACTURACION, COMPRAS…) y se muestra la etiqueta legible.
@@ -410,7 +424,30 @@ function BandejaErrores({
             </div>
           ) : (
             <div>
-              {erroresFiltrados.map((item) => (
+              {reales.map((item) => (
+                <BandejaRow
+                  key={item.id}
+                  error={item}
+                  usuarios={data.usuarios}
+                  onOpen={() => onOpenError(item.id)}
+                />
+              ))}
+              {excluidas.length > 0 && (
+                <div
+                  style={{
+                    ...textStyles.overline,
+                    fontWeight: fontWeight.semibold,
+                    color: colors.gray.medium,
+                    backgroundColor: colors.background.subtle,
+                    borderColor: colors.background.border,
+                  }}
+                  className="min-w-[1100px] border-y px-lg py-sm uppercase"
+                >
+                  Excluidas del proceso (status X) · {excluidas.length} · No
+                  cuentan como errores
+                </div>
+              )}
+              {excluidas.map((item) => (
                 <BandejaRow
                   key={item.id}
                   error={item}

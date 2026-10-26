@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { ESTADOS_CERRADOS } from '../constants/estados'
+import { ESTADOS_CERRADOS, esExcluida } from '../constants/estados'
 import { getBandejaErrores } from '../services/bandeja.service'
 import { getDashboardStats } from '../services/dashboard.service'
 import { getEmpresas } from '../services/empresas.service'
@@ -197,9 +197,11 @@ export function useBandejaErrores(): UseBandejaErroresResult {
     [sinFiltroEmpresa, filters.empresaId],
   )
 
+  // Los excluidos (status X) se ven en la lista pero no suman en las pestañas.
   const conteoPorEmpresa = useMemo(() => {
-    const conteo: Record<string, number> = { todas: sinFiltroEmpresa.length }
-    for (const item of sinFiltroEmpresa) {
+    const errores = sinFiltroEmpresa.filter((item) => !esExcluida(item))
+    const conteo: Record<string, number> = { todas: errores.length }
+    for (const item of errores) {
       conteo[item.empresaId] = (conteo[item.empresaId] ?? 0) + 1
     }
     return conteo

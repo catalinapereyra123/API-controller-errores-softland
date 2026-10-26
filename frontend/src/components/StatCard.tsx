@@ -14,6 +14,8 @@ interface StatCardProps extends HTMLAttributes<HTMLDivElement> {
   valueColor: string
   backgroundColor: string
   trend?: StatCardTrend
+  /** Aclaración secundaria debajo de la tendencia. */
+  note?: string
   icon?: ReactNode
   iconColor?: string
   iconBackground?: string
@@ -26,6 +28,7 @@ function StatCard({
   valueColor,
   backgroundColor,
   trend,
+  note,
   icon,
   iconColor,
   iconBackground,
@@ -85,6 +88,15 @@ function StatCard({
             </span>
           )}
           {trend.text}
+        </span>
+      )}
+
+      {note && (
+        <span
+          style={{ color: labelColor }}
+          className="relative -mt-sm text-caption"
+        >
+          {note}
         </span>
       )}
     </div>

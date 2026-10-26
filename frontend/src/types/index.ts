@@ -144,8 +144,11 @@ export interface HistorialResumen {
 
 /** GET /dashboard/stats */
 export interface DashboardStats {
+  /** Sin los de status X: esos van en `excluidasAbiertas`. */
   erroresAbiertos: number
   erroresAbiertosDelta: number
+  /** Abiertos con status X (excluidos del proceso en Softland). */
+  excluidasAbiertas: number
   pendientesReproceso: number
   resueltosHoy: number
   resueltosHoyDelta: number

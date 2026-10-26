@@ -187,6 +187,11 @@ function Home({
                 }
               : undefined
           }
+          note={
+            data?.stats.excluidasAbiertas
+              ? `Sin contar ${data.stats.excluidasAbiertas} excluidas (status X)`
+              : undefined
+          }
         />
         <StatCard
           label="Pend. de reproceso"

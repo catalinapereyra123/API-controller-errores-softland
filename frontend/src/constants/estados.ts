@@ -7,7 +7,7 @@ import {
   RequiereCorreccionTag,
   ResueltoTag,
 } from '../components/Tag'
-import type { ErrorEstado } from '../types'
+import type { ErrorEstado, ErrorTransaccion } from '../types'
 
 export const estadoTagByEstado: Record<ErrorEstado, () => React.JSX.Element> = {
   ERROR: ErrorTag,
@@ -41,3 +41,16 @@ export const estadoOrder: ErrorEstado[] = [
 
 /** Cerrados: fuera de "Abiertos" en la bandeja y sin tiempo abierto. */
 export const ESTADOS_CERRADOS: ErrorEstado[] = ['RESUELTO', 'DESCARTADO']
+
+/**
+ * Status X de Softland: la transacción quedó fuera del proceso, sin mensaje de
+ * error. Mientras siga abierta no se trata como un error a resolver: va al
+ * final de la bandeja y no suma en los contadores (igual que en el dashboard).
+ */
+export function esExcluida(
+  error: Pick<ErrorTransaccion, 'statusSoftland' | 'estado'>,
+): boolean {
+  return (
+    error.statusSoftland === 'X' && !ESTADOS_CERRADOS.includes(error.estado)
+  )
+}
