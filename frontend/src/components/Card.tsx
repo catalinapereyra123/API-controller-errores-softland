@@ -23,7 +23,7 @@ interface CardProps extends HTMLAttributes<HTMLDivElement> {
 function Card({
   children,
   padding = 'lg',
-  radiusSize = 'xl',
+  radiusSize = 'xxl',
   backgroundColor = colors.background.surface,
   borderColor,
   shadow = true,
@@ -42,7 +42,10 @@ function Card({
           ...style,
         } as CSSProperties
       }
-      className={cn(shadow && 'shadow-soft ring-1 ring-slate-900/5', className)}
+      className={cn(
+        shadow && 'shadow-soft ring-1 ring-slate-900/[0.04]',
+        className,
+      )}
       {...props}
     >
       {children}

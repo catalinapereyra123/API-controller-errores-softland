@@ -28,7 +28,7 @@ function Input({
       style={{ borderColor, backgroundColor }}
       className={cn(
         'inline-flex items-center gap-sm border shadow-xs transition-shadow',
-        pill ? 'rounded-full px-lg py-md' : 'rounded-lg px-md py-sm',
+        pill ? 'rounded-full px-lg py-md' : 'rounded-full px-md py-sm',
         'focus-within:ring-4 focus-within:ring-primary-light/60',
         className,
       )}

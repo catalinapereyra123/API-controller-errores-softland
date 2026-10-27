@@ -55,7 +55,8 @@ const ESTILO_POR_DEFECTO: EstiloEvento = {
   background: colors.label.gray.background,
 }
 
-const estiloDe = (tipo: string) => estiloPorTipo[tipo] ?? ESTILO_POR_DEFECTO
+export const estiloDe = (tipo: string) =>
+  estiloPorTipo[tipo] ?? ESTILO_POR_DEFECTO
 
 /** Adapta los eventos de trazabilidad al formato genérico de `Timeline`. */
 export function trazabilidadToTimelineItems(
@@ -75,12 +76,17 @@ export function trazabilidadToTimelineItems(
   })
 }
 
-/** Adapta los eventos del historial (con código de error) a `Timeline`. */
+/**
+ * Adapta los eventos del historial (con código de error) a `Timeline`.
+ * Con `onOpenError`, el código es un link al detalle del error.
+ */
 export function historialToTimelineItems(
   eventos: HistorialEvento[],
+  onOpenError?: (id: string) => void,
 ): TimelineItem[] {
   return eventos.map((evento) => {
     const estilo = estiloDe(evento.tipo)
+    const resto = [evento.empresa, evento.detalle].filter(Boolean).join(' · ')
     return {
       id: evento.id,
       icon: estilo.icon,
@@ -88,9 +94,20 @@ export function historialToTimelineItems(
       iconBackground: estilo.background,
       time: formatTime(evento.hora),
       title: evento.titulo,
-      description: [`${evento.codigo} · ${evento.empresa}`, evento.detalle]
-        .filter(Boolean)
-        .join(' · '),
+      description: onOpenError ? (
+        <>
+          <button
+            type="button"
+            onClick={() => onOpenError(evento.transaccionId)}
+            className="cursor-pointer font-mono font-semibold text-primary-dark underline-offset-2 hover:underline"
+          >
+            {evento.codigo}
+          </button>
+          {` · ${resto}`}
+        </>
+      ) : (
+        `${evento.codigo} · ${resto}`
+      ),
     }
   })
 }

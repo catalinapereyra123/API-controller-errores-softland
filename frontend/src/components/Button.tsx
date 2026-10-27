@@ -38,10 +38,10 @@ function Button({
       className={cn(
         'inline-flex cursor-pointer items-center justify-center gap-xs font-medium transition-all duration-150 active:scale-[0.98]',
         isOutline && 'rounded-full border hover:bg-slate-900/[0.04]',
-        isText && 'rounded-md hover:opacity-75',
+        isText && 'rounded-full hover:opacity-75',
         !isOutline &&
           !isText &&
-          'rounded-lg text-white shadow-sm hover:shadow-md hover:brightness-95',
+          'rounded-full text-white shadow-sm hover:shadow-md hover:brightness-95',
         'focus-visible:ring-2 focus-visible:ring-primary-default/50 focus-visible:ring-offset-2 focus-visible:outline-none',
         'disabled:pointer-events-none disabled:opacity-50',
         className,

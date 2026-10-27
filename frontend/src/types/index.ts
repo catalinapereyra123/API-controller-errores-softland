@@ -24,7 +24,9 @@ export const ESTADOS_MANUALES: ErrorEstado[] = [
 /** Enum `Modulo` del back. */
 export type ModuloCodigo = 'FACTURACION' | 'COMPRAS' | 'COBRANZAS'
 
-export type AppPage = 'home' | 'bandeja' | 'detalle' | 'historial'
+/** `historial` es el propio (Mi historial); `historial-iris`, el de todo el equipo. */
+export type AppPage =
+  'home' | 'bandeja' | 'detalle' | 'metricas' | 'historial' | 'historial-iris'
 
 export interface Empresa {
   id: string
@@ -69,6 +71,8 @@ export interface ErrorTransaccion {
   fechaResolucion: string | null
   ultimaDeteccion: string
   presenteEnUltimaSync: boolean
+  /** Cómo se cerró, si está RESUELTO. */
+  origenCierre: 'MANUAL' | 'VERIFICACION_AUTOMATICA' | null
 }
 
 export interface ErrorObservacion {
@@ -131,6 +135,27 @@ export interface HistorialDia {
   eventos: HistorialEvento[]
 }
 
+/** Error resuelto o mandado a reprocesar en el período (Historial y Mi espacio). */
+export interface ErrorCierre extends ErrorTransaccion {
+  /** `resuelto`: quedó en S. `corregido`: se mandó a reprocesar. */
+  tipoCierre: 'resuelto' | 'corregido'
+  /** ISO. fechaResolucion o fechaCorreccion según el tipo. */
+  fechaCierre: string
+  /** Quién lo corrigió; null si lo cerró la verificación automática. */
+  cerradoPor: string | null
+  /** De la detección a la resolución; null si todavía no se resolvió. */
+  minutosResolucion: number | null
+}
+
+/** Un punto del gráfico: un día, o una hora si el período es "Hoy". */
+export interface PuntoSerie {
+  id: string
+  /** "23/10" o "14 h". */
+  etiqueta: string
+  resueltos: number
+  corregidos: number
+}
+
 /** GET /historial */
 export interface HistorialResumen {
   periodo: string
@@ -139,7 +164,43 @@ export interface HistorialResumen {
   reprocesos: number
   observaciones: number
   reasignaciones: number
+  /** Mandados a reprocesar en el período. */
+  corregidos: number
+  tiempoPromedioResolucionMinutos: number
+  /** El cierre más reciente primero. */
+  cierres: ErrorCierre[]
+  serie: PuntoSerie[]
   dias: HistorialDia[]
+}
+
+/** GET /mi-espacio */
+export interface MiEspacio {
+  periodo: string
+  desde: string
+  metricas: {
+    asignados: number
+    asignadoMasViejoMinutos: number | null
+    corregidos: number
+    resueltos: number
+    /** Reprocesos propios esperando el resultado de Softland. */
+    esperandoResultado: number
+    /** Reprocesos propios que volvieron con error. */
+    fallidos: number
+    /** % de reprocesos con resultado que salieron bien; null si no hubo. */
+    efectividad: number | null
+    tiempoPromedioResolucionMinutos: number
+  }
+  /** Abiertos con este responsable, el más viejo primero. */
+  asignados: ErrorTransaccion[]
+  /** Los que corrigió en el período, el más reciente primero. */
+  corregidos: ErrorCierre[]
+  porModulo: {
+    modulo: ModuloCodigo
+    label: string
+    asignados: number
+    corregidos: number
+  }[]
+  serie: PuntoSerie[]
 }
 
 /** GET /dashboard/stats */
@@ -164,4 +225,71 @@ export interface Sesion {
   /** Segundos de vida del token. */
   expiraEn: number
   usuario: Usuario
+}
+
+/** Cantidad de cada hito en un período (`TotalesMetricasDto` del back). */
+export interface TotalesMetricas {
+  llegadas: number
+  asignaciones: number
+  correcciones: number
+  resoluciones: number
+  /** De las resoluciones, las que cerró la verificación automática. */
+  resolucionesAutomaticas: number
+  fallos: number
+  reapariciones: number
+  descartes: number
+}
+
+export interface PuntoMetricas {
+  /** yyyy-mm-dd */
+  id: string
+  /** "23/10" */
+  etiqueta: string
+  llegadas: number
+  asignaciones: number
+  correcciones: number
+  resoluciones: number
+}
+
+export interface GrupoMetricas {
+  /** Código del módulo o de la empresa. */
+  id: string
+  label: string
+  llegadas: number
+  resoluciones: number
+}
+
+export interface PersonaMetricas {
+  usuarioId: string
+  nombre: string
+  asignaciones: number
+  correcciones: number
+  resoluciones: number
+}
+
+/** GET /metricas?dias= */
+export interface Metricas {
+  periodo: string
+  desde: string
+  totales: TotalesMetricas
+  /** Los mismos totales en el período anterior de igual largo. */
+  anteriores: TotalesMetricas
+  /** Promedios en minutos desde la detección; null si no hubo casos. */
+  tiempos: {
+    asignacion: number | null
+    correccion: number | null
+    resolucion: number | null
+  }
+  /** % de reprocesos con resultado que quedaron en S; null si no hubo. */
+  efectividad: number | null
+  serie: PuntoMetricas[]
+  porModulo: GrupoMetricas[]
+  porEmpresa: GrupoMetricas[]
+  porPersona: PersonaMetricas[]
+  /** Cómo está la bandeja ahora (no depende del período). */
+  ahora: {
+    abiertos: number
+    sinResponsable: number
+    reprocesando: number
+  }
 }

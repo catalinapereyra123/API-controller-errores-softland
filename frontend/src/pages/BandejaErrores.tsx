@@ -5,6 +5,7 @@ import FiltrosPopover from '../components/FiltrosPopover'
 import { SearchIcon, XIcon } from '../components/icons'
 import Input from '../components/Input'
 import AppLayout from '../components/AppLayout'
+import PageHeader from '../components/PageHeader'
 import Table from '../components/Table'
 import { ExcluidaTag } from '../components/Tag'
 import Tabs, { type TabItem } from '../components/Tabs'
@@ -44,11 +45,7 @@ const BANDEJA_COLUMNS = [
 function BandejaTableHeader() {
   return (
     <div
-      style={{
-        backgroundColor: colors.background.subtle,
-        borderColor: colors.background.border,
-      }}
-      className={`grid ${BANDEJA_GRID_COLS} min-w-[1100px] gap-md border-b px-lg py-sm`}
+      className={`hidden ${BANDEJA_GRID_COLS} gap-md px-md pt-sm pb-xs @6xl:grid`}
     >
       {BANDEJA_COLUMNS.map((label, index) => (
         <span
@@ -83,99 +80,157 @@ function BandejaRow({
       ? ExcluidaTag
       : estadoTagByEstado[error.estado]
   const responsable = usuarioNombre(usuarios, error.responsableId)
+  const abierto = ESTADOS_CERRADOS.includes(error.estado)
+    ? '—'
+    : formatElapsedSince(error.abiertoDesde)
+  const sinAsignar = (
+    <span
+      className={cn(
+        'w-fit rounded-full px-sm py-xxs text-caption font-semibold',
+        excluida
+          ? 'bg-background-subtle text-gray-medium'
+          : 'bg-label-red-background text-label-red-text',
+      )}
+    >
+      Sin asignar
+    </span>
+  )
 
   return (
     <div
       onClick={onOpen}
-      style={{ borderColor: colors.background.border }}
       className={cn(
-        `group grid ${BANDEJA_GRID_COLS} min-w-[1100px] cursor-pointer items-start gap-md border-b px-lg py-md transition-colors last:border-b-0 hover:bg-background-page`,
+        'group cursor-pointer rounded-2xl px-md py-sm transition-colors hover:bg-background-subtle',
         excluida && 'opacity-70',
       )}
     >
-      <div className="flex flex-col gap-xxs">
-        <EstadoTag />
-        {error.estado === 'REPROCESANDO' && (
-          <span
-            style={{ ...textStyles.caption, color: colors.label.purple.text }}
-          >
-            Esperando resultado
+      {/* Angosto: tarjeta compacta en tres líneas. */}
+      <div className="flex flex-col gap-sm @6xl:hidden">
+        <div className="flex items-center justify-between gap-sm">
+          <span className="flex min-w-0 flex-wrap items-center gap-sm">
+            <EstadoTag />
+            <span className="font-mono text-bodySmall font-semibold text-gray-medium">
+              {error.codigo}
+            </span>
           </span>
-        )}
+          <ChevronButton
+            color={colors.primary.dark}
+            borderColor={colors.background.border}
+            aria-label={`Abrir ${error.codigo}`}
+            onClick={(event) => {
+              event.stopPropagation()
+              onOpen()
+            }}
+          />
+        </div>
+        <span className="min-w-0 truncate text-body font-semibold text-gray-darkest">
+          {error.empresaNombre}
+          <span className="font-normal text-gray-medium">
+            {' '}
+            · {error.modulo}
+          </span>
+        </span>
+        <span className="flex flex-wrap items-center gap-x-md gap-y-xs text-bodySmall text-gray-medium">
+          {responsable ? (
+            <span className="font-semibold text-gray-darkest">
+              {responsable}
+            </span>
+          ) : (
+            sinAsignar
+          )}
+          <span>
+            Abierto <b className="font-semibold text-gray-darkest">{abierto}</b>
+          </span>
+          <span>{formatDetectedAt(error.abiertoDesde)}</span>
+          {error.intentos > 0 && (
+            <span>
+              {error.intentos} {error.intentos === 1 ? 'intento' : 'intentos'}
+            </span>
+          )}
+          {error.estado === 'REPROCESANDO' && (
+            <span className="text-label-purple-text">Esperando resultado</span>
+          )}
+        </span>
       </div>
-      <span
-        style={{
-          ...textStyles.bodySmall,
-          fontFamily: fontFamily.mono.join(', '),
-          fontWeight: fontWeight.semibold,
-          color: colors.gray.medium,
-        }}
+
+      {/* Ancho: la fila de la tabla. */}
+      <div
+        className={`hidden ${BANDEJA_GRID_COLS} items-center gap-md @6xl:grid`}
       >
-        {error.codigo}
-      </span>
-      <span
-        style={{
-          ...textStyles.body,
-          fontWeight: fontWeight.bold,
-          color: colors.gray.darkest,
-        }}
-      >
-        {error.empresaNombre}
-      </span>
-      <span style={{ ...textStyles.bodySmall, color: colors.gray.medium }}>
-        {error.modulo}
-      </span>
-      {responsable ? (
+        <div className="flex flex-col gap-xxs">
+          <EstadoTag />
+          {error.estado === 'REPROCESANDO' && (
+            <span
+              style={{ ...textStyles.caption, color: colors.label.purple.text }}
+            >
+              Esperando resultado
+            </span>
+          )}
+        </div>
         <span
           style={{
             ...textStyles.bodySmall,
-            fontWeight: fontWeight.bold,
+            fontFamily: fontFamily.mono.join(', '),
+            fontWeight: fontWeight.semibold,
+            color: colors.gray.medium,
+          }}
+        >
+          {error.codigo}
+        </span>
+        <span
+          style={{
+            ...textStyles.body,
+            fontWeight: fontWeight.semibold,
             color: colors.gray.darkest,
           }}
         >
-          {responsable}
+          {error.empresaNombre}
         </span>
-      ) : (
+        <span style={{ ...textStyles.bodySmall, color: colors.gray.medium }}>
+          {error.modulo}
+        </span>
+        {responsable ? (
+          <span
+            style={{
+              ...textStyles.bodySmall,
+              fontWeight: fontWeight.semibold,
+              color: colors.gray.darkest,
+            }}
+          >
+            {responsable}
+          </span>
+        ) : (
+          sinAsignar
+        )}
+        <span style={{ ...textStyles.bodySmall, color: colors.gray.medium }}>
+          {formatDetectedAt(error.abiertoDesde)}
+        </span>
         <span
           style={{
             ...textStyles.bodySmall,
-            fontWeight: fontWeight.bold,
-            color: excluida ? colors.gray.medium : colors.status.error,
+            fontWeight: fontWeight.semibold,
+            color: colors.gray.darkest,
           }}
         >
-          Sin asignar
+          {abierto}
         </span>
-      )}
-      <span style={{ ...textStyles.bodySmall, color: colors.gray.medium }}>
-        {formatDetectedAt(error.abiertoDesde)}
-      </span>
-      <span
-        style={{
-          ...textStyles.bodySmall,
-          fontWeight: fontWeight.semibold,
-          color: colors.gray.darkest,
-        }}
-      >
-        {ESTADOS_CERRADOS.includes(error.estado)
-          ? '—'
-          : formatElapsedSince(error.abiertoDesde)}
-      </span>
-      <span
-        style={{ ...textStyles.bodySmall, color: colors.gray.medium }}
-        className="text-center"
-      >
-        {error.intentos}
-      </span>
-      <ChevronButton
-        color={colors.primary.dark}
-        borderColor={colors.background.border}
-        aria-label={`Abrir ${error.codigo}`}
-        onClick={(event) => {
-          event.stopPropagation()
-          onOpen()
-        }}
-        className="justify-self-end"
-      />
+        <span
+          style={{ ...textStyles.bodySmall, color: colors.gray.medium }}
+          className="text-center"
+        >
+          {error.intentos}
+        </span>
+        <ChevronButton
+          color={colors.primary.dark}
+          borderColor={colors.background.border}
+          aria-label={`Abrir ${error.codigo}`}
+          onClick={(event) => {
+            event.stopPropagation()
+            onOpen()
+          }}
+          className="justify-self-end"
+        />
+      </div>
     </div>
   )
 }
@@ -295,9 +350,14 @@ function BandejaErrores({
         { label: 'Bandeja de errores' },
       ]}
     >
-      <h1 style={{ ...textStyles.h1, color: colors.gray.darkest }}>
-        Bandeja de errores
-      </h1>
+      <PageHeader
+        eyebrow={
+          data
+            ? `${data.totalAbiertos} abiertos · ${data.bandejaPendientes} sin responsable`
+            : 'Errores de integración de Softland'
+        }
+        titulo="Bandeja de errores"
+      />
 
       {error && (
         <div
@@ -308,7 +368,7 @@ function BandejaErrores({
             color: colors.label.red.text,
             borderColor: colors.label.red.outline,
           }}
-          className="flex items-center justify-between gap-md rounded-xl border px-lg py-md"
+          className="flex items-center justify-between gap-md rounded-xxl border px-lg py-md"
         >
           {error}
           <button type="button" className="underline" onClick={refetch}>
@@ -342,7 +402,7 @@ function BandejaErrores({
             placeholder="Buscar por ID..."
             value={filters.busqueda}
             onChange={(event) => setFilters({ busqueda: event.target.value })}
-            className="max-w-[420px] min-w-[220px] flex-1"
+            className="max-w-[26rem] min-w-[13rem] flex-1"
           />
 
           <FiltrosPopover
@@ -403,7 +463,7 @@ function BandejaErrores({
       ) : (
         <div
           style={{ backgroundColor: colors.background.surface }}
-          className="w-full overflow-x-auto rounded-xl shadow-soft ring-1 ring-slate-900/5"
+          className="@container w-full overflow-x-auto rounded-xxl p-sm shadow-soft ring-1 ring-slate-900/[0.04]"
         >
           <BandejaTableHeader />
           {erroresFiltrados.length === 0 ? (
@@ -423,7 +483,7 @@ function BandejaErrores({
               No hay transacciones que coincidan con los filtros.
             </div>
           ) : (
-            <div>
+            <div className="flex flex-col gap-xxs">
               {reales.map((item) => (
                 <BandejaRow
                   key={item.id}
@@ -439,9 +499,8 @@ function BandejaErrores({
                     fontWeight: fontWeight.semibold,
                     color: colors.gray.medium,
                     backgroundColor: colors.background.subtle,
-                    borderColor: colors.background.border,
                   }}
-                  className="min-w-[1100px] border-y px-lg py-sm uppercase"
+                  className="my-sm rounded-full px-md py-sm uppercase"
                 >
                   Excluidas del proceso (status X) · {excluidas.length} · No
                   cuentan como errores

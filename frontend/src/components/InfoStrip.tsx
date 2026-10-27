@@ -47,7 +47,7 @@ function InfoStrip({
             <dd
               style={{
                 ...textStyles.body,
-                fontWeight: fontWeight.bold,
+                fontWeight: fontWeight.semibold,
                 color: valueColor,
               }}
             >

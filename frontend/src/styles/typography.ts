@@ -53,22 +53,24 @@ export const lineHeight = {
 } as const
 
 export const letterSpacing = {
-  display: '-0.03em',
-  h1: '-0.025em',
-  h2: '-0.02em',
-  h3: '-0.015em',
-  h4: '-0.01em',
+  display: '-0.035em',
+  h1: '-0.03em',
+  h2: '-0.025em',
+  h3: '-0.02em',
+  h4: '-0.015em',
   overline: '0.08em',
 } as const
 
 type TypeStyleKey = keyof typeof fontSize
 
+// Títulos en peso medio con el tracking apretado: es el estilo de toda la
+// app (ver PageHeader). La jerarquía la da el tamaño, no la negrita.
 const weightByStyle: Record<TypeStyleKey, keyof typeof fontWeight> = {
-  display: 'extrabold',
-  h1: 'extrabold',
-  h2: 'semibold',
-  h3: 'semibold',
-  h4: 'semibold',
+  display: 'medium',
+  h1: 'medium',
+  h2: 'medium',
+  h3: 'medium',
+  h4: 'medium',
   bodyLarge: 'regular',
   body: 'regular',
   bodySmall: 'regular',

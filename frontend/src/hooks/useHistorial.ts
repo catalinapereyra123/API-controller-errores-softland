@@ -9,9 +9,15 @@ interface UseHistorialResult {
   refetch: () => void
 }
 
+// La pantalla se desmonta al abrir un error: los últimos datos de cada período
+// quedan acá para que al volver se vea al toque (y se refresque por detrás).
+const datosGuardados = new Map<number, HistorialResumen>()
+
 /** Carga el historial del período pedido; se vuelve a pedir al cambiar `dias`. */
 export function useHistorial(dias: number): UseHistorialResult {
-  const [resumen, setResumen] = useState<HistorialResumen | null>(null)
+  const [resumen, setResumen] = useState<HistorialResumen | null>(
+    () => datosGuardados.get(dias) ?? null,
+  )
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [reloadToken, setReloadToken] = useState(0)
@@ -22,8 +28,10 @@ export function useHistorial(dias: number): UseHistorialResult {
     async function load() {
       setLoading(true)
       setError(null)
+      setResumen(datosGuardados.get(dias) ?? null)
       try {
         const datos = await getHistorial(dias)
+        datosGuardados.set(dias, datos)
         if (!cancelled) setResumen(datos)
       } catch (e) {
         if (!cancelled) {

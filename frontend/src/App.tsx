@@ -7,6 +7,7 @@ import ErrorDetail from './pages/ErrorDetail'
 import Historial from './pages/Historial'
 import Home from './pages/Home'
 import Login from './pages/Login'
+import Metricas from './pages/Metricas'
 import Registro from './pages/Registro'
 import type { AppPage } from './types'
 
@@ -47,10 +48,22 @@ interface Vista {
 
 const VISTA_INICIO: Vista = { page: 'home', errorId: null, origen: null }
 
+const PAGES: AppPage[] = [
+  'home',
+  'bandeja',
+  'detalle',
+  'metricas',
+  'historial',
+  'historial-iris',
+]
+
 /** Al recargar, el navegador conserva el estado de la entrada actual. */
 function vistaGuardada(): Vista {
   const estado = window.history.state as Partial<Vista> | null
-  return estado?.page ? { ...VISTA_INICIO, ...estado } : VISTA_INICIO
+  // Una entrada vieja puede traer una pantalla que ya no existe.
+  return estado?.page && PAGES.includes(estado.page)
+    ? { ...VISTA_INICIO, ...estado }
+    : VISTA_INICIO
 }
 
 function AppAutenticada() {
@@ -90,14 +103,26 @@ function AppAutenticada() {
       <ErrorDetail
         errorId={vista.errorId}
         onNavigate={navegar}
-        volverA={vista.origen === 'home' ? 'home' : 'bandeja'}
+        volverA={
+          vista.origen && vista.origen !== 'detalle' ? vista.origen : 'bandeja'
+        }
         onVolver={volverDelDetalle}
       />
     )
   }
 
-  if (vista.page === 'historial') {
-    return <Historial onNavigate={navegar} />
+  if (vista.page === 'historial' || vista.page === 'historial-iris') {
+    return (
+      <Historial
+        vista={vista.page === 'historial' ? 'mio' : 'iris'}
+        onNavigate={navegar}
+        onOpenError={abrirDetalle}
+      />
+    )
+  }
+
+  if (vista.page === 'metricas') {
+    return <Metricas onNavigate={navegar} />
   }
 
   return <Home onNavigate={navegar} onOpenError={abrirDetalle} />

@@ -35,27 +35,30 @@ interface AppLayoutProps {
 const PAGE_POR_ITEM: Record<SidebarItemId, AppPage> = {
   inicio: 'home',
   bandeja: 'bandeja',
+  metricas: 'metricas',
   historial: 'historial',
 }
 
+/** Desde acá hay sidebar fija; abajo, cajón. */
 const QUERY_ESCRITORIO = '(min-width: 768px)'
+/** Desde acá el sidebar arranca abierto; abajo, en riel de íconos. */
+const QUERY_AMPLIO = '(min-width: 1280px)'
 
-function suscribirEscritorio(onChange: () => void) {
-  const mql = window.matchMedia(QUERY_ESCRITORIO)
-  mql.addEventListener('change', onChange)
-  return () => mql.removeEventListener('change', onChange)
-}
-
-function useEsEscritorio() {
+function useMedia(query: string) {
   return useSyncExternalStore(
-    suscribirEscritorio,
-    () => window.matchMedia(QUERY_ESCRITORIO).matches,
+    (onChange) => {
+      const mql = window.matchMedia(query)
+      mql.addEventListener('change', onChange)
+      return () => mql.removeEventListener('change', onChange)
+    },
+    () => window.matchMedia(query).matches,
   )
 }
 
 // Cada pantalla monta su propio layout: la preferencia del sidebar vive a
-// nivel módulo para que no se pierda al navegar.
-let sidebarExpandidoGuardado = true
+// nivel módulo para que no se pierda al navegar. null = no la tocó: sigue el
+// ancho de la pantalla (y el zoom, que lo cambia).
+let sidebarExpandidoGuardado: boolean | null = null
 
 // Por la misma razón, el scroll de las pantallas que lo piden (clave → px).
 const scrollGuardado = new Map<string, number>()
@@ -68,12 +71,14 @@ function AppLayout({
   activeItem,
   onNavigate,
   migas,
-  maxWidth = '1400px',
+  maxWidth = '90rem',
   recordarScroll,
   children,
 }: AppLayoutProps) {
-  const esEscritorio = useEsEscritorio()
-  const [expandido, setExpandido] = useState(sidebarExpandidoGuardado)
+  const esEscritorio = useMedia(QUERY_ESCRITORIO)
+  const esAmplio = useMedia(QUERY_AMPLIO)
+  const [eleccion, setEleccion] = useState(sidebarExpandidoGuardado)
+  const expandido = eleccion ?? esAmplio
   const [cajonAbierto, setCajonAbierto] = useState(false)
   const mainRef = useRef<HTMLElement>(null)
 
@@ -89,7 +94,7 @@ function AppLayout({
       return
     }
     sidebarExpandidoGuardado = !expandido
-    setExpandido(sidebarExpandidoGuardado)
+    setEleccion(sidebarExpandidoGuardado)
   }
 
   function handleSelectNavItem(item: SidebarNavItem) {
@@ -97,24 +102,29 @@ function AppLayout({
     onNavigate(PAGE_POR_ITEM[item.id])
   }
 
+  function irABandeja() {
+    setCajonAbierto(false)
+    onNavigate('bandeja')
+  }
+
   const menuVisible = esEscritorio ? expandido : cajonAbierto
 
   return (
     <div
       style={{ backgroundColor: colors.background.page }}
-      className="flex h-screen w-full"
+      className="flex h-screen w-full md:gap-xs md:p-sm"
     >
       {esEscritorio ? (
         <div
-          style={{ borderColor: colors.background.border }}
           className={cn(
-            'shrink-0 overflow-hidden border-r transition-[width] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]',
-            expandido ? 'w-[264px]' : 'w-[76px]',
+            'shrink-0 overflow-hidden rounded-xxxl bg-background-surface shadow-soft ring-1 ring-slate-900/[0.04] transition-[width] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]',
+            expandido ? 'w-[16.75rem]' : 'w-[5rem]',
           )}
         >
           <AppSidebar
             activeItem={activeItem}
             onItemSelect={handleSelectNavItem}
+            onIrABandeja={irABandeja}
             collapsed={!expandido}
           />
         </div>
@@ -127,10 +137,11 @@ function AppLayout({
               onClick={() => setCajonAbierto(false)}
               className="absolute inset-0 animate-fundido bg-slate-900/40 backdrop-blur-sm"
             />
-            <div className="relative h-full w-[264px] animate-deslizar shadow-lift">
+            <div className="relative h-full w-[17rem] max-w-[85vw] animate-deslizar overflow-hidden rounded-r-xxxl shadow-lift">
               <AppSidebar
                 activeItem={activeItem}
                 onItemSelect={handleSelectNavItem}
+                onIrABandeja={irABandeja}
               />
             </div>
           </div>
@@ -144,18 +155,15 @@ function AppLayout({
             scrollGuardado.set(recordarScroll, event.currentTarget.scrollTop)
           }
         }}
-        className="relative min-w-0 flex-1 overflow-y-auto"
+        className="relative min-w-0 flex-1 overflow-y-auto md:rounded-xxxl"
       >
         {/* Luz verde muy suave arriba: le quita lo plano al fondo. */}
         <div
           aria-hidden
-          className="pointer-events-none absolute inset-x-0 top-0 h-72 bg-[radial-gradient(60%_100%_at_20%_0%,rgba(22,163,74,0.07),transparent)]"
+          className="pointer-events-none absolute inset-x-0 top-0 h-80 bg-[radial-gradient(60%_100%_at_20%_0%,rgba(22,163,74,0.09),transparent)]"
         />
 
-        <header
-          style={{ borderColor: colors.background.border }}
-          className="sticky top-0 z-20 flex h-14 items-center gap-sm border-b bg-white/70 px-md backdrop-blur-md md:px-xl"
-        >
+        <header className="sticky top-0 z-20 flex h-16 items-center gap-sm bg-background-page/75 px-md backdrop-blur-md md:px-lg 2xl:px-xl">
           <button
             type="button"
             onClick={toggleSidebar}
@@ -163,18 +171,15 @@ function AppLayout({
             aria-expanded={menuVisible}
             title={menuVisible ? 'Ocultar menú' : 'Mostrar menú'}
             style={{ color: colors.gray.medium }}
-            className="flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-lg transition-colors hover:bg-background-subtle focus-visible:ring-2 focus-visible:ring-primary-default/50 focus-visible:outline-none"
+            className="flex h-10 w-10 shrink-0 cursor-pointer items-center justify-center rounded-full bg-background-surface shadow-soft ring-1 ring-slate-900/[0.04] transition-colors hover:text-primary-dark focus-visible:ring-2 focus-visible:ring-primary-default/50 focus-visible:outline-none"
           >
             <PanelLeftIcon className="h-5 w-5" />
           </button>
 
-          <span
-            aria-hidden
-            style={{ backgroundColor: colors.background.border }}
-            className="h-5 w-px"
-          />
-
-          <nav aria-label="Ubicación" className="min-w-0">
+          <nav
+            aria-label="Ubicación"
+            className="flex h-10 min-w-0 items-center rounded-full bg-background-surface px-sm shadow-soft ring-1 ring-slate-900/[0.04]"
+          >
             <ol className="flex min-w-0 items-center gap-xs text-bodySmall">
               {migas.map((miga, index) => {
                 const esActual = index === migas.length - 1
@@ -191,7 +196,7 @@ function AppLayout({
                         <button
                           type="button"
                           onClick={() => miga.page && onNavigate(miga.page)}
-                          className="cursor-pointer rounded-md px-xs py-xxs font-semibold text-gray-medium transition-colors hover:bg-background-subtle hover:text-gray-darkest"
+                          className="cursor-pointer rounded-full px-sm py-xxs font-semibold text-gray-medium transition-colors hover:bg-primary-lightest hover:text-primary-dark"
                         >
                           {miga.label}
                         </button>
@@ -199,7 +204,7 @@ function AppLayout({
                         <span
                           aria-current={esActual ? 'page' : undefined}
                           className={cn(
-                            'block truncate px-xs font-bold text-gray-darkest',
+                            'block truncate px-xs font-semibold text-gray-darkest',
                             miga.mono && 'font-mono',
                           )}
                         >
@@ -216,7 +221,7 @@ function AppLayout({
 
         <div
           style={{ maxWidth }}
-          className="relative mx-auto flex animate-entrar flex-col gap-xl px-md py-lg md:px-xl md:py-xl"
+          className="@container relative mx-auto flex animate-entrar flex-col gap-lg px-md pt-sm pb-xl md:px-lg 2xl:px-xl"
         >
           {children}
         </div>

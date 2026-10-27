@@ -27,14 +27,14 @@ function EstadosSoftlandModal({ open, onClose }: EstadosSoftlandModalProps) {
                 color: estado.color,
                 backgroundColor: estado.background,
               }}
-              className="flex h-12 w-12 items-center justify-center rounded-full text-bodyLarge font-bold"
+              className="flex h-12 w-12 items-center justify-center rounded-full text-bodyLarge font-semibold"
             >
               {estado.code}
             </span>
             <span
               style={{
                 ...textStyles.bodySmall,
-                fontWeight: fontWeight.bold,
+                fontWeight: fontWeight.semibold,
                 color: colors.gray.darkest,
               }}
             >

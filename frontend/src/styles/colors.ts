@@ -7,6 +7,8 @@ export const colors = {
     darkest: '#052e16',
     /** Logo y acentos de marca. */
     gradient: 'linear-gradient(135deg, #22c55e, #15803d)',
+    /** Tarjeta destacada (el número principal de cada pantalla). */
+    hero: 'linear-gradient(150deg, #1f9d52 0%, #12703a 55%, #0b4f29 100%)',
   },
 
   // Paleta iFlow para el panel de acceso: verde profundo + lima de la marca.
@@ -18,10 +20,10 @@ export const colors = {
   },
 
   background: {
-    page: '#f8fafc',
+    page: '#eef1ef',
     surface: '#ffffff',
-    subtle: '#f1f5f9',
-    border: '#e2e8f0',
+    subtle: '#f3f5f4',
+    border: '#e3e8e5',
   },
 
   gray: {
@@ -52,6 +54,16 @@ export const colors = {
     red: { background: '#fde2e2', text: '#b42318', outline: '#ef6c60' },
     purple: { background: '#efe4fb', text: '#6b21a8', outline: '#a374d6' },
     gray: { background: '#f1f5f9', text: '#475569', outline: '#94a3b8' },
+  },
+
+  // Series de los gráficos (Historial, Mi espacio). Par validado para
+  // daltonismo: no reemplazar uno sin volver a chequear el otro.
+  chart: {
+    resueltos: '#16a34a',
+    corregidos: '#2563eb',
+    grid: '#eef2f6',
+    /** Barras que no están resaltadas (rayadas, ver BarChart). */
+    apagado: '#cfe9d8',
   },
 } as const
 

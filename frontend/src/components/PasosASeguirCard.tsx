@@ -66,7 +66,7 @@ function Copiable({ valor }: { valor: string }) {
         onClick={() => void copiar()}
         size={{
           ...textStyles.caption,
-          fontWeight: fontWeight.bold,
+          fontWeight: fontWeight.semibold,
           padding: `${spacing.xs} ${spacing.sm}`,
         }}
         className="shrink-0"
@@ -122,7 +122,7 @@ function PasosASeguirCard({ error }: PasosASeguirCardProps) {
                 color: colors.label.blue.text,
                 backgroundColor: colors.label.blue.background,
               }}
-              className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-caption font-bold"
+              className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-caption font-semibold"
             >
               {index + 1}
             </span>

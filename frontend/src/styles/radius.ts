@@ -4,6 +4,10 @@ export const radius = {
   md: '0.5rem',
   lg: '0.75rem',
   xl: '1rem',
+  /** Tarjetas y paneles. */
+  xxl: '1.5rem',
+  /** Marco de la app (sidebar flotante). */
+  xxxl: '2rem',
   full: '9999px',
 } as const
 

@@ -105,7 +105,7 @@ function Timeline({
               <span
                 style={{
                   ...textStyles.bodySmall,
-                  fontWeight: fontWeight.bold,
+                  fontWeight: fontWeight.semibold,
                   color: titleColor,
                 }}
               >

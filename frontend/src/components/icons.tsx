@@ -300,3 +300,48 @@ export function BuildingIcon(props: SVGProps<SVGSVGElement>) {
     </BaseIcon>
   )
 }
+
+/** "Ir a": la flechita de las tarjetas que llevan a otra pantalla. */
+export function ArrowUpRightIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <BaseIcon {...props}>
+      <path d="M7 17 17 7" />
+      <path d="M8 7h9v9" />
+    </BaseIcon>
+  )
+}
+
+/** Barras redondeadas: la sección de Métricas. */
+export function BarChartIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <BaseIcon {...props}>
+      <rect x="4" y="11" width="4" height="9" rx="2" />
+      <rect x="10" y="4" width="4" height="16" rx="2" />
+      <rect x="16" y="8" width="4" height="12" rx="2" />
+    </BaseIcon>
+  )
+}
+
+/** Cuatro cuadraditos redondeados: el inicio. */
+export function GridIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <BaseIcon {...props}>
+      <rect x="4" y="4" width="7" height="7" rx="2.5" />
+      <rect x="13" y="4" width="7" height="7" rx="2.5" />
+      <rect x="4" y="13" width="7" height="7" rx="2.5" />
+      <rect x="13" y="13" width="7" height="7" rx="2.5" />
+    </BaseIcon>
+  )
+}
+
+/** Logo de Microsoft (a color, para el botón de SSO). */
+export function MicrosoftLogo(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 21 21" aria-hidden {...props}>
+      <rect x="1" y="1" width="9" height="9" fill="#f25022" />
+      <rect x="11" y="1" width="9" height="9" fill="#7fba00" />
+      <rect x="1" y="11" width="9" height="9" fill="#00a4ef" />
+      <rect x="11" y="11" width="9" height="9" fill="#ffb900" />
+    </svg>
+  )
+}

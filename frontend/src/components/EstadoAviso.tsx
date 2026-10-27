@@ -36,7 +36,7 @@ function Aviso({ tono, icon, titulo, extra, children }: AvisoProps) {
           <span
             style={{
               ...textStyles.body,
-              fontWeight: fontWeight.bold,
+              fontWeight: fontWeight.semibold,
               color: tono.text,
             }}
           >

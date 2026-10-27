@@ -29,7 +29,7 @@ function FormField({ label, error, ayuda, icon, ...props }: FormFieldProps) {
         htmlFor={id}
         style={{
           ...textStyles.bodySmall,
-          fontWeight: fontWeight.bold,
+          fontWeight: fontWeight.semibold,
           color: colors.gray.darkest,
         }}
       >

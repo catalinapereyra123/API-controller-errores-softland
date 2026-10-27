@@ -82,6 +82,14 @@ function guardarFiltros(filtros: BandejaFilters) {
 let filtrosGuardados: BandejaFilters = leerFiltros()
 let datosGuardados: BandejaData | null = null
 
+/**
+ * Deja la bandeja con estos filtros (sobre los iniciales) para cuando se
+ * abra: lo usan los accesos de otras pantallas, p. ej. "sin responsable".
+ */
+export function prepararBandeja(filtros: Partial<BandejaFilters>) {
+  guardarFiltros({ ...FILTROS_INICIALES, ...filtros })
+}
+
 export function useBandejaErrores(): UseBandejaErroresResult {
   const [data, setData] = useState<BandejaData | null>(datosGuardados)
   const [loading, setLoading] = useState(true)

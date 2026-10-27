@@ -49,7 +49,10 @@ function Registro({ onIrALogin }: { onIrALogin: () => void }) {
           <button
             type="button"
             onClick={onIrALogin}
-            style={{ color: colors.primary.dark, fontWeight: fontWeight.bold }}
+            style={{
+              color: colors.primary.dark,
+              fontWeight: fontWeight.semibold,
+            }}
             className="underline"
           >
             Entrá

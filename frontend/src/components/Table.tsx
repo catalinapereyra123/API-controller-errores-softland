@@ -45,7 +45,7 @@ function Table({
         className="flex items-start justify-between gap-md border-b px-lg py-lg"
       >
         <div className="flex flex-col gap-xxs">
-          <span style={{ color: titleColor }} className="text-h3 font-bold">
+          <span style={{ color: titleColor }} className="text-h3 font-semibold">
             {title}
           </span>
           <span style={{ color: subtitleColor }} className="text-bodySmall">
@@ -57,7 +57,7 @@ function Table({
           type="button"
           onClick={onActionClick}
           style={{ color: actionColor }}
-          className="inline-flex shrink-0 items-center gap-xs text-bodySmall font-bold transition-opacity hover:opacity-80"
+          className="inline-flex shrink-0 items-center gap-xs text-bodySmall font-semibold transition-opacity hover:opacity-80"
         >
           {actionText}
           <span aria-hidden>→</span>

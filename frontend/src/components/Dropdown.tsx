@@ -72,7 +72,7 @@ function Dropdown({
           ...size,
         }}
         className={cn(
-          'flex w-full cursor-pointer items-center justify-between gap-sm rounded-lg border px-md py-sm text-body font-medium shadow-xs transition-shadow hover:shadow-soft',
+          'flex w-full cursor-pointer items-center justify-between gap-sm rounded-full border px-md py-sm text-body font-medium shadow-xs transition-shadow hover:shadow-soft',
           'focus-visible:ring-4 focus-visible:ring-primary-light/60 focus-visible:outline-none',
           open && 'ring-4 ring-primary-light/60',
         )}
@@ -90,7 +90,7 @@ function Dropdown({
       {open && (
         <ul
           role="listbox"
-          className="absolute z-30 mt-xs max-h-72 min-w-full animate-aparecer overflow-y-auto rounded-xl border border-background-border bg-background-surface p-xs shadow-lift"
+          className="absolute z-30 mt-xs max-h-72 min-w-full animate-aparecer overflow-y-auto rounded-2xl border border-background-border bg-background-surface p-xs shadow-lift"
         >
           {options.map((option) => {
             const isSelected = option.value === value
@@ -106,7 +106,7 @@ function Dropdown({
                     setOpen(false)
                   }}
                   className={cn(
-                    'flex w-full cursor-pointer items-center gap-xs rounded-lg px-sm py-sm text-left text-body whitespace-nowrap text-gray-dark transition-colors hover:bg-background-page',
+                    'flex w-full cursor-pointer items-center gap-xs rounded-xl px-sm py-sm text-left text-body whitespace-nowrap text-gray-dark transition-colors hover:bg-background-page',
                     isSelected &&
                       'bg-primary-lightest font-semibold text-primary-dark hover:bg-primary-lightest',
                   )}

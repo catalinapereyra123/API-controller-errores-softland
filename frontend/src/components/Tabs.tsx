@@ -51,7 +51,7 @@ function Tabs({
       className={cn(
         'relative',
         isPill
-          ? 'inline-flex gap-xxs rounded-xl bg-slate-200/60 p-xs'
+          ? 'inline-flex gap-xxs rounded-full bg-slate-900/[0.05] p-xs'
           : 'flex gap-lg overflow-x-auto',
         dividerColor && (isPill ? 'border' : 'border-b'),
         className,
@@ -67,7 +67,7 @@ function Tabs({
         className={cn(
           'absolute transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]',
           isPill
-            ? 'top-xs bottom-xs rounded-lg bg-background-surface shadow-soft ring-1 ring-slate-900/5'
+            ? 'top-xs bottom-xs rounded-full bg-background-surface shadow-soft ring-1 ring-slate-900/5'
             : 'bottom-0 h-[3px] rounded-t-full',
         )}
       />
@@ -87,15 +87,15 @@ function Tabs({
             onClick={() => onChange(item.id)}
             style={{ color: isActive ? activeColor : inactiveColor }}
             className={cn(
-              'relative z-10 inline-flex shrink-0 cursor-pointer items-center gap-xs text-body font-bold whitespace-nowrap transition-colors hover:opacity-80 focus-visible:ring-2 focus-visible:ring-primary-default/50 focus-visible:outline-none',
-              isPill ? 'rounded-lg px-md py-xs' : 'px-xxs pt-xs pb-md',
+              'relative z-10 inline-flex shrink-0 cursor-pointer items-center gap-xs text-body font-semibold whitespace-nowrap transition-colors hover:opacity-80 focus-visible:ring-2 focus-visible:ring-primary-default/50 focus-visible:outline-none',
+              isPill ? 'rounded-full px-md py-xs' : 'px-xxs pt-xs pb-md',
             )}
           >
             {item.label}
             {item.badge != null && (
               <span
                 className={cn(
-                  'rounded-full px-sm py-px text-caption font-bold tabular-nums',
+                  'rounded-full px-sm py-px text-caption font-semibold tabular-nums',
                   isActive
                     ? 'bg-primary-lightest text-primary-dark'
                     : 'bg-background-subtle text-gray-medium',

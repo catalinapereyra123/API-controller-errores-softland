@@ -22,7 +22,7 @@ interface ErrorActionsCardProps {
 
 const BOTON_PRINCIPAL = {
   ...textStyles.body,
-  fontWeight: fontWeight.bold,
+  fontWeight: fontWeight.semibold,
   padding: `${spacing.md} ${spacing.lg}`,
 }
 
@@ -118,7 +118,7 @@ function ErrorActionsCard({
             color: colors.label.purple.text,
             backgroundColor: colors.label.purple.background,
           }}
-          className="mt-sm rounded-xl px-md py-sm"
+          className="mt-sm rounded-2xl px-md py-sm"
         >
           {avisoConsulta}
         </p>

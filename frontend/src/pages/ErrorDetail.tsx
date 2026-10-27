@@ -56,7 +56,7 @@ function Avatar({ text }: { text: string }) {
         color: colors.primary.dark,
         backgroundColor: colors.primary.lightest,
       }}
-      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-bodySmall font-bold"
+      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-bodySmall font-semibold"
     >
       {text}
     </span>
@@ -80,7 +80,7 @@ function Field({
       <span
         style={{
           ...textStyles.body,
-          fontWeight: fontWeight.bold,
+          fontWeight: fontWeight.semibold,
           color: colors.gray.darkest,
           ...(mono ? { fontFamily: fontFamily.mono.join(', ') } : {}),
         }}
@@ -103,7 +103,7 @@ function StatusSoftland({ status }: { status: string }) {
           backgroundColor: meta?.background ?? colors.label.gray.background,
           color: meta?.color ?? colors.label.gray.text,
         }}
-        className="inline-flex h-6 w-6 items-center justify-center rounded-full text-caption font-bold"
+        className="inline-flex h-6 w-6 items-center justify-center rounded-full text-caption font-semibold"
       >
         {status}
       </span>
@@ -162,6 +162,14 @@ function CollapsibleCard({
   )
 }
 
+const TEXTO_VOLVER: Record<Exclude<AppPage, 'detalle'>, string> = {
+  home: 'Volver al inicio',
+  bandeja: 'Volver a la bandeja de errores',
+  metricas: 'Volver a métricas',
+  historial: 'Volver a mi historial',
+  'historial-iris': 'Volver al historial de IRIS',
+}
+
 function ErrorDetail({
   errorId,
   onNavigate,
@@ -171,7 +179,7 @@ function ErrorDetail({
   errorId: string | null
   onNavigate: (page: AppPage) => void
   /** Pantalla desde la que se abrió el error (define el texto de "Volver"). */
-  volverA: 'home' | 'bandeja'
+  volverA: Exclude<AppPage, 'detalle'>
   /** Vuelve a esa pantalla tal como estaba (filtros, scroll). */
   onVolver: () => void
 }) {
@@ -261,16 +269,12 @@ function ErrorDetail({
         { label: 'Bandeja de errores', page: 'bandeja' },
         { label: detalle?.codigo ?? '…', mono: true },
       ]}
-      maxWidth="1120px"
+      maxWidth="70rem"
     >
       <div className="flex flex-col gap-lg">
         <div className="flex items-start gap-md">
           <Button
-            text={
-              volverA === 'home'
-                ? 'Volver al inicio'
-                : 'Volver a la bandeja de errores'
-            }
+            text={TEXTO_VOLVER[volverA]}
             color={colors.gray.medium}
             variant="text"
             onClick={onVolver}
@@ -279,7 +283,7 @@ function ErrorDetail({
             }
             size={{
               ...textStyles.bodySmall,
-              fontWeight: fontWeight.bold,
+              fontWeight: fontWeight.semibold,
               padding: `${spacing.xs} 0`,
             }}
             className="group"
@@ -295,7 +299,7 @@ function ErrorDetail({
               color: colors.label.red.text,
               borderColor: colors.label.red.outline,
             }}
-            className="flex items-center justify-between gap-md rounded-xl border px-lg py-md"
+            className="flex items-center justify-between gap-md rounded-xxl border px-lg py-md"
           >
             {error ?? actionError}
             <button type="button" className="underline" onClick={refetch}>
@@ -450,7 +454,7 @@ function ErrorDetail({
             )}
 
             {tab === 'resumen' && (
-              <div className="grid animate-entrar gap-lg lg:grid-cols-[minmax(0,1fr)_320px]">
+              <div className="grid animate-entrar gap-lg @4xl:grid-cols-[minmax(0,1fr)_20rem]">
                 {/* Columna principal */}
                 <div className="flex flex-col gap-lg">
                   <Card
@@ -467,7 +471,7 @@ function ErrorDetail({
                           color: colors.gray.white,
                           backgroundColor: colors.status.error,
                         }}
-                        className="mt-xxs flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-caption font-bold"
+                        className="mt-xxs flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-caption font-semibold"
                       >
                         !
                       </span>
@@ -485,7 +489,7 @@ function ErrorDetail({
                         <p
                           style={{
                             ...textStyles.bodyLarge,
-                            fontWeight: fontWeight.bold,
+                            fontWeight: fontWeight.semibold,
                             color: colors.gray.darkest,
                           }}
                         >
@@ -517,7 +521,7 @@ function ErrorDetail({
                       </span>
                     </div>
 
-                    <div className="mt-lg grid grid-cols-2 gap-lg sm:grid-cols-3">
+                    <div className="mt-lg grid grid-cols-2 gap-lg @xl:grid-cols-3">
                       <Field label="IDENTI" value={detalle.codigo} mono />
                       <Field
                         label="Cuenta"
@@ -605,7 +609,7 @@ function ErrorDetail({
                             <span
                               style={{
                                 ...textStyles.body,
-                                fontWeight: fontWeight.bold,
+                                fontWeight: fontWeight.semibold,
                                 color: colors.gray.darkest,
                               }}
                             >
@@ -637,7 +641,7 @@ function ErrorDetail({
                           <span
                             style={{
                               ...textStyles.body,
-                              fontWeight: fontWeight.bold,
+                              fontWeight: fontWeight.semibold,
                               color: colors.gray.darkest,
                             }}
                           >
@@ -676,7 +680,7 @@ function ErrorDetail({
                             icon={<SendIcon className="h-4 w-4" />}
                             size={{
                               ...textStyles.bodySmall,
-                              fontWeight: fontWeight.bold,
+                              fontWeight: fontWeight.semibold,
                               padding: `${spacing.sm} ${spacing.lg}`,
                             }}
                           />
@@ -719,7 +723,7 @@ function ErrorDetail({
                           <span
                             style={{
                               ...textStyles.body,
-                              fontWeight: fontWeight.bold,
+                              fontWeight: fontWeight.semibold,
                               color: colors.gray.darkest,
                             }}
                           >
@@ -852,7 +856,7 @@ function ErrorDetail({
                               }
                               size={{
                                 ...textStyles.bodySmall,
-                                fontWeight: fontWeight.bold,
+                                fontWeight: fontWeight.semibold,
                                 padding: `${spacing.xs} 0`,
                               }}
                             />

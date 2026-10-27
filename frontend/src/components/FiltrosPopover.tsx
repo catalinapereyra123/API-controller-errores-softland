@@ -51,7 +51,7 @@ function FiltrosPopover({ activos, onLimpiar, children }: FiltrosPopoverProps) {
             activos > 0 ? colors.primary.light : colors.background.border,
         }}
         className={cn(
-          'inline-flex h-full cursor-pointer items-center gap-sm rounded-lg border bg-background-surface px-md py-sm text-body font-semibold text-gray-dark shadow-xs transition-shadow hover:shadow-soft',
+          'inline-flex h-full cursor-pointer items-center gap-sm rounded-full border bg-background-surface px-md py-sm text-body font-semibold text-gray-dark shadow-xs transition-shadow hover:shadow-soft',
           'focus-visible:ring-4 focus-visible:ring-primary-light/60 focus-visible:outline-none',
           open && 'ring-4 ring-primary-light/60',
         )}
@@ -59,7 +59,7 @@ function FiltrosPopover({ activos, onLimpiar, children }: FiltrosPopoverProps) {
         <FiltersIcon className="h-5 w-5" />
         Filtros
         {activos > 0 && (
-          <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-primary-default px-xs text-caption font-bold text-white tabular-nums">
+          <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-primary-default px-xs text-caption font-semibold text-white tabular-nums">
             {activos}
           </span>
         )}
@@ -69,17 +69,17 @@ function FiltrosPopover({ activos, onLimpiar, children }: FiltrosPopoverProps) {
         <div
           role="dialog"
           aria-label="Filtros"
-          className="absolute right-0 z-30 mt-xs w-[min(340px,calc(100vw-2rem))] animate-aparecer rounded-2xl border border-background-border bg-background-surface p-md shadow-lift"
+          className="absolute right-0 z-30 mt-xs w-[min(340px,calc(100vw-2rem))] animate-aparecer rounded-xxl border border-background-border bg-background-surface p-md shadow-lift"
         >
           <div className="mb-md flex items-center justify-between gap-md">
-            <span className="text-bodyLarge font-bold text-gray-darkest">
+            <span className="text-bodyLarge font-semibold text-gray-darkest">
               Filtros
             </span>
             <button
               type="button"
               onClick={onLimpiar}
               disabled={activos === 0}
-              className="cursor-pointer rounded-md px-xs py-xxs text-bodySmall font-bold text-primary-dark transition-opacity hover:opacity-75 disabled:pointer-events-none disabled:opacity-40"
+              className="cursor-pointer rounded-md px-xs py-xxs text-bodySmall font-semibold text-primary-dark transition-opacity hover:opacity-75 disabled:pointer-events-none disabled:opacity-40"
             >
               Limpiar
             </button>
