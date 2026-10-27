@@ -16,7 +16,8 @@ import {
   CrearObservacionDto,
   SolicitarReprocesoDto,
 } from './dto/mutaciones.dto';
-import { QueryHistorialDto } from './dto/historial.dto';
+import { QueryHistorialDto, QueryMiEspacioDto } from './dto/historial.dto';
+import { QueryMetricasDto } from './dto/metricas.dto';
 import { QueryErroresDto } from './dto/query-errores.dto';
 import { ErroresService } from './errores.service';
 
@@ -76,6 +77,21 @@ export class ErroresController {
   @Get('historial')
   historial(@Query() query: QueryHistorialDto) {
     return this.service.historial(query.dias);
+  }
+
+  /** Asignados, corregidos y métricas del usuario logueado. GET /mi-espacio?dias= */
+  @Get('mi-espacio')
+  miEspacio(
+    @Query() query: QueryMiEspacioDto,
+    @UsuarioActual('id') usuarioId: string,
+  ) {
+    return this.service.miEspacio(usuarioId, query.dias);
+  }
+
+  /** Llegadas, asignaciones, correcciones y resoluciones del período. GET /metricas?dias= */
+  @Get('metricas')
+  metricas(@Query() query: QueryMetricasDto) {
+    return this.service.metricas(query.dias);
   }
 
   /** Asigna / desasigna responsable. PATCH /errores/:id/asignacion */

@@ -6,8 +6,17 @@ import {
   NotFoundException,
   ServiceUnavailableException,
 } from '@nestjs/common';
-import type { Prisma, TransaccionError } from '../../generated/prisma/client';
-import { EstadoApp, Modulo, OrigenCierre } from '../../generated/prisma/client';
+import type {
+  EventoMetrica,
+  Prisma,
+  TransaccionError,
+} from '../../generated/prisma/client';
+import {
+  EstadoApp,
+  Modulo,
+  OrigenCierre,
+  TipoMetrica,
+} from '../../generated/prisma/client';
 import {
   AsignarDto,
   CambiarEstadoDto,
@@ -25,9 +34,16 @@ import {
   VerificacionResultadoDto,
 } from './dto/sync-resultado.dto';
 import { QueryErroresDto } from './dto/query-errores.dto';
-import { HistorialDiaDto } from './dto/historial.dto';
+import {
+  ErrorCierreDto,
+  HistorialDiaDto,
+  HistorialResumenDto,
+  MiEspacioDto,
+} from './dto/historial.dto';
+import { MetricasDto, TotalesMetricasDto } from './dto/metricas.dto';
 import { ErroresRepository } from './errores.repository';
 import {
+  armarSerie,
   ErrorTransaccionDto,
   ESTADO_LABEL,
   ESTADOS_ABIERTOS,
@@ -40,6 +56,8 @@ import {
   claveDia,
   etiquetaDia,
   formatoFecha,
+  promedio,
+  toErrorCierre,
   toErrorTransaccion,
 } from './errores.mapper';
 
@@ -65,6 +83,103 @@ function sinPendiente(): ReprocesoPendienteDto {
     notificado: null,
     intentos: null,
   };
+}
+
+/** 00:00 del primer día de un período de `dias` días que termina hoy. */
+function inicioPeriodo(dias: number): Date {
+  const desde = new Date();
+  desde.setHours(0, 0, 0, 0);
+  desde.setDate(desde.getDate() - (dias - 1));
+  return desde;
+}
+
+function etiquetaPeriodo(dias: number): string {
+  return dias === 1 ? 'Hoy' : `Últimos ${dias} días`;
+}
+
+/** El cierre más reciente primero (fechas ISO: se comparan como texto). */
+function ordenarCierres(cierres: ErrorCierreDto[]): ErrorCierreDto[] {
+  return cierres.sort((a, b) => b.fechaCierre.localeCompare(a.fechaCierre));
+}
+
+/** Cuándo se mandó a reprocesar cada uno, si fue dentro del período. */
+function fechasDeCorreccion(
+  transacciones: TransaccionError[],
+  desde: Date,
+): Date[] {
+  return transacciones
+    .map((t) => t.fechaCorreccion)
+    .filter((f): f is Date => f !== null && f >= desde);
+}
+
+function fechasDeResolucion(cierres: ErrorCierreDto[]): Date[] {
+  return cierres
+    .filter((c) => c.tipoCierre === 'resuelto')
+    .map((c) => new Date(c.fechaCierre));
+}
+
+/** De detección a resolución, sólo sobre los resueltos. */
+function promedioResolucion(cierres: ErrorCierreDto[]): number {
+  return promedio(
+    cierres.flatMap((c) =>
+      c.tipoCierre === 'resuelto' && c.minutosResolucion !== null
+        ? [c.minutosResolucion]
+        : [],
+    ),
+  );
+}
+
+function minutosEntre(desde: Date, hasta: Date): number {
+  return Math.max(0, Math.round((hasta.getTime() - desde.getTime()) / 60000));
+}
+
+function totalesMetricas(eventos: EventoMetrica[]): TotalesMetricasDto {
+  const cuenta = (tipo: TipoMetrica) =>
+    eventos.filter((e) => e.tipo === tipo).length;
+  return {
+    llegadas: cuenta(TipoMetrica.LLEGADA),
+    asignaciones: cuenta(TipoMetrica.ASIGNACION),
+    correcciones: cuenta(TipoMetrica.CORRECCION),
+    resoluciones: cuenta(TipoMetrica.RESOLUCION),
+    resolucionesAutomaticas: eventos.filter(
+      (e) =>
+        e.tipo === TipoMetrica.RESOLUCION &&
+        e.origenCierre === OrigenCierre.VERIFICACION_AUTOMATICA,
+    ).length,
+    fallos: cuenta(TipoMetrica.FALLO_REPROCESO),
+    reapariciones: cuenta(TipoMetrica.REAPARICION),
+    descartes: cuenta(TipoMetrica.DESCARTE),
+  };
+}
+
+function agrupar<T>(items: T[], clave: (item: T) => string): Map<string, T[]> {
+  const grupos = new Map<string, T[]>();
+  for (const item of items) {
+    const k = clave(item);
+    grupos.set(k, [...(grupos.get(k) ?? []), item]);
+  }
+  return grupos;
+}
+
+/** Minutos del primer hito de cada error (los eventos vienen en orden). */
+function primerosMinutos(eventos: EventoMetrica[]): number[] {
+  return [...agrupar(eventos, (e) => e.transaccionId).values()].flatMap(
+    ([primero]) =>
+      primero.minutosDesdeDeteccion === null
+        ? []
+        : [primero.minutosDesdeDeteccion],
+  );
+}
+
+function promedioONull(valores: number[]): number | null {
+  return valores.length ? promedio(valores) : null;
+}
+
+const fechasDe = (eventos: EventoMetrica[]) => eventos.map((e) => e.createdAt);
+
+/** Quién mandó a reprocesar: a esa persona se le cuenta el resultado. */
+function corrector(t: TransaccionError) {
+  return { usuarioId: t.corregidoPorId, usuarioNombre: t.corregidoPorNombre };
 }
 
 /** Endpoint de iFlow Studio para disparar un nodo desde afuera. */
@@ -171,6 +286,7 @@ export class ErroresService {
             },
             tx,
           );
+          await this.registrarMetrica(creado, TipoMetrica.LLEGADA, tx);
           creados++;
           continue;
         }
@@ -203,6 +319,10 @@ export class ErroresService {
             detalle: 'Softland procesó la transacción (status S).',
           };
           await this.cerrarIntentoAbierto(existente.id, 'S', tx);
+          await this.registrarMetrica(existente, TipoMetrica.RESOLUCION, tx, {
+            ...corrector(existente),
+            origenCierre: OrigenCierre.MANUAL,
+          });
           reprocesadosOk++;
         } else if (enReproceso && esError) {
           data.estadoApp = EstadoApp.REQUIERE_CORRECCION;
@@ -212,6 +332,12 @@ export class ErroresService {
             detalle: `Volvió a status ${r.statusSoftland}.`,
           };
           await this.cerrarIntentoAbierto(existente.id, r.statusSoftland, tx);
+          await this.registrarMetrica(
+            existente,
+            TipoMetrica.FALLO_REPROCESO,
+            tx,
+            corrector(existente),
+          );
           regresiones++;
         } else if (estabaResuelto && esError) {
           data.estadoApp = EstadoApp.ERROR;
@@ -222,6 +348,7 @@ export class ErroresService {
             titulo: 'El error volvió a aparecer en Softland',
             detalle: `Status Softland: ${r.statusSoftland}`,
           };
+          await this.registrarMetrica(existente, TipoMetrica.REAPARICION, tx);
           reaparecidos++;
         } else {
           // en cola (N), excluida sin reproceso, o simple refresco de datos
@@ -346,6 +473,10 @@ export class ErroresService {
         },
         tx,
       );
+      await this.registrarMetrica(t, TipoMetrica.CORRECCION, tx, {
+        usuarioId: autor.id,
+        usuarioNombre: autor.nombre,
+      });
       if (dto.observacion) {
         await this.repo.crearObservacion(
           {
@@ -616,6 +747,15 @@ export class ErroresService {
       await this.repo.actualizarTransaccion(t.id, data, tx);
       await this.cerrarIntentoAbierto(t.id, dto.statusSoftland, tx);
       await this.repo.crearEvento({ transaccionId: t.id, ...evento }, tx);
+      await this.registrarMetrica(
+        t,
+        esOk ? TipoMetrica.RESOLUCION : TipoMetrica.FALLO_REPROCESO,
+        tx,
+        {
+          ...corrector(t),
+          ...(esOk ? { origenCierre: OrigenCierre.MANUAL } : {}),
+        },
+      );
     });
 
     return {
@@ -762,6 +902,7 @@ export class ErroresService {
           },
           tx,
         );
+        await this.registrarMetrica(t, TipoMetrica.REAPARICION, tx);
       });
 
       return {
@@ -810,6 +951,9 @@ export class ErroresService {
         },
         tx,
       );
+      await this.registrarMetrica(t, TipoMetrica.RESOLUCION, tx, {
+        origenCierre: OrigenCierre.VERIFICACION_AUTOMATICA,
+      });
     });
 
     return {
@@ -969,29 +1113,40 @@ export class ErroresService {
   }
 
   /**
-   * Historial de actividad de los últimos `dias` días: contadores del período
-   * y los eventos de trazabilidad agrupados por día.
+   * Historial de los últimos `dias` días: contadores del período, los errores
+   * resueltos o corregidos (con el gráfico por día) y los eventos de
+   * trazabilidad agrupados por día.
    */
-  async historial(dias = 7) {
-    const desde = new Date();
-    desde.setHours(0, 0, 0, 0);
-    desde.setDate(desde.getDate() - (dias - 1));
+  async historial(dias = 7): Promise<HistorialResumenDto> {
+    const desde = inicioPeriodo(dias);
 
-    const [eventos, resueltos, reprocesos, observaciones, reasignaciones] =
-      await Promise.all([
-        // Con períodos largos hay más eventos: se sube el tope para no cortar.
-        this.repo.eventosDesde(desde, Math.min(2000, Math.max(300, dias * 60))),
-        this.repo.contar({
-          estadoApp: EstadoApp.RESUELTO,
-          fechaResolucion: { gte: desde },
-        }),
-        this.repo.contarIntentos({ createdAt: { gte: desde } }),
-        this.repo.contarObservaciones({ createdAt: { gte: desde } }),
-        this.repo.contarEventos({
-          tipo: 'asignacion',
-          createdAt: { gte: desde },
-        }),
-      ]);
+    const [
+      eventos,
+      resueltos,
+      reprocesos,
+      observaciones,
+      reasignaciones,
+      cerrados,
+    ] = await Promise.all([
+      // Con períodos largos hay más eventos: se sube el tope para no cortar.
+      this.repo.eventosDesde(desde, Math.min(2000, Math.max(300, dias * 60))),
+      this.repo.contar({
+        estadoApp: EstadoApp.RESUELTO,
+        fechaResolucion: { gte: desde },
+      }),
+      this.repo.contarIntentos({ createdAt: { gte: desde } }),
+      this.repo.contarObservaciones({ createdAt: { gte: desde } }),
+      this.repo.contarEventos({
+        tipo: 'asignacion',
+        createdAt: { gte: desde },
+      }),
+      this.repo.cierresDesde(desde),
+    ]);
+
+    const cierres = ordenarCierres(
+      cerrados.map((t) => toErrorCierre(t, desde)),
+    );
+    const corregidos = fechasDeCorreccion(cerrados, desde);
 
     const porDia = new Map<string, HistorialDiaDto>();
 
@@ -1018,13 +1173,207 @@ export class ErroresService {
     }
 
     return {
-      periodo: dias === 1 ? 'Hoy' : `Últimos ${dias} días`,
+      periodo: etiquetaPeriodo(dias),
       desde: desde.toISOString(),
       resueltos,
       reprocesos,
       observaciones,
       reasignaciones,
+      corregidos: corregidos.length,
+      tiempoPromedioResolucionMinutos: promedioResolucion(cierres),
+      cierres,
+      serie: armarSerie(desde, {
+        resueltos: fechasDeResolucion(cierres),
+        corregidos,
+      }),
       dias: [...porDia.values()],
+    };
+  }
+
+  /**
+   * "Mi espacio": lo asignado al usuario, lo que corrigió en el período y sus
+   * métricas. Lo que cerró la verificación automática no cuenta como propio
+   * aunque el usuario lo haya mandado a reprocesar antes.
+   */
+  async miEspacio(usuarioId: string, dias = 30): Promise<MiEspacioDto> {
+    const desde = inicioPeriodo(dias);
+
+    const [abiertos, cerrados, intentos] = await Promise.all([
+      this.repo.listar({
+        responsableId: usuarioId,
+        estadoApp: { in: ESTADOS_ABIERTOS },
+      }),
+      this.repo.cierresDesde(desde, { corregidoPorId: usuarioId }),
+      this.repo.intentosDeUsuario(usuarioId, desde),
+    ]);
+
+    // `listar` trae el más nuevo primero; acá importa el que más espera.
+    const asignados = abiertos.map(toErrorTransaccion).reverse();
+    const propios = cerrados.filter(
+      (t) => toErrorCierre(t, desde).cerradoPor !== null,
+    );
+    const corregidos = ordenarCierres(
+      propios.map((t) => toErrorCierre(t, desde)),
+    );
+    const resueltos = corregidos.filter((c) => c.tipoCierre === 'resuelto');
+    const fechasCorreccion = fechasDeCorreccion(propios, desde);
+
+    const conResultado = intentos.filter((i) => i.cerradoAt !== null);
+    const exitosos = conResultado.filter((i) => i.statusDespues === 'S');
+    const masViejo = asignados[0];
+
+    return {
+      periodo: etiquetaPeriodo(dias),
+      desde: desde.toISOString(),
+      metricas: {
+        asignados: asignados.length,
+        asignadoMasViejoMinutos: masViejo
+          ? Math.round(
+              (Date.now() - new Date(masViejo.abiertoDesde).getTime()) / 60000,
+            )
+          : null,
+        corregidos: fechasCorreccion.length,
+        resueltos: resueltos.length,
+        esperandoResultado: intentos.length - conResultado.length,
+        fallidos: conResultado.length - exitosos.length,
+        efectividad: conResultado.length
+          ? Math.round((exitosos.length * 100) / conResultado.length)
+          : null,
+        tiempoPromedioResolucionMinutos: promedioResolucion(resueltos),
+      },
+      asignados,
+      corregidos,
+      porModulo: ORDEN_MODULOS.map((modulo) => ({
+        modulo,
+        label: MODULO_LABEL[modulo],
+        asignados: asignados.filter((t) => t.moduloCodigo === modulo).length,
+        corregidos: corregidos.filter((c) => c.moduloCodigo === modulo).length,
+      })),
+      serie: armarSerie(desde, {
+        resueltos: fechasDeResolucion(resueltos),
+        corregidos: fechasCorreccion,
+      }),
+    };
+  }
+
+  /**
+   * Métricas del período a partir de los hitos (`EventoMetrica`): cuánto
+   * llegó, se asignó, se corrigió y se resolvió, contra el período anterior
+   * del mismo largo. Los tiempos cuentan sólo la primera asignación y la
+   * primera corrección de cada error: las reasignaciones no los inflan.
+   */
+  async metricas(dias = 30): Promise<MetricasDto> {
+    const desde = inicioPeriodo(dias);
+    const desdeAnterior = new Date(desde);
+    desdeAnterior.setDate(desdeAnterior.getDate() - dias);
+    const abiertoWhere: Prisma.TransaccionErrorWhereInput = {
+      estadoApp: { in: ESTADOS_ABIERTOS },
+      statusSoftland: { not: 'X' },
+    };
+
+    const [
+      eventos,
+      eventosAnteriores,
+      empresas,
+      abiertos,
+      sinResponsable,
+      reprocesando,
+    ] = await Promise.all([
+      this.repo.metricasEntre(desde),
+      this.repo.metricasEntre(desdeAnterior, desde),
+      this.repo.listarEmpresas(),
+      this.repo.contar(abiertoWhere),
+      this.repo.contar({ ...abiertoWhere, responsableId: null }),
+      this.repo.contar({ estadoApp: EstadoApp.REPROCESANDO }),
+    ]);
+
+    const de = (tipo: TipoMetrica) => eventos.filter((e) => e.tipo === tipo);
+    const resolucionesManuales = de(TipoMetrica.RESOLUCION).filter(
+      (e) => e.origenCierre === OrigenCierre.MANUAL,
+    ).length;
+    const fallos = de(TipoMetrica.FALLO_REPROCESO).length;
+    const nombreEmpresa = new Map(empresas.map((e) => [e.codigo, e.nombre]));
+
+    const grupo = (id: string, label: string, lista: EventoMetrica[]) => ({
+      id,
+      label,
+      llegadas: lista.filter((e) => e.tipo === TipoMetrica.LLEGADA).length,
+      resoluciones: lista.filter((e) => e.tipo === TipoMetrica.RESOLUCION)
+        .length,
+    });
+
+    const porEmpresa = [...agrupar(eventos, (e) => e.empresaCodigo)]
+      .map(([codigo, lista]) =>
+        grupo(codigo, nombreEmpresa.get(codigo) ?? codigo, lista),
+      )
+      .sort(
+        (a, b) => b.llegadas - a.llegadas || b.resoluciones - a.resoluciones,
+      )
+      .slice(0, 6);
+
+    // A cada persona se le cuenta lo que se le asignó, lo que corrigió y los
+    // reprocesos suyos que terminaron en S.
+    const porPersona = [
+      ...agrupar(
+        eventos.filter((e) => e.usuarioId),
+        (e) => e.usuarioId!,
+      ),
+    ]
+      .map(([usuarioId, lista]) => ({
+        usuarioId,
+        nombre: lista[lista.length - 1].usuarioNombre ?? 'Sin nombre',
+        asignaciones: lista.filter((e) => e.tipo === TipoMetrica.ASIGNACION)
+          .length,
+        correcciones: lista.filter((e) => e.tipo === TipoMetrica.CORRECCION)
+          .length,
+        resoluciones: lista.filter((e) => e.tipo === TipoMetrica.RESOLUCION)
+          .length,
+      }))
+      .filter((p) => p.asignaciones + p.correcciones + p.resoluciones > 0)
+      .sort(
+        (a, b) =>
+          b.correcciones +
+          b.resoluciones +
+          b.asignaciones -
+          (a.correcciones + a.resoluciones + a.asignaciones),
+      );
+
+    return {
+      periodo: etiquetaPeriodo(dias),
+      desde: desde.toISOString(),
+      totales: totalesMetricas(eventos),
+      anteriores: totalesMetricas(eventosAnteriores),
+      tiempos: {
+        asignacion: promedioONull(primerosMinutos(de(TipoMetrica.ASIGNACION))),
+        correccion: promedioONull(primerosMinutos(de(TipoMetrica.CORRECCION))),
+        resolucion: promedioONull(
+          de(TipoMetrica.RESOLUCION).flatMap((e) =>
+            e.minutosDesdeDeteccion === null ? [] : [e.minutosDesdeDeteccion],
+          ),
+        ),
+      },
+      efectividad:
+        resolucionesManuales + fallos
+          ? Math.round(
+              (resolucionesManuales * 100) / (resolucionesManuales + fallos),
+            )
+          : null,
+      serie: armarSerie(desde, {
+        llegadas: fechasDe(de(TipoMetrica.LLEGADA)),
+        asignaciones: fechasDe(de(TipoMetrica.ASIGNACION)),
+        correcciones: fechasDe(de(TipoMetrica.CORRECCION)),
+        resoluciones: fechasDe(de(TipoMetrica.RESOLUCION)),
+      }),
+      porModulo: ORDEN_MODULOS.map((modulo) =>
+        grupo(
+          modulo,
+          MODULO_LABEL[modulo],
+          eventos.filter((e) => e.modulo === modulo),
+        ),
+      ),
+      porEmpresa,
+      porPersona,
+      ahora: { abiertos, sinResponsable, reprocesando },
     };
   }
 
@@ -1037,6 +1386,9 @@ export class ErroresService {
     if (dto.responsableId && !responsable) {
       throw new NotFoundException(`No existe el usuario ${dto.responsableId}`);
     }
+
+    const nuevoResponsable =
+      responsable !== null && responsable.id !== t.responsableId;
 
     await this.repo.transaction(async (tx) => {
       await this.repo.actualizarTransaccion(
@@ -1065,6 +1417,12 @@ export class ErroresService {
         },
         tx,
       );
+      if (responsable && nuevoResponsable) {
+        await this.registrarMetrica(t, TipoMetrica.ASIGNACION, tx, {
+          usuarioId: responsable.id,
+          usuarioNombre: responsable.nombre,
+        });
+      }
     });
 
     return this.detalle(id);
@@ -1104,6 +1462,15 @@ export class ErroresService {
         },
         tx,
       );
+      if (
+        dto.estado === EstadoApp.DESCARTADO &&
+        t.estadoApp !== EstadoApp.DESCARTADO
+      ) {
+        await this.registrarMetrica(t, TipoMetrica.DESCARTE, tx, {
+          usuarioId: autor.id,
+          usuarioNombre: autor.nombre,
+        });
+      }
     });
 
     return this.detalle(id);
@@ -1206,6 +1573,38 @@ export class ErroresService {
   }
 
   // ==========================================================================
+
+  /** Deja un hito para la pantalla de Métricas, en la misma transacción. */
+  private registrarMetrica(
+    t: Pick<
+      TransaccionError,
+      'id' | 'empresaCodigo' | 'modulo' | 'fechaDeteccion'
+    >,
+    tipo: TipoMetrica,
+    tx: Prisma.TransactionClient,
+    extra: {
+      usuarioId?: string | null;
+      usuarioNombre?: string | null;
+      origenCierre?: OrigenCierre;
+    } = {},
+  ) {
+    const ahora = new Date();
+    return this.repo.crearMetrica(
+      {
+        tipo,
+        transaccionId: t.id,
+        empresaCodigo: t.empresaCodigo,
+        modulo: t.modulo,
+        usuarioId: extra.usuarioId ?? null,
+        usuarioNombre: extra.usuarioNombre ?? null,
+        origenCierre: extra.origenCierre ?? null,
+        minutosDesdeDeteccion: minutosEntre(t.fechaDeteccion, ahora),
+        createdAt: ahora,
+      },
+      tx,
+    );
+  }
+
   private async cerrarIntentoAbierto(
     errorId: string,
     statusDespues: string,

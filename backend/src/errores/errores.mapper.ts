@@ -7,6 +7,7 @@ import type {
   Usuario,
 } from '../../generated/prisma/client';
 import { EstadoApp, Modulo, OrigenCierre } from '../../generated/prisma/client';
+import type { ErrorCierreDto } from './dto/historial.dto';
 
 /** Etiqueta legible por módulo (la que muestra el front). */
 export const MODULO_LABEL: Record<Modulo, string> = {
@@ -156,6 +157,45 @@ export function toErrorTransaccion(t: TransaccionConRelaciones) {
 
 export type ErrorTransaccionDto = ReturnType<typeof toErrorTransaccion>;
 
+/**
+ * Error del Historial / Mi espacio: `resuelto` si quedó en S desde `desde`;
+ * si no, `corregido` (se mandó a reprocesar en el período y sigue esperando
+ * o volvió con error).
+ */
+export function toErrorCierre(
+  t: TransaccionConRelaciones,
+  desde: Date,
+): ErrorCierreDto {
+  const resuelto =
+    t.estadoApp === EstadoApp.RESUELTO &&
+    t.fechaResolucion !== null &&
+    t.fechaResolucion >= desde;
+  const fecha =
+    (resuelto ? t.fechaResolucion : t.fechaCorreccion) ?? t.updatedAt;
+  const automatico =
+    resuelto && t.origenCierre === OrigenCierre.VERIFICACION_AUTOMATICA;
+
+  return {
+    ...toErrorTransaccion(t),
+    tipoCierre: resuelto ? 'resuelto' : 'corregido',
+    fechaCierre: fecha.toISOString(),
+    cerradoPor: automatico ? null : t.corregidoPorNombre,
+    minutosResolucion:
+      t.estadoApp === EstadoApp.RESUELTO && t.fechaResolucion
+        ? Math.round(
+            (t.fechaResolucion.getTime() - t.fechaDeteccion.getTime()) / 60000,
+          )
+        : null,
+  };
+}
+
+/** Promedio redondeado; 0 si no hay valores (así lo muestra el dashboard). */
+export function promedio(valores: number[]): number {
+  return valores.length
+    ? Math.round(valores.reduce((acc, v) => acc + v, 0) / valores.length)
+    : 0;
+}
+
 function descripcionDe(t: TransaccionError): string {
   if (t.errorMensaje) return t.errorMensaje;
   if (t.statusSoftland === 'X') return 'Transacción excluida del proceso.';
@@ -207,4 +247,48 @@ export function etiquetaDia(fecha: Date, hoy: Date = new Date()): string {
   if (fecha >= haceUnaSemana) return DIAS_SEMANA[fecha.getDay()];
 
   return formatoFecha(fecha);
+}
+
+/** Clave del punto del gráfico: el día, o el día y la hora. */
+function claveSerie(fecha: Date, porHora: boolean): string {
+  const dia = claveDia(fecha);
+  return porHora ? `${dia}T${dosDigitos(fecha.getHours())}` : dia;
+}
+
+/**
+ * Puntos del gráfico desde `desde` hasta `hoy`: uno por día, o uno por hora
+ * si el período es sólo hoy (con un único punto no hay línea). Los días sin
+ * movimiento quedan en 0 para que el gráfico no los saltee.
+ */
+export function armarSerie<K extends string>(
+  desde: Date,
+  fechas: Record<K, Date[]>,
+  hoy: Date = new Date(),
+): ({ id: string; etiqueta: string } & Record<K, number>)[] {
+  type Punto = { id: string; etiqueta: string } & Record<K, number>;
+  const campos = Object.keys(fechas) as K[];
+  const porHora = claveDia(desde) === claveDia(hoy);
+  const puntos = new Map<string, Punto>();
+
+  for (const cursor = new Date(desde); cursor <= hoy;) {
+    const id = claveSerie(cursor, porHora);
+    puntos.set(id, {
+      id,
+      etiqueta: porHora
+        ? `${cursor.getHours()} h`
+        : `${dosDigitos(cursor.getDate())}/${dosDigitos(cursor.getMonth() + 1)}`,
+      ...Object.fromEntries(campos.map((campo) => [campo, 0])),
+    } as Punto);
+    if (porHora) cursor.setHours(cursor.getHours() + 1);
+    else cursor.setDate(cursor.getDate() + 1);
+  }
+
+  for (const campo of campos) {
+    for (const fecha of fechas[campo]) {
+      const punto = puntos.get(claveSerie(fecha, porHora));
+      if (punto) (punto as Record<K, number>)[campo]++;
+    }
+  }
+
+  return [...puntos.values()];
 }

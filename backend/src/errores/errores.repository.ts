@@ -73,6 +73,21 @@ export class ErroresRepository {
     return db.eventoTrazabilidad.create({ data });
   }
 
+  crearMetrica(
+    data: Prisma.EventoMetricaUncheckedCreateInput,
+    db: Db = this.prisma,
+  ) {
+    return db.eventoMetrica.create({ data });
+  }
+
+  /** Hitos de métricas desde `desde` (incluido) y, si viene, hasta `hasta` (excluido). */
+  metricasEntre(desde: Date, hasta?: Date) {
+    return this.prisma.eventoMetrica.findMany({
+      where: { createdAt: { gte: desde, ...(hasta ? { lt: hasta } : {}) } },
+      orderBy: { createdAt: 'asc' },
+    });
+  }
+
   crearObservacion(
     data: Prisma.ObservacionUncheckedCreateInput,
     db: Db = this.prisma,
@@ -244,6 +259,37 @@ export class ErroresRepository {
 
   contarIntentos(where: Prisma.ErrorIntentoWhereInput) {
     return this.prisma.errorIntento.count({ where });
+  }
+
+  /**
+   * Errores resueltos o mandados a reprocesar desde `fecha` (Historial y
+   * Mi espacio). `where` acota, p. ej. a lo que corrigió un usuario.
+   */
+  cierresDesde(
+    fecha: Date,
+    where: Prisma.TransaccionErrorWhereInput = {},
+    limite = 2000,
+  ) {
+    return this.prisma.transaccionError.findMany({
+      where: {
+        ...where,
+        OR: [
+          { estadoApp: 'RESUELTO', fechaResolucion: { gte: fecha } },
+          { fechaCorreccion: { gte: fecha } },
+        ],
+      },
+      include: { responsable: true, empresa: true },
+      orderBy: { updatedAt: 'desc' },
+      take: limite,
+    });
+  }
+
+  /** Reprocesos que mandó un usuario desde `fecha`, con su resultado. */
+  intentosDeUsuario(usuarioId: string, fecha: Date) {
+    return this.prisma.errorIntento.findMany({
+      where: { usuarioId, createdAt: { gte: fecha } },
+      select: { statusDespues: true, cerradoAt: true },
+    });
   }
 
   listarEmpresas() {

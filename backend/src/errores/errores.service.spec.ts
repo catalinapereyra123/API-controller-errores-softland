@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
+/* eslint-disable @typescript-eslint/no-unsafe-return */
 import { Test } from '@nestjs/testing';
 import { SyncErrorDto } from './dto/sync-error.dto';
 import { ErroresRepository } from './errores.repository';
@@ -15,6 +16,7 @@ class FakeRepo {
   transacciones: any[] = [];
   eventos: any[] = [];
   intentos: any[] = [];
+  metricas: any[] = [];
 
   transaction = (fn: (tx: unknown) => Promise<unknown>) => fn(this);
 
@@ -66,7 +68,10 @@ class FakeRepo {
     const row = this.transacciones.find((t) => t.id === id);
     for (const [k, v] of Object.entries(data)) {
       if (v && typeof v === 'object' && ('connect' in v || 'disconnect' in v)) {
-        continue; // relación: no la modela el fake
+        // relación: el fake sólo guarda la FK, como hace Prisma
+        row[`${k}Id`] =
+          'connect' in v ? (v as { connect: { id: string } }).connect.id : null;
+        continue;
       }
       row[k] =
         v && typeof v === 'object' && 'increment' in v
@@ -82,6 +87,11 @@ class FakeRepo {
   };
 
   crearObservacion = (data: any) => Promise.resolve(data);
+
+  crearMetrica = (data: any) => {
+    this.metricas.push(data);
+    return Promise.resolve(data);
+  };
 
   crearIntento = (data: any) => {
     const row = {
@@ -1175,6 +1185,186 @@ describe('ErroresService — borrar empresa', () => {
   });
 });
 
+describe('ErroresService — historial y mi espacio', () => {
+  const haceHoras = (h: number) => new Date(Date.now() - h * 60 * 60 * 1000);
+
+  const fila = (over: Record<string, unknown>) => ({
+    id: 'x',
+    empresaCodigo: 'AMCARG',
+    empresa: { codigo: 'AMCARG', nombre: 'AM CARGAS S.A.' },
+    modulo: 'COMPRAS',
+    moduloOrigen: '3. Compras',
+    identi: 'LIQ1',
+    cuenta: null,
+    fechaMovimiento: null,
+    statusSoftland: 'E',
+    errorMensaje: 'El proveedor no existe',
+    archivoLog: null,
+    estadoApp: 'ERROR',
+    responsableId: null,
+    intentos: 0,
+    corregidoPorId: null,
+    corregidoPorNombre: null,
+    fechaCorreccion: null,
+    reprocesoNotificadoAt: null,
+    reprocesoDesaparecioAt: null,
+    resultadoSolicitadoAt: null,
+    origenCierre: null,
+    ultimaVerificacionAt: null,
+    fechaResolucion: null,
+    fechaDeteccion: haceHoras(100),
+    ultimaDeteccion: haceHoras(1),
+    presenteEnUltimaSync: true,
+    createdAt: haceHoras(100),
+    updatedAt: haceHoras(1),
+    ...over,
+  });
+
+  // Catalina (u1) corrigió dos: uno ya resuelto y otro esperando. El tercero
+  // lo había mandado ella pero lo cerró la verificación automática.
+  const resueltoPorCata = fila({
+    id: 'r1',
+    identi: 'LIQ10',
+    estadoApp: 'RESUELTO',
+    origenCierre: 'MANUAL',
+    corregidoPorId: 'u1',
+    corregidoPorNombre: 'Catalina',
+    fechaDeteccion: haceHoras(5),
+    fechaCorreccion: haceHoras(4),
+    fechaResolucion: haceHoras(3),
+  });
+  const esperando = fila({
+    id: 'r2',
+    identi: 'LIQ11',
+    modulo: 'FACTURACION',
+    estadoApp: 'REPROCESANDO',
+    corregidoPorId: 'u1',
+    corregidoPorNombre: 'Catalina',
+    fechaCorreccion: haceHoras(2),
+  });
+  const automatico = fila({
+    id: 'r3',
+    identi: 'LIQ12',
+    estadoApp: 'RESUELTO',
+    origenCierre: 'VERIFICACION_AUTOMATICA',
+    corregidoPorId: 'u1',
+    corregidoPorNombre: 'Catalina',
+    fechaCorreccion: haceHoras(24 * 20),
+    fechaResolucion: haceHoras(1),
+  });
+  const asignadoViejo = fila({
+    id: 'a1',
+    identi: 'LIQ20',
+    estadoApp: 'ASIGNADO',
+    responsableId: 'u1',
+    fechaDeteccion: haceHoras(48),
+  });
+  const asignadoNuevo = fila({
+    id: 'a2',
+    identi: 'LIQ21',
+    modulo: 'COBRANZAS',
+    estadoApp: 'EN_PROGRESO',
+    responsableId: 'u1',
+    fechaDeteccion: haceHoras(2),
+  });
+
+  let service: ErroresService;
+  let llamadas: { cierresDesde: any[]; listar: any[] };
+
+  beforeEach(async () => {
+    llamadas = { cierresDesde: [], listar: [] };
+    const repo = {
+      eventosDesde: () => Promise.resolve([]),
+      contar: () => Promise.resolve(2),
+      contarIntentos: () => Promise.resolve(3),
+      contarObservaciones: () => Promise.resolve(0),
+      contarEventos: () => Promise.resolve(0),
+      cierresDesde: (desde: Date, where: any = {}) => {
+        llamadas.cierresDesde.push({ desde, where });
+        return Promise.resolve([resueltoPorCata, automatico, esperando]);
+      },
+      // Como Prisma: el más nuevo primero.
+      listar: (where: any) => {
+        llamadas.listar.push(where);
+        return Promise.resolve([asignadoNuevo, asignadoViejo]);
+      },
+      intentosDeUsuario: () =>
+        Promise.resolve([
+          { statusDespues: 'S', cerradoAt: haceHoras(3) },
+          { statusDespues: 'E', cerradoAt: haceHoras(10) },
+          { statusDespues: null, cerradoAt: null },
+        ]),
+    };
+    const moduleRef = await Test.createTestingModule({
+      providers: [
+        ErroresService,
+        { provide: ErroresRepository, useValue: repo },
+      ],
+    }).compile();
+    service = moduleRef.get(ErroresService);
+  });
+
+  it('el historial trae los cierres del período, el más reciente primero', async () => {
+    const res = await service.historial(7);
+
+    expect(
+      res.cierres.map((c) => [c.codigo, c.tipoCierre, c.cerradoPor]),
+    ).toEqual([
+      ['LIQ12', 'resuelto', null],
+      ['LIQ11', 'corregido', 'Catalina'],
+      ['LIQ10', 'resuelto', 'Catalina'],
+    ]);
+    // La corrección de LIQ12 fue hace 20 días: no entra en los 7.
+    expect(res.corregidos).toBe(2);
+    expect(res.serie).toHaveLength(7);
+    const total = (campo: 'resueltos' | 'corregidos') =>
+      res.serie.reduce((acc, p) => acc + p[campo], 0);
+    expect(total('resueltos')).toBe(2);
+    expect(total('corregidos')).toBe(2);
+    expect(res.tiempoPromedioResolucionMinutos).toBeGreaterThan(0);
+  });
+
+  it('mi espacio filtra por el usuario y no se adjudica lo automático', async () => {
+    const res = await service.miEspacio('u1', 30);
+
+    expect(llamadas.cierresDesde[0].where).toEqual({ corregidoPorId: 'u1' });
+    expect(llamadas.listar[0]).toMatchObject({ responsableId: 'u1' });
+
+    expect(res.asignados.map((a) => a.codigo)).toEqual(['LIQ20', 'LIQ21']);
+    expect(res.corregidos.map((c) => c.codigo)).toEqual(['LIQ11', 'LIQ10']);
+    expect(res.metricas).toMatchObject({
+      asignados: 2,
+      corregidos: 2,
+      resueltos: 1,
+      esperandoResultado: 1,
+      fallidos: 1,
+      efectividad: 50,
+      tiempoPromedioResolucionMinutos: 120,
+    });
+    expect(res.metricas.asignadoMasViejoMinutos).toBeGreaterThanOrEqual(
+      48 * 60 - 1,
+    );
+    expect(res.porModulo).toEqual([
+      {
+        modulo: 'FACTURACION',
+        label: 'Facturación',
+        asignados: 0,
+        corregidos: 1,
+      },
+      { modulo: 'COMPRAS', label: 'Compras', asignados: 1, corregidos: 1 },
+      { modulo: 'COBRANZAS', label: 'Cobranzas', asignados: 1, corregidos: 0 },
+    ]);
+  });
+
+  it('sin reprocesos con resultado, la efectividad queda en null', async () => {
+    (service as any).repo.intentosDeUsuario = () => Promise.resolve([]);
+    const res = await service.miEspacio('u1', 7);
+
+    expect(res.metricas.efectividad).toBeNull();
+    expect(res.metricas.esperandoResultado).toBe(0);
+  });
+});
+
 describe('ErroresService.dashboard — status X', () => {
   it('no cuenta los X como errores abiertos y los informa aparte', async () => {
     const contar = jest.fn((where: { statusSoftland?: unknown }) =>
@@ -1204,5 +1394,81 @@ describe('ErroresService.dashboard — status X', () => {
         responsableId: null,
       }),
     );
+  });
+});
+
+describe('ErroresService — hitos de métricas', () => {
+  let service: ErroresService;
+  let repo: FakeRepo;
+
+  const tipos = () => repo.metricas.map((m) => m.tipo);
+
+  beforeEach(async () => {
+    repo = new FakeRepo();
+    repo.buscarUsuario = (id?: string) =>
+      Promise.resolve(
+        id ? { id, nombre: `Persona ${id}`, avatarIniciales: 'PP' } : null,
+      ) as any;
+    const moduleRef = await Test.createTestingModule({
+      providers: [
+        ErroresService,
+        { provide: ErroresRepository, useValue: repo },
+      ],
+    }).compile();
+    service = moduleRef.get(ErroresService);
+  });
+
+  it('un error nuevo deja una LLEGADA; reenviarlo no suma otra', async () => {
+    await service.sync([registro()]);
+    await service.sync([registro()]);
+
+    expect(tipos()).toEqual(['LLEGADA']);
+    expect(repo.metricas[0]).toMatchObject({
+      transaccionId: 't1',
+      empresaCodigo: 'AMCARG',
+      modulo: 'COMPRAS',
+    });
+  });
+
+  it('asignar deja una ASIGNACION a nombre del responsable, no del autor', async () => {
+    await service.sync([registro()]);
+    await service.asignar('t1', { responsableId: 'u2' }, 'u1');
+
+    expect(repo.metricas[1]).toMatchObject({
+      tipo: 'ASIGNACION',
+      usuarioId: 'u2',
+      usuarioNombre: 'Persona u2',
+    });
+  });
+
+  it('el reproceso exitoso se le cuenta a quien lo corrigió', async () => {
+    await service.sync([registro()]);
+    await service.solicitarReproceso('t1', {}, 'u1');
+    await service.registrarResultadoReproceso({
+      empresa: 'AMCARG',
+      modulo: '3. Compras',
+      identi: 'LIQ100',
+      statusSoftland: 'S',
+    });
+
+    expect(tipos()).toEqual(['LLEGADA', 'CORRECCION', 'RESOLUCION']);
+    expect(repo.metricas[2]).toMatchObject({
+      origenCierre: 'MANUAL',
+      usuarioId: 'u1',
+    });
+  });
+
+  it('el reproceso que vuelve con error deja un FALLO_REPROCESO', async () => {
+    await service.sync([registro()]);
+    await service.solicitarReproceso('t1', {}, 'u1');
+    await service.registrarResultadoReproceso({
+      empresa: 'AMCARG',
+      modulo: '3. Compras',
+      identi: 'LIQ100',
+      statusSoftland: 'E',
+      error: 'Sigue sin proveedor',
+    });
+
+    expect(tipos()).toEqual(['LLEGADA', 'CORRECCION', 'FALLO_REPROCESO']);
   });
 });

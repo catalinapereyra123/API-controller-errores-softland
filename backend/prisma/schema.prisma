@@ -111,6 +111,7 @@ model TransaccionError {
   observaciones     Observacion[]
   eventos           EventoTrazabilidad[]
   intentosReproceso ErrorIntento[]
+  metricas          EventoMetrica[]
 
   // Clave natural del registro de origen: si vuelve a llegar el mismo
   // (empresa, módulo, identi) se actualiza en vez de duplicarse.
@@ -154,4 +155,38 @@ model EventoTrazabilidad {
   titulo        String
   detalle       String?
   createdAt     DateTime         @default(now())
+}
+
+/// Hitos que alimentan la pantalla de Métricas. A diferencia de la
+/// trazabilidad (texto libre para leer), son tipados y llevan lo necesario
+/// para agrupar sin joins: empresa, módulo, quién y cuánto tardó.
+enum TipoMetrica {
+  LLEGADA // el sync trajo un error nuevo
+  ASIGNACION // se le puso responsable
+  CORRECCION // alguien lo marcó como corregido (se mandó a reprocesar)
+  RESOLUCION // quedó en S: por reproceso (MANUAL) o por la verificación automática
+  FALLO_REPROCESO // el reproceso volvió con error
+  REAPARICION // estaba resuelto y volvió a fallar
+  DESCARTE // se descartó a mano
+}
+
+model EventoMetrica {
+  id            String           @id @default(cuid())
+  tipo          TipoMetrica
+  transaccion   TransaccionError @relation(fields: [transaccionId], references: [id], onDelete: Cascade)
+  transaccionId String
+  empresaCodigo String
+  modulo        Modulo
+  /// ASIGNACION: a quién se asignó. CORRECCION/DESCARTE: quién lo hizo.
+  /// RESOLUCION manual: quién lo había corregido. null = el sistema.
+  usuarioId     String?
+  usuarioNombre String?
+  /// Sólo en RESOLUCION.
+  origenCierre  OrigenCierre?
+  /// Desde la detección del error hasta este hito.
+  minutosDesdeDeteccion Int?
+  createdAt     DateTime         @default(now())
+
+  @@index([createdAt])
+  @@index([tipo, createdAt])
 }
