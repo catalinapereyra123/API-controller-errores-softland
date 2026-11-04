@@ -85,13 +85,13 @@ model TransaccionError {
   intentos      Int       @default(0)
 
   // --- Reproceso ---
-  corregidoPor        Usuario?  @relation("corrige", fields: [corregidoPorId], references: [id])
-  corregidoPorId      String?
-  corregidoPorNombre  String? // snapshot del nombre (sobrevive si el usuario cambia / se borra)
-  fechaCorreccion     DateTime? // cuándo se mandó a reprocesar (Softland -> 'N')
-  reprocesoNotificadoAt DateTime? // ya se pasó a N: el webhook respondió 200 o el integrador reportó status N; null + fechaCorreccion => falta mandarlo
+  corregidoPor           Usuario?  @relation("corrige", fields: [corregidoPorId], references: [id])
+  corregidoPorId         String?
+  corregidoPorNombre     String? // snapshot del nombre (sobrevive si el usuario cambia / se borra)
+  fechaCorreccion        DateTime? // cuándo se mandó a reprocesar (Softland -> 'N')
+  reprocesoNotificadoAt  DateTime? // ya se pasó a N: el webhook respondió 200 o el integrador reportó status N; null + fechaCorreccion => falta mandarlo
   reprocesoDesaparecioAt DateTime? // ALARMA: estaba REPROCESANDO y dejó de figurar en el sync sin verificación
-  resultadoSolicitadoAt DateTime? // botón "Consultar resultado": GET resultado-pendiente lo devuelve primero; se limpia al llegar el resultado
+  resultadoSolicitadoAt  DateTime? // botón "Consultar resultado": GET resultado-pendiente lo devuelve primero; se limpia al llegar el resultado
 
   // --- Verificación (flujo 5: cierre automático) ---
   /// Sólo se completa al pasar a RESUELTO; se limpia si el error se reabre.
@@ -171,22 +171,82 @@ enum TipoMetrica {
 }
 
 model EventoMetrica {
-  id            String           @id @default(cuid())
-  tipo          TipoMetrica
-  transaccion   TransaccionError @relation(fields: [transaccionId], references: [id], onDelete: Cascade)
-  transaccionId String
-  empresaCodigo String
-  modulo        Modulo
+  id                    String           @id @default(cuid())
+  tipo                  TipoMetrica
+  transaccion           TransaccionError @relation(fields: [transaccionId], references: [id], onDelete: Cascade)
+  transaccionId         String
+  empresaCodigo         String
+  modulo                Modulo
   /// ASIGNACION: a quién se asignó. CORRECCION/DESCARTE: quién lo hizo.
   /// RESOLUCION manual: quién lo había corregido. null = el sistema.
-  usuarioId     String?
-  usuarioNombre String?
+  usuarioId             String?
+  usuarioNombre         String?
   /// Sólo en RESOLUCION.
-  origenCierre  OrigenCierre?
+  origenCierre          OrigenCierre?
   /// Desde la detección del error hasta este hito.
   minutosDesdeDeteccion Int?
-  createdAt     DateTime         @default(now())
+  createdAt             DateTime         @default(now())
 
   @@index([createdAt])
   @@index([tipo, createdAt])
+}
+
+/// North Star Metric (una sola activa a la vez) o Key Result que aporta a ella.
+enum TipoObjetivo {
+  NSM
+  KR
+}
+
+/// De dónde sale el valor de un objetivo. Todos (menos MANUAL) se calculan
+/// con los hitos de `EventoMetrica` o con la bandeja actual; el catálogo con
+/// nombre, unidad y sentido por defecto está en objetivos/catalogo.ts.
+enum IndicadorObjetivo {
+  RESUELTOS_A_TIEMPO // % de los que llegaron que se resolvieron dentro del umbral
+  TIEMPO_ASIGNACION // horas promedio hasta la primera asignación
+  TIEMPO_RESOLUCION // horas promedio desde la detección hasta quedar en S
+  EFECTIVIDAD_REPROCESO // % de reprocesos con resultado que quedaron en S
+  SIN_RESPONSABLE // abiertos sin responsable, ahora
+  ABIERTOS // abiertos en la bandeja, ahora
+  LLEGADAS // errores nuevos en el período
+  RESOLUCIONES // errores resueltos en el período
+  REAPARICIONES // resueltos que volvieron a fallar en el período
+  MANUAL // el valor se carga a mano
+}
+
+/// Cómo se lee la meta: "al menos 80 %" o "a lo sumo 4 h".
+enum SentidoMeta {
+  AL_MENOS
+  A_LO_SUMO
+}
+
+/// Una métrica con meta que el equipo sigue en la pantalla de Objetivos.
+model Objetivo {
+  id              String            @id @default(cuid())
+  tipo            TipoObjetivo
+  nombre          String
+  descripcion     String?
+  indicador       IndicadorObjetivo
+  meta            Float
+  sentido         SentidoMeta
+  /// Ventana que se mira (días hacia atrás, contando hoy). Los de "ahora" lo ignoran.
+  periodoDias     Int               @default(30)
+  /// Sólo RESUELTOS_A_TIEMPO: horas desde la detección para contar "a tiempo".
+  umbralHoras     Int?
+  /// Filtros opcionales: null = todos los módulos / todas las empresas.
+  modulo          Modulo?
+  empresaCodigo   String?
+  /// Sólo MANUAL.
+  valorManual     Float?
+  activo          Boolean           @default(true)
+  /// KR -> la NSM a la que aporta. Si se borra la NSM, el KR queda suelto.
+  padre           Objetivo?         @relation("aporta", fields: [padreId], references: [id], onDelete: SetNull)
+  padreId         String?
+  hijos           Objetivo[]        @relation("aporta")
+  orden           Int               @default(0)
+  creadoPorId     String?
+  creadoPorNombre String?
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  @@index([tipo, activo])
 }
