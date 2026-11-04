@@ -7,7 +7,6 @@ import CierresLista from '../components/CierresLista'
 import {
   ChevronRightIcon,
   InboxIcon,
-  RefreshIcon,
   SearchIcon,
   XIcon,
 } from '../components/icons'
@@ -177,29 +176,13 @@ export function MiHistorial({
           tuyo
           {data ? ` · ${data.periodo.toLowerCase()}` : ''}.
         </p>
-        <div className="flex items-center gap-sm">
-          <Tabs
-            items={PERIODOS}
-            value={periodo}
-            onChange={setPeriodo}
-            activeColor={colors.gray.darkest}
-            inactiveColor={colors.gray.medium}
-          />
-          <Button
-            text=""
-            color={colors.primary.default}
-            onClick={refetch}
-            disabled={loading}
-            aria-label={loading ? 'Actualizando…' : 'Actualizar'}
-            title="Actualizar"
-            icon={
-              <RefreshIcon
-                className={cn('h-5 w-5', loading && 'animate-spin')}
-              />
-            }
-            size={{ padding: spacing.sm }}
-          />
-        </div>
+        <Tabs
+          items={PERIODOS}
+          value={periodo}
+          onChange={setPeriodo}
+          activeColor={colors.gray.darkest}
+          inactiveColor={colors.gray.medium}
+        />
       </div>
 
       {error && (
