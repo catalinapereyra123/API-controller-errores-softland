@@ -6,7 +6,6 @@ import Card from '../components/Card'
 import {
   PencilIcon,
   PlusIcon,
-  RefreshIcon,
   StarIcon,
   TargetIcon,
   TrashIcon,
@@ -57,7 +56,6 @@ function irATarjeta(id: string) {
 function Objetivos({ onNavigate }: { onNavigate: (page: AppPage) => void }) {
   const {
     data,
-    loading,
     error,
     refetch,
     guardar,
@@ -131,20 +129,6 @@ function Objetivos({ onNavigate }: { onNavigate: (page: AppPage) => void }) {
                 onEliminarTodo={borrarTodo}
               />
             )}
-            <Button
-              text=""
-              color={colors.primary.default}
-              onClick={refetch}
-              disabled={loading}
-              aria-label={loading ? 'Actualizando…' : 'Actualizar'}
-              title="Actualizar"
-              icon={
-                <RefreshIcon
-                  className={cn('h-5 w-5', loading && 'animate-spin')}
-                />
-              }
-              size={{ padding: spacing.sm }}
-            />
           </>
         }
       />
