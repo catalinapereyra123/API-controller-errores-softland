@@ -4,12 +4,12 @@ import Card from '../components/Card'
 import Dropdown, { type DropdownOption } from '../components/Dropdown'
 import ErrorActionsCard from '../components/ErrorActionsCard'
 import EstadoAviso from '../components/EstadoAviso'
+import CollapsibleCard from '../components/CollapsibleCard'
 import EstadosSoftlandModal from '../components/EstadosSoftlandModal'
 import InfoStrip from '../components/InfoStrip'
 import PasosASeguirCard from '../components/PasosASeguirCard'
 import {
   ArrowLeftIcon,
-  ChevronDownIcon,
   ExternalLinkIcon,
   InfoIcon,
   SendIcon,
@@ -34,7 +34,6 @@ import {
   textStyles,
 } from '../styles'
 import { ESTADOS_MANUALES, type AppPage, type ErrorEstado } from '../types'
-import { cn } from '../utils/cn'
 import {
   formatDate,
   formatDetectedAt,
@@ -111,54 +110,6 @@ function StatusSoftland({ status }: { status: string }) {
         {meta?.label ?? 'Sin descripción'}
       </span>
     </span>
-  )
-}
-
-function CollapsibleCard({
-  title,
-  defaultOpen = true,
-  children,
-}: {
-  title: string
-  defaultOpen?: boolean
-  children: ReactNode
-}) {
-  const [open, setOpen] = useState(defaultOpen)
-
-  return (
-    <Card>
-      <button
-        type="button"
-        onClick={() => setOpen((prev) => !prev)}
-        aria-expanded={open}
-        className="group flex w-full cursor-pointer items-center justify-between"
-      >
-        <span style={{ ...textStyles.h3, color: colors.gray.darkest }}>
-          {title}
-        </span>
-        <span className="flex h-8 w-8 items-center justify-center rounded-full transition-colors group-hover:bg-background-subtle">
-          <ChevronDownIcon
-            className={cn(
-              'h-5 w-5 transition-transform duration-300',
-              open && 'rotate-180',
-            )}
-            style={{ color: colors.gray.default }}
-          />
-        </span>
-      </button>
-      {/* grid-rows 0fr → 1fr anima la altura sin medirla. */}
-      <div
-        inert={!open}
-        className={cn(
-          'grid transition-[grid-template-rows,opacity] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]',
-          open ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0',
-        )}
-      >
-        <div className="min-h-0 overflow-hidden">
-          <div className="pt-lg">{children}</div>
-        </div>
-      </div>
-    </Card>
   )
 }
 

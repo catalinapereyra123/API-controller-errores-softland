@@ -16,7 +16,7 @@ import NorthStarActivaModal from '../components/NorthStarActivaModal'
 import ObjetivoCreadoModal from '../components/ObjetivoCreadoModal'
 import ObjetivoModal from '../components/ObjetivoModal'
 import PageHeader from '../components/PageHeader'
-import Panel from '../components/Panel'
+import CollapsibleCard from '../components/CollapsibleCard'
 import Switch from '../components/Switch'
 import Tag from '../components/Tag'
 import {
@@ -74,6 +74,8 @@ function Objetivos({ onNavigate }: { onNavigate: (page: AppPage) => void }) {
   const [conflicto, setConflicto] = useState<Objetivo | null>(null)
   /** La que se pidió borrar desde "Pausadas": espera la confirmación. */
   const [aBorrar, setABorrar] = useState<Objetivo | null>(null)
+  /** "Pausadas" arranca cerrada, como Observaciones en el detalle. */
+  const [pausadasAbiertas, setPausadasAbiertas] = useState(false)
   const [cargandoPropuesta, setCargandoPropuesta] = useState(false)
 
   const catalogo = data?.catalogo ?? []
@@ -243,12 +245,13 @@ function Objetivos({ onNavigate }: { onNavigate: (page: AppPage) => void }) {
           </section>
 
           {pausadas.length > 0 && (
-            <Panel
-              titulo="Pausadas"
-              subtitulo="Guardadas sin seguimiento: activalas cuando quieras volver a medirlas"
-              padding="none"
+            <CollapsibleCard
+              title={`Pausadas (${pausadas.length})`}
+              subtitle="Guardadas sin seguimiento: activalas cuando quieras volver a medirlas"
+              open={pausadasAbiertas}
+              onOpenChange={setPausadasAbiertas}
             >
-              <ul className="flex flex-col gap-xs px-sm pb-sm">
+              <ul className="flex flex-col gap-xs">
                 {pausadas.map((o) => (
                   <li
                     key={o.id}
@@ -295,7 +298,7 @@ function Objetivos({ onNavigate }: { onNavigate: (page: AppPage) => void }) {
                   </li>
                 ))}
               </ul>
-            </Panel>
+            </CollapsibleCard>
           )}
         </>
       )}
@@ -352,7 +355,14 @@ function Objetivos({ onNavigate }: { onNavigate: (page: AppPage) => void }) {
           onClose={() => setCreado(null)}
           onVer={() => {
             setCreado(null)
-            irATarjeta(creado.id)
+            if (creado.activo) {
+              irATarjeta(creado.id)
+            } else {
+              // Pausada: su fila está en "Pausadas"; se abre y, cuando
+              // termina de desplegarse, se lleva hasta ella.
+              setPausadasAbiertas(true)
+              window.setTimeout(() => irATarjeta(creado.id), 320)
+            }
           }}
         />
       )}
