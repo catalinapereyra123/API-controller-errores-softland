@@ -1,14 +1,12 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import AppLayout from '../components/AppLayout'
 import BarChart, { type BarraPunto } from '../components/BarChart'
-import Button from '../components/Button'
 import Gauge from '../components/Gauge'
 import {
   AlertTriangleIcon,
   ArrowUpRightIcon,
   CheckCircleIcon,
   InboxIcon,
-  RefreshIcon,
   SendIcon,
   UserIcon,
 } from '../components/icons'
@@ -17,7 +15,7 @@ import Panel from '../components/Panel'
 import StatCard from '../components/StatCard'
 import Tabs, { type TabItem } from '../components/Tabs'
 import { useMetricas } from '../hooks/useMetricas'
-import { colors, spacing } from '../styles'
+import { colors } from '../styles'
 import type {
   AppPage,
   GrupoMetricas,
@@ -91,7 +89,7 @@ let estadoGuardado = { periodo: '30', serie: 'llegadas' as Serie }
 function Metricas({ onNavigate }: { onNavigate: (page: AppPage) => void }) {
   const [periodo, setPeriodo] = useState(estadoGuardado.periodo)
   const [serie, setSerie] = useState<Serie>(estadoGuardado.serie)
-  const { data, loading, error, refetch } = useMetricas(Number(periodo))
+  const { data, error, refetch } = useMetricas(Number(periodo))
 
   useEffect(() => {
     estadoGuardado = { periodo, serie }
@@ -128,29 +126,13 @@ function Metricas({ onNavigate }: { onNavigate: (page: AppPage) => void }) {
         eyebrow={`Cómo viene el equipo${data ? ` · ${data.periodo.toLowerCase()}` : ''}`}
         titulo="Rendimiento"
         acciones={
-          <>
-            <Tabs
-              items={PERIODOS}
-              value={periodo}
-              onChange={setPeriodo}
-              activeColor={colors.gray.darkest}
-              inactiveColor={colors.gray.medium}
-            />
-            <Button
-              text=""
-              color={colors.primary.default}
-              onClick={refetch}
-              disabled={loading}
-              aria-label={loading ? 'Actualizando…' : 'Actualizar'}
-              title="Actualizar"
-              icon={
-                <RefreshIcon
-                  className={cn('h-5 w-5', loading && 'animate-spin')}
-                />
-              }
-              size={{ padding: spacing.sm }}
-            />
-          </>
+          <Tabs
+            items={PERIODOS}
+            value={periodo}
+            onChange={setPeriodo}
+            activeColor={colors.gray.darkest}
+            inactiveColor={colors.gray.medium}
+          />
         }
       />
 
