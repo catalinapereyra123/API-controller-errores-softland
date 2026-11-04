@@ -121,12 +121,12 @@ function Metricas({ onNavigate }: { onNavigate: (page: AppPage) => void }) {
     <AppLayout
       activeItem="metricas"
       onNavigate={onNavigate}
-      migas={[{ label: 'Inicio', page: 'home' }, { label: 'Métricas' }]}
+      migas={[{ label: 'Inicio', page: 'home' }, { label: 'Rendimiento' }]}
       recordarScroll="metricas"
     >
       <PageHeader
         eyebrow={`Cómo viene el equipo${data ? ` · ${data.periodo.toLowerCase()}` : ''}`}
-        titulo="Métricas"
+        titulo="Rendimiento"
         acciones={
           <>
             <Tabs

@@ -191,7 +191,7 @@ function Home({
             </div>
           </div>
 
-          {/* La semana en tres números; lleva a Métricas. */}
+          {/* La semana en tres números; lleva a Rendimiento. */}
           <button
             type="button"
             onClick={() => onNavigate('metricas')}
@@ -305,7 +305,7 @@ function Home({
           iconBackground={colors.label.blue.background}
           trend={{ text: 'De la detección a la S', color: colors.gray.medium }}
           onIr={() => onNavigate('metricas')}
-          irLabel="Ver métricas"
+          irLabel="Ver rendimiento"
         />
       </div>
 
@@ -405,7 +405,7 @@ function Home({
           titulo="La semana"
           subtitulo="Pasá el mouse por una barra para ver el día"
           onIr={() => onNavigate('metricas')}
-          irLabel="Ver métricas"
+          irLabel="Ver rendimiento"
           acciones={
             <Tabs
               items={[
@@ -524,7 +524,7 @@ function Home({
       <div className="grid grid-cols-1 gap-lg @2xl:grid-cols-2">
         <Acceso
           icon={<BarChartIcon className="h-5 w-5" />}
-          titulo="Métricas"
+          titulo="Rendimiento"
           texto="Llegadas, tiempos del circuito y efectividad"
           onIr={() => onNavigate('metricas')}
         />

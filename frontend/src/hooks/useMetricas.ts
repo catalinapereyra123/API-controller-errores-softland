@@ -37,8 +37,8 @@ export function useMetricas(dias: number): UseMetricasResult {
         if (!cancelled) {
           setError(
             e instanceof Error
-              ? `No pudimos cargar las métricas: ${e.message}`
-              : 'No pudimos cargar las métricas.',
+              ? `No pudimos cargar el rendimiento: ${e.message}`
+              : 'No pudimos cargar el rendimiento.',
           )
         }
       } finally {

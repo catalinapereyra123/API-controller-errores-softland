@@ -336,7 +336,7 @@ function HistorialIris({
             inactiveColor={colors.gray.medium}
           />
           <Button
-            text="Ver métricas"
+            text="Ver rendimiento"
             color={colors.primary.dark}
             variant="outline"
             onClick={() => onNavigate('metricas')}
