@@ -311,7 +311,7 @@ export function ArrowUpRightIcon(props: SVGProps<SVGSVGElement>) {
   )
 }
 
-/** Barras redondeadas: la sección de Métricas. */
+/** Barras redondeadas: la sección de Rendimiento. */
 export function BarChartIcon(props: SVGProps<SVGSVGElement>) {
   return (
     <BaseIcon {...props}>
@@ -343,5 +343,64 @@ export function MicrosoftLogo(props: SVGProps<SVGSVGElement>) {
       <rect x="1" y="11" width="9" height="9" fill="#00a4ef" />
       <rect x="11" y="11" width="9" height="9" fill="#ffb900" />
     </svg>
+  )
+}
+
+/** Diana: la sección de Objetivos (North Star y KR). */
+export function TargetIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <BaseIcon {...props}>
+      <circle cx="12" cy="12" r="8.5" />
+      <circle cx="12" cy="12" r="4.5" />
+      <circle cx="12" cy="12" r="0.75" fill="currentColor" />
+    </BaseIcon>
+  )
+}
+
+/** Estrella: la North Star. */
+export function StarIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <BaseIcon {...props}>
+      <path d="m12 3.5 2.6 5.3 5.9.9-4.3 4.1 1 5.8-5.2-2.7-5.2 2.7 1-5.8-4.3-4.1 5.9-.9L12 3.5Z" />
+    </BaseIcon>
+  )
+}
+
+export function PencilIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <BaseIcon {...props}>
+      <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L8 18l-4 1 1-4 11.5-11.5Z" />
+    </BaseIcon>
+  )
+}
+
+export function TrashIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <BaseIcon {...props}>
+      <path d="M4 7h16" />
+      <path d="M10 11v6M14 11v6" />
+      <path d="M6 7l1 12a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-12" />
+      <path d="M9 7V4.5a.5.5 0 0 1 .5-.5h5a.5.5 0 0 1 .5.5V7" />
+    </BaseIcon>
+  )
+}
+
+/** Tres puntitos: menú de más acciones. */
+export function MoreIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <BaseIcon {...props}>
+      <circle cx="5" cy="12" r="1" fill="currentColor" />
+      <circle cx="12" cy="12" r="1" fill="currentColor" />
+      <circle cx="19" cy="12" r="1" fill="currentColor" />
+    </BaseIcon>
+  )
+}
+
+export function PauseIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <BaseIcon {...props}>
+      <rect x="6.5" y="5" width="3.5" height="14" rx="1.5" />
+      <rect x="14" y="5" width="3.5" height="14" rx="1.5" />
+    </BaseIcon>
   )
 }

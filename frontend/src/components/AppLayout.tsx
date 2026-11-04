@@ -36,6 +36,7 @@ const PAGE_POR_ITEM: Record<SidebarItemId, AppPage> = {
   inicio: 'home',
   bandeja: 'bandeja',
   metricas: 'metricas',
+  objetivos: 'objetivos',
   historial: 'historial',
 }
 

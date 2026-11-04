@@ -165,7 +165,8 @@ function CollapsibleCard({
 const TEXTO_VOLVER: Record<Exclude<AppPage, 'detalle'>, string> = {
   home: 'Volver al inicio',
   bandeja: 'Volver a la bandeja de errores',
-  metricas: 'Volver a métricas',
+  metricas: 'Volver a rendimiento',
+  objetivos: 'Volver a objetivos',
   historial: 'Volver a mi historial',
   'historial-iris': 'Volver al historial de IRIS',
 }

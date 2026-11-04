@@ -66,3 +66,7 @@ export function qs(params: Record<string, string | undefined>): string {
   if (!entries.length) return ''
   return `?${new URLSearchParams(entries).toString()}`
 }
+
+export function apiDelete<T>(path: string): Promise<T> {
+  return request<T>(path, 'DELETE')
+}

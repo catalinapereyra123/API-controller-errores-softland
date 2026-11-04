@@ -26,7 +26,13 @@ export type ModuloCodigo = 'FACTURACION' | 'COMPRAS' | 'COBRANZAS'
 
 /** `historial` es el propio (Mi historial); `historial-iris`, el de todo el equipo. */
 export type AppPage =
-  'home' | 'bandeja' | 'detalle' | 'metricas' | 'historial' | 'historial-iris'
+  | 'home'
+  | 'bandeja'
+  | 'detalle'
+  | 'metricas'
+  | 'objetivos'
+  | 'historial'
+  | 'historial-iris'
 
 export interface Empresa {
   id: string
@@ -292,4 +298,92 @@ export interface Metricas {
     sinResponsable: number
     reprocesando: number
   }
+}
+
+export type TipoObjetivo = 'NSM' | 'KR'
+
+export type IndicadorObjetivo =
+  | 'RESUELTOS_A_TIEMPO'
+  | 'TIEMPO_ASIGNACION'
+  | 'TIEMPO_RESOLUCION'
+  | 'EFECTIVIDAD_REPROCESO'
+  | 'SIN_RESPONSABLE'
+  | 'ABIERTOS'
+  | 'LLEGADAS'
+  | 'RESOLUCIONES'
+  | 'REAPARICIONES'
+  | 'MANUAL'
+
+export type SentidoMeta = 'AL_MENOS' | 'A_LO_SUMO'
+
+export type UnidadObjetivo = '%' | 'h' | 'errores' | 'valor'
+
+export type EstadoObjetivo =
+  'CUMPLIDO' | 'EN_CAMINO' | 'EN_RIESGO' | 'SIN_DATOS'
+
+/** Un indicador que se puede elegir al crear una métrica. */
+export interface IndicadorInfo {
+  id: IndicadorObjetivo
+  nombre: string
+  descripcion: string
+  unidad: UnidadObjetivo
+  /** El sentido que se sugiere al elegirlo. */
+  sentido: SentidoMeta
+  /** `ahora`: foto de la bandeja, sin período. `manual`: se carga a mano. */
+  alcance: 'periodo' | 'ahora' | 'manual'
+  filtrable: boolean
+  usaUmbral: boolean
+}
+
+/** North Star o Key Result, con su valor ya calculado. */
+export interface Objetivo {
+  id: string
+  tipo: TipoObjetivo
+  nombre: string
+  descripcion: string | null
+  indicador: IndicadorObjetivo
+  unidad: UnidadObjetivo
+  meta: number
+  sentido: SentidoMeta
+  periodoDias: number
+  umbralHoras: number | null
+  modulo: ModuloCodigo | null
+  empresaCodigo: string | null
+  /** "Facturación · PAE"; null = sin filtros. */
+  alcance: string | null
+  valorManual: number | null
+  activo: boolean
+  padreId: string | null
+  valor: number | null
+  /** El mismo valor en el período anterior (null en los de "ahora" y manuales). */
+  anterior: number | null
+  /** 0–100 del camino a la meta. */
+  progreso: number | null
+  estado: EstadoObjetivo
+  creadoPorNombre: string | null
+  actualizadoEn: string
+}
+
+/** GET /objetivos */
+export interface Objetivos {
+  catalogo: IndicadorInfo[]
+  objetivos: Objetivo[]
+  calculadoEn: string
+}
+
+/** POST /objetivos y PATCH /objetivos/:id */
+export interface ObjetivoInput {
+  tipo: TipoObjetivo
+  nombre: string
+  descripcion: string | null
+  indicador: IndicadorObjetivo
+  meta: number
+  sentido: SentidoMeta
+  periodoDias: number
+  umbralHoras: number | null
+  modulo: ModuloCodigo | null
+  empresaCodigo: string | null
+  valorManual: number | null
+  activo: boolean
+  padreId: string | null
 }

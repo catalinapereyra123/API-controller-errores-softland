@@ -8,6 +8,7 @@ import Historial from './pages/Historial'
 import Home from './pages/Home'
 import Login from './pages/Login'
 import Metricas from './pages/Metricas'
+import Objetivos from './pages/Objetivos'
 import Registro from './pages/Registro'
 import type { AppPage } from './types'
 
@@ -53,6 +54,7 @@ const PAGES: AppPage[] = [
   'bandeja',
   'detalle',
   'metricas',
+  'objetivos',
   'historial',
   'historial-iris',
 ]
@@ -123,6 +125,10 @@ function AppAutenticada() {
 
   if (vista.page === 'metricas') {
     return <Metricas onNavigate={navegar} />
+  }
+
+  if (vista.page === 'objetivos') {
+    return <Objetivos onNavigate={navegar} />
   }
 
   return <Home onNavigate={navegar} onOpenError={abrirDetalle} />

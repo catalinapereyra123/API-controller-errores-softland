@@ -12,6 +12,8 @@ interface ModalProps {
   children: ReactNode
   /** Ancho máximo del panel (cualquier unidad CSS). */
   maxWidth?: string
+  /** Sin padding, título ni "X": el contenido arma su propio marco. */
+  desnudo?: boolean
   className?: string
 }
 
@@ -26,6 +28,7 @@ function Modal({
   title,
   children,
   maxWidth = '420px',
+  desnudo = false,
   className,
 }: ModalProps) {
   useEffect(() => {
@@ -57,30 +60,33 @@ function Modal({
     >
       <Card
         onClick={(event) => event.stopPropagation()}
+        padding={desnudo ? 'none' : undefined}
         style={{ maxWidth }}
         className={cn(
           'max-h-[85vh] w-full animate-entrar overflow-y-auto shadow-lift',
           className,
         )}
       >
-        <div className="mb-lg flex items-start justify-between gap-md">
-          {title != null ? (
-            <span style={{ ...textStyles.h3, color: colors.gray.darkest }}>
-              {title}
-            </span>
-          ) : (
-            <span />
-          )}
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Cerrar"
-            style={{ color: colors.gray.medium }}
-            className="-mt-xxs -mr-xxs flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-full transition-colors hover:bg-background-subtle"
-          >
-            <XIcon className="h-4 w-4" />
-          </button>
-        </div>
+        {!desnudo && (
+          <div className="mb-lg flex items-start justify-between gap-md">
+            {title != null ? (
+              <span style={{ ...textStyles.h3, color: colors.gray.darkest }}>
+                {title}
+              </span>
+            ) : (
+              <span />
+            )}
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label="Cerrar"
+              style={{ color: colors.gray.medium }}
+              className="-mt-xxs -mr-xxs flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-full transition-colors hover:bg-background-subtle"
+            >
+              <XIcon className="h-4 w-4" />
+            </button>
+          </div>
+        )}
 
         {children}
       </Card>
