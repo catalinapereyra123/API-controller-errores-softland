@@ -602,7 +602,15 @@ function ErrorDetail({
 
                   <PasosASeguirCard error={detalle} />
 
-                  <CollapsibleCard title="Observaciones">
+                  {/* Arranca cerrada: el título dice cuántas hay. */}
+                  <CollapsibleCard
+                    title={
+                      detalle.observaciones.length
+                        ? `Observaciones (${detalle.observaciones.length})`
+                        : 'Observaciones'
+                    }
+                    defaultOpen={false}
+                  >
                     <div className="flex flex-col gap-lg">
                       {detalle.observaciones.length === 0 && (
                         <span
