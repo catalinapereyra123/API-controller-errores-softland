@@ -8,6 +8,8 @@ export interface EstadoSoftland {
   color: string
   /** Fondo del círculo. */
   background: string
+  /** Hay que corregirla (E, D, B) o no es un error (N, S, X). */
+  grupo: 'corregir' | 'sin-error'
 }
 
 // Estados de Softland / SAR_CORMVH_STATUS.
@@ -18,6 +20,7 @@ export const ESTADOS_SOFTLAND: EstadoSoftland[] = [
     description: 'Nuevo / pendiente de procesar',
     color: colors.label.blue.text,
     background: colors.label.blue.background,
+    grupo: 'sin-error',
   },
   {
     code: 'S',
@@ -25,6 +28,7 @@ export const ESTADOS_SOFTLAND: EstadoSoftland[] = [
     description: 'La transacción se procesó sin inconvenientes',
     color: colors.label.green.text,
     background: colors.label.green.background,
+    grupo: 'sin-error',
   },
   {
     code: 'E',
@@ -32,6 +36,7 @@ export const ESTADOS_SOFTLAND: EstadoSoftland[] = [
     description: 'Falló el procesamiento por un problema técnico',
     color: colors.label.red.text,
     background: colors.label.red.background,
+    grupo: 'corregir',
   },
   {
     code: 'D',
@@ -39,6 +44,7 @@ export const ESTADOS_SOFTLAND: EstadoSoftland[] = [
     description: 'Por ejemplo, temas de importes o impuestos',
     color: colors.label.orange.text,
     background: colors.label.orange.background,
+    grupo: 'corregir',
   },
   {
     code: 'X',
@@ -46,6 +52,7 @@ export const ESTADOS_SOFTLAND: EstadoSoftland[] = [
     description: 'La transacción quedó fuera del procesamiento automático',
     color: colors.label.gray.text,
     background: colors.label.gray.background,
+    grupo: 'sin-error',
   },
   {
     code: 'B',
@@ -53,5 +60,6 @@ export const ESTADOS_SOFTLAND: EstadoSoftland[] = [
     description: 'Una regla de negocio frenó el procesamiento',
     color: colors.label.purple.text,
     background: colors.label.purple.background,
+    grupo: 'corregir',
   },
 ]

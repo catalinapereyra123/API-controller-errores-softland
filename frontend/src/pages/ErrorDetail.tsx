@@ -353,7 +353,9 @@ function ErrorDetail({
 
             {/* Ancla para "Ver historial completo": las pestañas son sticky. */}
             <div ref={tabsRef} className="-mb-lg scroll-mt-20" />
-            <div className="sticky top-14 z-10 -mx-xs bg-background-page/85 px-xs py-sm backdrop-blur-md">
+            {/* Mismas columnas que el resumen: el botón de estados queda
+                alineado con la columna lateral y las tarjetas arrancan parejas. */}
+            <div className="sticky top-14 z-10 -mx-xs grid items-center gap-sm bg-background-page/85 px-xs py-sm backdrop-blur-md @4xl:grid-cols-[minmax(0,1fr)_20rem] @4xl:gap-lg">
               <Tabs
                 items={TABS}
                 value={tab}
@@ -361,6 +363,20 @@ function ErrorDetail({
                 activeColor={colors.primary.dark}
                 inactiveColor={colors.gray.medium}
                 dividerColor={colors.background.border}
+                className="justify-self-start"
+              />
+              <Button
+                text="Ver posibles estados"
+                color={colors.gray.default}
+                variant="outline"
+                icon={<InfoIcon className="h-4 w-4" />}
+                onClick={() => setEstadosOpen(true)}
+                size={{
+                  ...textStyles.bodySmall,
+                  fontWeight: fontWeight.semibold,
+                  padding: `${spacing.xs} ${spacing.md}`,
+                }}
+                className="justify-self-start"
               />
             </div>
 
@@ -693,20 +709,6 @@ function ErrorDetail({
 
                 {/* Columna lateral */}
                 <div className="flex flex-col gap-lg">
-                  <Button
-                    text="Ver posibles estados"
-                    color={colors.gray.default}
-                    variant="outline"
-                    icon={<InfoIcon className="h-4 w-4" />}
-                    onClick={() => setEstadosOpen(true)}
-                    size={{
-                      ...textStyles.bodySmall,
-                      fontWeight: fontWeight.semibold,
-                      padding: `${spacing.xs} ${spacing.md}`,
-                    }}
-                    className="self-start"
-                  />
-
                   <Card>
                     <span
                       style={{
@@ -876,6 +878,7 @@ function ErrorDetail({
       <EstadosSoftlandModal
         open={estadosOpen}
         onClose={() => setEstadosOpen(false)}
+        actual={detalle?.statusSoftland}
       />
     </AppLayout>
   )
