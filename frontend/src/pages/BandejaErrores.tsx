@@ -479,7 +479,7 @@ function BandejaErrores({
           className="@container w-full overflow-x-auto rounded-xxl p-md shadow-soft ring-1 ring-slate-900/[0.04]"
         >
           {/* Errores de verdad por un lado, excluidas (status X) por otro. */}
-          <div className="mb-md flex flex-wrap items-center justify-between gap-md px-xs">
+          <div className="mb-md px-xs">
             <Tabs
               items={[
                 { id: 'errores', label: 'Con error', badge: reales.length },
@@ -494,14 +494,6 @@ function BandejaErrores({
               activeColor={colors.gray.darkest}
               inactiveColor={colors.gray.medium}
             />
-            <span
-              style={{ ...textStyles.caption, color: colors.gray.medium }}
-              className="max-w-[34rem]"
-            >
-              {vista === 'errores'
-                ? 'Transacciones que Softland devolvió con error (E, D, B…) y hay que corregir.'
-                : 'Softland las dejó fuera del proceso (status X): no son errores, no hace falta corregirlas y no suman en los contadores.'}
-            </span>
           </div>
 
           <BandejaTableHeader />
