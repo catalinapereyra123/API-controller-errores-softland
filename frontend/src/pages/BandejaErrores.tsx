@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import ChevronButton from '../components/ChevronButton'
 import Dropdown, { type DropdownOption } from '../components/Dropdown'
 import FiltrosPopover from '../components/FiltrosPopover'
@@ -26,6 +26,11 @@ import { colors, fontFamily, fontWeight, textStyles } from '../styles'
 import type { AppPage, ErrorTransaccion, Usuario } from '../types'
 import { usuarioNombre } from '../utils/labels'
 import { formatDetectedAt, formatElapsedSince } from '../utils/format'
+
+type Vista = 'errores' | 'excluidas'
+
+// Al volver del detalle, la bandeja sigue mostrando el mismo grupo.
+let vistaGuardada: Vista = 'errores'
 
 const BANDEJA_GRID_COLS =
   'grid-cols-[150px_100px_minmax(120px,1fr)_minmax(110px,1fr)_minmax(130px,1fr)_minmax(110px,1fr)_minmax(90px,1fr)_80px_56px]'
@@ -100,8 +105,9 @@ function BandejaRow({
     <div
       onClick={onOpen}
       className={cn(
-        'group cursor-pointer rounded-2xl px-md py-sm transition-colors hover:bg-background-subtle',
-        excluida && 'opacity-70',
+        // Cada fila es su propia tarjeta: separadas se leen mejor que pegadas.
+        'group cursor-pointer rounded-2xl bg-background-surface px-md py-md ring-1 ring-background-border transition-all hover:bg-primary-lightest/40 hover:shadow-soft hover:ring-primary-light',
+        excluida && 'bg-background-subtle/60 hover:bg-background-subtle',
       )}
     >
       {/* Angosto: tarjeta compacta en tres líneas. */}
@@ -252,9 +258,16 @@ function BandejaErrores({
     setFilters,
   } = useBandejaErrores()
 
-  // Los excluidos (status X) van al final, separados de los errores reales.
+  // Los excluidos (status X) no se mezclan con los errores: cada grupo se ve
+  // por separado con el selector de arriba de la lista.
   const reales = erroresFiltrados.filter((item) => !esExcluida(item))
   const excluidas = erroresFiltrados.filter(esExcluida)
+  const [vista, setVistaState] = useState<Vista>(vistaGuardada)
+  const setVista = (nueva: Vista) => {
+    vistaGuardada = nueva
+    setVistaState(nueva)
+  }
+  const visibles = vista === 'excluidas' ? excluidas : reales
 
   // Los módulos salen de los errores que llegaron: se filtra por código
   // (FACTURACION, COMPRAS…) y se muestra la etiqueta legible.
@@ -463,10 +476,36 @@ function BandejaErrores({
       ) : (
         <div
           style={{ backgroundColor: colors.background.surface }}
-          className="@container w-full overflow-x-auto rounded-xxl p-sm shadow-soft ring-1 ring-slate-900/[0.04]"
+          className="@container w-full overflow-x-auto rounded-xxl p-md shadow-soft ring-1 ring-slate-900/[0.04]"
         >
+          {/* Errores de verdad por un lado, excluidas (status X) por otro. */}
+          <div className="mb-md flex flex-wrap items-center justify-between gap-md px-xs">
+            <Tabs
+              items={[
+                { id: 'errores', label: 'Con error', badge: reales.length },
+                {
+                  id: 'excluidas',
+                  label: 'Excluidas (X)',
+                  badge: excluidas.length,
+                },
+              ]}
+              value={vista}
+              onChange={(id) => setVista(id as Vista)}
+              activeColor={colors.gray.darkest}
+              inactiveColor={colors.gray.medium}
+            />
+            <span
+              style={{ ...textStyles.caption, color: colors.gray.medium }}
+              className="max-w-[34rem]"
+            >
+              {vista === 'errores'
+                ? 'Transacciones que Softland devolvió con error (E, D, B…) y hay que corregir.'
+                : 'Softland las dejó fuera del proceso (status X): no son errores, no hace falta corregirlas y no suman en los contadores.'}
+            </span>
+          </div>
+
           <BandejaTableHeader />
-          {erroresFiltrados.length === 0 ? (
+          {visibles.length === 0 ? (
             <div
               style={{ ...textStyles.body, color: colors.gray.medium }}
               className="flex flex-col items-center gap-sm px-lg py-xxl text-center"
@@ -480,33 +519,13 @@ function BandejaErrores({
               >
                 <SearchIcon className="h-5 w-5" />
               </span>
-              No hay transacciones que coincidan con los filtros.
+              {vista === 'excluidas'
+                ? 'No hay transacciones excluidas con estos filtros.'
+                : 'No hay errores que coincidan con los filtros.'}
             </div>
           ) : (
-            <div className="flex flex-col gap-xxs">
-              {reales.map((item) => (
-                <BandejaRow
-                  key={item.id}
-                  error={item}
-                  usuarios={data.usuarios}
-                  onOpen={() => onOpenError(item.id)}
-                />
-              ))}
-              {excluidas.length > 0 && (
-                <div
-                  style={{
-                    ...textStyles.overline,
-                    fontWeight: fontWeight.semibold,
-                    color: colors.gray.medium,
-                    backgroundColor: colors.background.subtle,
-                  }}
-                  className="my-sm rounded-full px-md py-sm uppercase"
-                >
-                  Excluidas del proceso (status X) · {excluidas.length} · No
-                  cuentan como errores
-                </div>
-              )}
-              {excluidas.map((item) => (
+            <div className="flex flex-col gap-sm">
+              {visibles.map((item) => (
                 <BandejaRow
                   key={item.id}
                   error={item}
