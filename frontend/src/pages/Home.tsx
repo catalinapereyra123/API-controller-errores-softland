@@ -1,5 +1,4 @@
 import { useMemo, useState, type ReactNode } from 'react'
-import { useAuth } from '../auth/useAuth'
 import AppLayout from '../components/AppLayout'
 import BarChart from '../components/BarChart'
 import {
@@ -64,7 +63,6 @@ function Home({
   onNavigate: (page: AppPage) => void
   onOpenError: (id: string) => void
 }) {
-  const { usuario } = useAuth()
   const { data, loading, error, refetch } = useHomeData()
   const [serie, setSerie] = useState<'llegadas' | 'resoluciones'>('llegadas')
   const stats = data?.stats
@@ -106,7 +104,6 @@ function Home({
       migas={[{ label: 'Inicio' }]}
     >
       <PageHeader
-        eyebrow={`Hola de nuevo, ${usuario?.nombre.split(' ')[0] ?? 'equipo'} 👋`}
         titulo="Inicio"
         acciones={
           <>
