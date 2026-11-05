@@ -497,7 +497,7 @@ function BandejaErrores({
               items={[
                 {
                   id: 'errores',
-                  label: 'Con error',
+                  label: 'Con error (E)',
                   badge: grupos.errores.length,
                 },
                 {
