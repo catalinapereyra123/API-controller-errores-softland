@@ -6,7 +6,12 @@ import type {
   TransaccionError,
   Usuario,
 } from '../../generated/prisma/client';
-import { EstadoApp, Modulo, OrigenCierre } from '../../generated/prisma/client';
+import {
+  ClaseMetrica,
+  EstadoApp,
+  Modulo,
+  OrigenCierre,
+} from '../../generated/prisma/client';
 import type { ErrorCierreDto } from './dto/historial.dto';
 
 /** Etiqueta legible por módulo (la que muestra el front). */
@@ -71,6 +76,20 @@ export function tipoEventoPorEstado(estado: EstadoApp): string {
   }
   if (estado === EstadoApp.DESCARTADO) return 'descarte';
   return 'error';
+}
+
+/**
+ * Status de Softland que llegan a la app pero no son errores a resolver:
+ * X (excluida del proceso) y D (diferencia: se mira, no se reprocesa). No
+ * suman en los contadores ni en los prioritarios; se informan aparte.
+ */
+export const STATUS_FUERA_DE_CONTADORES = ['X', 'D'];
+
+/** Clase del hito según el status de Softland en ese momento. */
+export function claseMetrica(status: string): ClaseMetrica {
+  if (status === 'D') return ClaseMetrica.DIFERENCIA;
+  if (status === 'X') return ClaseMetrica.EXCLUIDA;
+  return ClaseMetrica.ERROR;
 }
 
 /** Status de Softland que significan "sigue fallando". */
@@ -199,6 +218,8 @@ export function promedio(valores: number[]): number {
 function descripcionDe(t: TransaccionError): string {
   if (t.errorMensaje) return t.errorMensaje;
   if (t.statusSoftland === 'X') return 'Transacción excluida del proceso.';
+  if (t.statusSoftland === 'D')
+    return 'Diferencia o inconsistencia en la transacción.';
   return '—';
 }
 

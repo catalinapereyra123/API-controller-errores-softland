@@ -19,6 +19,7 @@ function evento(
   return {
     id: `ev${secuencia++}`,
     tipo,
+    clase: 'ERROR',
     transaccionId,
     empresaCodigo: 'PAE',
     modulo: 'FACTURACION',

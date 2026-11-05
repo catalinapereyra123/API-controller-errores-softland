@@ -7,11 +7,13 @@ import Input from '../components/Input'
 import AppLayout from '../components/AppLayout'
 import PageHeader from '../components/PageHeader'
 import Table from '../components/Table'
-import { ExcluidaTag } from '../components/Tag'
+import { DiferenciaTag, ExcluidaTag } from '../components/Tag'
 import Tabs, { type TabItem } from '../components/Tabs'
 import { cn } from '../utils/cn'
 import {
   ESTADOS_CERRADOS,
+  cuentaComoError,
+  esDiferencia,
   esExcluida,
   estadoLabels,
   estadoOrder,
@@ -19,18 +21,22 @@ import {
 } from '../constants/estados'
 import {
   FILTROS_INICIALES,
+  guardarVistaBandeja,
   useBandejaErrores,
+  vistaBandeja,
   type BandejaFilters,
+  type VistaBandeja,
 } from '../hooks/useBandejaErrores'
 import { colors, fontFamily, fontWeight, textStyles } from '../styles'
 import type { AppPage, ErrorTransaccion, Usuario } from '../types'
 import { usuarioNombre } from '../utils/labels'
 import { formatDetectedAt, formatElapsedSince } from '../utils/format'
 
-type Vista = 'errores' | 'excluidas'
-
-// Al volver del detalle, la bandeja sigue mostrando el mismo grupo.
-let vistaGuardada: Vista = 'errores'
+const VACIO_POR_VISTA: Record<VistaBandeja, string> = {
+  errores: 'No hay errores que coincidan con los filtros.',
+  diferencias: 'No hay diferencias con estos filtros.',
+  excluidas: 'No hay transacciones excluidas con estos filtros.',
+}
 
 const BANDEJA_GRID_COLS =
   'grid-cols-[150px_100px_minmax(120px,1fr)_minmax(110px,1fr)_minmax(130px,1fr)_minmax(110px,1fr)_minmax(90px,1fr)_80px_56px]'
@@ -79,11 +85,14 @@ function BandejaRow({
   onOpen: () => void
 }) {
   const excluida = esExcluida(error)
+  const diferencia = esDiferencia(error)
   // Un reproceso en curso sigue mostrando "Reprocesando" aunque venga de X.
   const EstadoTag =
     excluida && error.estado !== 'REPROCESANDO'
       ? ExcluidaTag
-      : estadoTagByEstado[error.estado]
+      : diferencia
+        ? DiferenciaTag
+        : estadoTagByEstado[error.estado]
   const responsable = usuarioNombre(usuarios, error.responsableId)
   const abierto = ESTADOS_CERRADOS.includes(error.estado)
     ? '—'
@@ -92,7 +101,7 @@ function BandejaRow({
     <span
       className={cn(
         'w-fit rounded-full px-sm py-xxs text-caption font-semibold',
-        excluida
+        excluida || diferencia
           ? 'bg-background-subtle text-gray-medium'
           : 'bg-label-red-background text-label-red-text',
       )}
@@ -258,16 +267,19 @@ function BandejaErrores({
     setFilters,
   } = useBandejaErrores()
 
-  // Los excluidos (status X) no se mezclan con los errores: cada grupo se ve
-  // por separado con el selector de arriba de la lista.
-  const reales = erroresFiltrados.filter((item) => !esExcluida(item))
-  const excluidas = erroresFiltrados.filter(esExcluida)
-  const [vista, setVistaState] = useState<Vista>(vistaGuardada)
-  const setVista = (nueva: Vista) => {
-    vistaGuardada = nueva
+  // Las diferencias (D) y las excluidas (X) no se mezclan con los errores:
+  // cada grupo se ve por separado con el selector de arriba de la lista.
+  const grupos: Record<VistaBandeja, ErrorTransaccion[]> = {
+    errores: erroresFiltrados.filter(cuentaComoError),
+    diferencias: erroresFiltrados.filter(esDiferencia),
+    excluidas: erroresFiltrados.filter(esExcluida),
+  }
+  const [vista, setVistaState] = useState<VistaBandeja>(vistaBandeja)
+  const setVista = (nueva: VistaBandeja) => {
+    guardarVistaBandeja(nueva)
     setVistaState(nueva)
   }
-  const visibles = vista === 'excluidas' ? excluidas : reales
+  const visibles = grupos[vista]
 
   // Los módulos salen de los errores que llegaron: se filtra por código
   // (FACTURACION, COMPRAS…) y se muestra la etiqueta legible.
@@ -478,19 +490,29 @@ function BandejaErrores({
           style={{ backgroundColor: colors.background.surface }}
           className="@container w-full overflow-x-auto rounded-xxl p-md shadow-soft ring-1 ring-slate-900/[0.04]"
         >
-          {/* Errores de verdad por un lado, excluidas (status X) por otro. */}
+          {/* Errores de verdad por un lado; diferencias (D) y excluidas (X),
+              cada una por su lado. */}
           <div className="mb-md px-xs">
             <Tabs
               items={[
-                { id: 'errores', label: 'Con error', badge: reales.length },
+                {
+                  id: 'errores',
+                  label: 'Con error',
+                  badge: grupos.errores.length,
+                },
+                {
+                  id: 'diferencias',
+                  label: 'Diferencias (D)',
+                  badge: grupos.diferencias.length,
+                },
                 {
                   id: 'excluidas',
                   label: 'Excluidas (X)',
-                  badge: excluidas.length,
+                  badge: grupos.excluidas.length,
                 },
               ]}
               value={vista}
-              onChange={(id) => setVista(id as Vista)}
+              onChange={(id) => setVista(id as VistaBandeja)}
               activeColor={colors.gray.darkest}
               inactiveColor={colors.gray.medium}
             />
@@ -511,9 +533,7 @@ function BandejaErrores({
               >
                 <SearchIcon className="h-5 w-5" />
               </span>
-              {vista === 'excluidas'
-                ? 'No hay transacciones excluidas con estos filtros.'
-                : 'No hay errores que coincidan con los filtros.'}
+              {VACIO_POR_VISTA[vista]}
             </div>
           ) : (
             <div className="flex flex-col gap-sm">

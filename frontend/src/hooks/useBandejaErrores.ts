@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { ESTADOS_CERRADOS, esExcluida } from '../constants/estados'
+import { ESTADOS_CERRADOS, cuentaComoError } from '../constants/estados'
 import { getBandejaErrores } from '../services/bandeja.service'
 import { getDashboardStats } from '../services/dashboard.service'
 import { getEmpresas } from '../services/empresas.service'
@@ -82,12 +82,31 @@ function guardarFiltros(filtros: BandejaFilters) {
 let filtrosGuardados: BandejaFilters = leerFiltros()
 let datosGuardados: BandejaData | null = null
 
+/** Grupo que muestra la lista: errores, diferencias (D) o excluidas (X). */
+export type VistaBandeja = 'errores' | 'diferencias' | 'excluidas'
+
+// Al volver del detalle, la bandeja sigue mostrando el mismo grupo.
+let vistaGuardada: VistaBandeja = 'errores'
+
+export function vistaBandeja(): VistaBandeja {
+  return vistaGuardada
+}
+
+export function guardarVistaBandeja(vista: VistaBandeja) {
+  vistaGuardada = vista
+}
+
 /**
- * Deja la bandeja con estos filtros (sobre los iniciales) para cuando se
- * abra: lo usan los accesos de otras pantallas, p. ej. "sin responsable".
+ * Deja la bandeja con estos filtros (sobre los iniciales) y en este grupo
+ * para cuando se abra: lo usan los accesos de otras pantallas, p. ej. "sin
+ * responsable".
  */
-export function prepararBandeja(filtros: Partial<BandejaFilters>) {
+export function prepararBandeja(
+  filtros: Partial<BandejaFilters>,
+  vista: VistaBandeja = 'errores',
+) {
   guardarFiltros({ ...FILTROS_INICIALES, ...filtros })
+  vistaGuardada = vista
 }
 
 export function useBandejaErrores(): UseBandejaErroresResult {
@@ -205,9 +224,10 @@ export function useBandejaErrores(): UseBandejaErroresResult {
     [sinFiltroEmpresa, filters.empresaId],
   )
 
-  // Los excluidos (status X) se ven en la lista pero no suman en las pestañas.
+  // Las excluidas (X) y las diferencias (D) se ven en la lista pero no suman
+  // en las pestañas.
   const conteoPorEmpresa = useMemo(() => {
-    const errores = sinFiltroEmpresa.filter((item) => !esExcluida(item))
+    const errores = sinFiltroEmpresa.filter(cuentaComoError)
     const conteo: Record<string, number> = { todas: errores.length }
     for (const item of errores) {
       conteo[item.empresaId] = (conteo[item.empresaId] ?? 0) + 1

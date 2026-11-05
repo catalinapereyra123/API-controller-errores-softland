@@ -78,4 +78,16 @@ export interface MetricasDto {
     sinResponsable: number;
     reprocesando: number;
   };
+  /** Diferencias (D) y excluidas (X): fuera de todo lo de arriba. */
+  aparte: {
+    diferencias: ResumenAparteDto;
+    excluidas: ResumenAparteDto;
+  };
+}
+
+/** Lo que llegó y se resolvió en el período, y cuántas siguen abiertas. */
+export interface ResumenAparteDto {
+  llegadas: number;
+  resoluciones: number;
+  abiertas: number;
 }

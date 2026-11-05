@@ -170,9 +170,19 @@ enum TipoMetrica {
   DESCARTE // se descartó a mano
 }
 
+/// Qué era la transacción cuando pasó el hito. Rendimiento se calcula con los
+/// ERROR; las diferencias (D) y las excluidas (X) se informan aparte.
+enum ClaseMetrica {
+  ERROR
+  DIFERENCIA // status D
+  EXCLUIDA // status X
+}
+
 model EventoMetrica {
   id                    String           @id @default(cuid())
   tipo                  TipoMetrica
+  /// Los hitos de antes de que existiera el campo quedan como ERROR.
+  clase                 ClaseMetrica     @default(ERROR)
   transaccion           TransaccionError @relation(fields: [transaccionId], references: [id], onDelete: Cascade)
   transaccionId         String
   empresaCodigo         String

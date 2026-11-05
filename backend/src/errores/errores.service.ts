@@ -12,6 +12,7 @@ import type {
   TransaccionError,
 } from '../../generated/prisma/client';
 import {
+  ClaseMetrica,
   EstadoApp,
   Modulo,
   OrigenCierre,
@@ -50,7 +51,9 @@ import {
   ESTADOS_MANUALES,
   MODULO_LABEL,
   extractArchivoLog,
+  claseMetrica,
   parseModulo,
+  STATUS_FUERA_DE_CONTADORES,
   statusEsError,
   tipoEventoPorEstado,
   claveDia,
@@ -348,7 +351,9 @@ export class ErroresService {
             titulo: 'El error volvió a aparecer en Softland',
             detalle: `Status Softland: ${r.statusSoftland}`,
           };
-          await this.registrarMetrica(existente, TipoMetrica.REAPARICION, tx);
+          await this.registrarMetrica(existente, TipoMetrica.REAPARICION, tx, {
+            status: r.statusSoftland,
+          });
           reaparecidos++;
         } else {
           // en cola (N), excluida sin reproceso, o simple refresco de datos
@@ -428,6 +433,13 @@ export class ErroresService {
     if (t.estadoApp === EstadoApp.DESCARTADO) {
       throw new BadRequestException(
         'El error está descartado: reabrilo antes de marcarlo como corregido.',
+      );
+    }
+    // El flujo de reproceso sólo pasa a N los E (y X en Facturación): una D
+    // quedaría igual y volvería como REQUIERE_CORRECCION. Las D sólo se miran.
+    if (t.statusSoftland === 'D') {
+      throw new BadRequestException(
+        'Las diferencias (status D) no se reprocesan desde IRIS: corregila en Softland.',
       );
     }
     const autor = await this.resolverAutor(autorId);
@@ -902,7 +914,9 @@ export class ErroresService {
           },
           tx,
         );
-        await this.registrarMetrica(t, TipoMetrica.REAPARICION, tx);
+        await this.registrarMetrica(t, TipoMetrica.REAPARICION, tx, {
+          status,
+        });
       });
 
       return {
@@ -1268,16 +1282,18 @@ export class ErroresService {
     desdeAnterior.setDate(desdeAnterior.getDate() - dias);
     const abiertoWhere: Prisma.TransaccionErrorWhereInput = {
       estadoApp: { in: ESTADOS_ABIERTOS },
-      statusSoftland: { not: 'X' },
+      statusSoftland: { notIn: STATUS_FUERA_DE_CONTADORES },
     };
 
     const [
-      eventos,
-      eventosAnteriores,
+      todos,
+      todosAnteriores,
       empresas,
       abiertos,
       sinResponsable,
       reprocesando,
+      diferenciasAbiertas,
+      excluidasAbiertas,
     ] = await Promise.all([
       this.repo.metricasEntre(desde),
       this.repo.metricasEntre(desdeAnterior, desde),
@@ -1285,7 +1301,30 @@ export class ErroresService {
       this.repo.contar(abiertoWhere),
       this.repo.contar({ ...abiertoWhere, responsableId: null }),
       this.repo.contar({ estadoApp: EstadoApp.REPROCESANDO }),
+      this.repo.contar({
+        estadoApp: { in: ESTADOS_ABIERTOS },
+        statusSoftland: 'D',
+      }),
+      this.repo.contar({
+        estadoApp: { in: ESTADOS_ABIERTOS },
+        statusSoftland: 'X',
+      }),
     ]);
+
+    // El rendimiento se mide con los errores; las diferencias (D) y las
+    // excluidas (X) se informan aparte, sin mezclarse.
+    const esError = (e: EventoMetrica) => e.clase === ClaseMetrica.ERROR;
+    const eventos = todos.filter(esError);
+    const eventosAnteriores = todosAnteriores.filter(esError);
+    const aparte = (clase: ClaseMetrica, abiertas: number) => {
+      const lista = todos.filter((e) => e.clase === clase);
+      return {
+        llegadas: lista.filter((e) => e.tipo === TipoMetrica.LLEGADA).length,
+        resoluciones: lista.filter((e) => e.tipo === TipoMetrica.RESOLUCION)
+          .length,
+        abiertas,
+      };
+    };
 
     const de = (tipo: TipoMetrica) => eventos.filter((e) => e.tipo === tipo);
     const resolucionesManuales = de(TipoMetrica.RESOLUCION).filter(
@@ -1374,6 +1413,10 @@ export class ErroresService {
       porEmpresa,
       porPersona,
       ahora: { abiertos, sinResponsable, reprocesando },
+      aparte: {
+        diferencias: aparte(ClaseMetrica.DIFERENCIA, diferenciasAbiertas),
+        excluidas: aparte(ClaseMetrica.EXCLUIDA, excluidasAbiertas),
+      },
     };
   }
 
@@ -1515,11 +1558,11 @@ export class ErroresService {
     const abiertoWhere: Prisma.TransaccionErrorWhereInput = {
       estadoApp: { in: ESTADOS_ABIERTOS },
     };
-    // Status X = excluida del proceso en Softland: no es un error a resolver,
-    // así que no infla los indicadores y se informa aparte.
+    // Status X (excluida) y D (diferencia) no son errores a resolver, así que
+    // no inflan los indicadores y se informan aparte.
     const erroresWhere: Prisma.TransaccionErrorWhereInput = {
       ...abiertoWhere,
-      statusSoftland: { not: 'X' },
+      statusSoftland: { notIn: STATUS_FUERA_DE_CONTADORES },
     };
     const hace24h = new Date(Date.now() - 24 * 60 * 60 * 1000);
     const inicioHoy = new Date();
@@ -1531,6 +1574,7 @@ export class ErroresService {
       sinResponsable,
       nuevos24h,
       excluidasAbiertas,
+      diferenciasAbiertas,
       resueltosHoy,
       resueltosPromedio,
     ] = await Promise.all([
@@ -1539,6 +1583,7 @@ export class ErroresService {
       this.repo.contar({ ...erroresWhere, responsableId: null }),
       this.repo.contar({ ...erroresWhere, fechaDeteccion: { gte: hace24h } }),
       this.repo.contar({ ...abiertoWhere, statusSoftland: 'X' }),
+      this.repo.contar({ ...abiertoWhere, statusSoftland: 'D' }),
       this.repo.resueltosDesde(inicioHoy),
       this.repo.resueltosParaPromedio(),
     ]);
@@ -1562,6 +1607,7 @@ export class ErroresService {
       erroresAbiertos,
       erroresAbiertosDelta: nuevos24h,
       excluidasAbiertas,
+      diferenciasAbiertas,
       pendientesReproceso: conteo(EstadoApp.REPROCESANDO),
       resueltosHoy: resueltosHoy.length,
       resueltosHoyDelta: 0,
@@ -1574,11 +1620,15 @@ export class ErroresService {
 
   // ==========================================================================
 
-  /** Deja un hito para la pantalla de Métricas, en la misma transacción. */
+  /**
+   * Deja un hito para la pantalla de Métricas, en la misma transacción. La
+   * clase sale del status que tenía la transacción (o de `extra.status` si el
+   * hito es por un status nuevo, como una reaparición).
+   */
   private registrarMetrica(
     t: Pick<
       TransaccionError,
-      'id' | 'empresaCodigo' | 'modulo' | 'fechaDeteccion'
+      'id' | 'empresaCodigo' | 'modulo' | 'fechaDeteccion' | 'statusSoftland'
     >,
     tipo: TipoMetrica,
     tx: Prisma.TransactionClient,
@@ -1586,12 +1636,14 @@ export class ErroresService {
       usuarioId?: string | null;
       usuarioNombre?: string | null;
       origenCierre?: OrigenCierre;
+      status?: string;
     } = {},
   ) {
     const ahora = new Date();
     return this.repo.crearMetrica(
       {
         tipo,
+        clase: claseMetrica(extra.status ?? t.statusSoftland),
         transaccionId: t.id,
         empresaCodigo: t.empresaCodigo,
         modulo: t.modulo,

@@ -1,7 +1,11 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import type { Modulo, Prisma } from '../../generated/prisma/client';
-import { ESTADOS_ABIERTOS, ESTADOS_VERIFICABLES } from './errores.mapper';
+import {
+  ESTADOS_ABIERTOS,
+  ESTADOS_VERIFICABLES,
+  STATUS_FUERA_DE_CONTADORES,
+} from './errores.mapper';
 
 type Db = PrismaService | Prisma.TransactionClient;
 
@@ -229,8 +233,8 @@ export class ErroresRepository {
     return this.prisma.transaccionError.findMany({
       where: {
         estadoApp: { in: ESTADOS_ABIERTOS },
-        // Los X (excluidos del proceso) no requieren atención.
-        statusSoftland: { not: 'X' },
+        // Los X (excluidos del proceso) y las D (diferencias) no requieren atención.
+        statusSoftland: { notIn: STATUS_FUERA_DE_CONTADORES },
         OR: [{ responsableId: null }, { fechaDeteccion: { lt: desde } }],
       },
       include: { responsable: true, empresa: true },

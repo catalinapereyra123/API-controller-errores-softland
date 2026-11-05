@@ -100,7 +100,8 @@ const POR_STATUS: Partial<
           'Revisá alícuotas, percepciones y redondeos: suelen ser el origen de las diferencias.',
       },
       {
-        texto: `Corregí la diferencia y tocá ${MARCAR_COMO_CORREGIDO}.`,
+        texto:
+          'Corregí la diferencia en Softland. Desde IRIS no se reprocesa: cuando cambie de status, se actualiza sola.',
       },
     ],
   }),

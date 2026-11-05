@@ -7,6 +7,8 @@ import { BanIcon, CheckCircleIcon, RefreshIcon, UndoIcon } from './icons'
 
 interface ErrorActionsCardProps {
   estado: ErrorEstado
+  /** Status D: se mira, no se reprocesa (el flujo no pasa las D a N). */
+  diferencia?: boolean
   /** true mientras se guarda otra acción. */
   disabled?: boolean
   onMarkAsFixed: () => void
@@ -39,11 +41,12 @@ function Nota({ children }: { children: ReactNode }) {
 
 /**
  * Bloque de acciones del detalle de error. Cambia según el estado: mientras
- * se espera el resultado del reproceso sólo se puede consultarlo, y un error
- * descartado solo se puede reabrir.
+ * se espera el resultado del reproceso sólo se puede consultarlo, un error
+ * descartado solo se puede reabrir y una diferencia (D) no se reprocesa.
  */
 function ErrorActionsCard({
   estado,
+  diferencia = false,
   disabled,
   onMarkAsFixed,
   onDiscard,
@@ -84,7 +87,20 @@ function ErrorActionsCard({
   return (
     <Card>
       {titulo}
-      {esperando ? (
+      {diferencia && !esperando ? (
+        <p
+          style={{
+            ...textStyles.bodySmall,
+            color: colors.label.orange.text,
+            backgroundColor: colors.label.orange.background,
+          }}
+          className="mt-md rounded-2xl px-md py-sm"
+        >
+          Es una diferencia (status D): se revisa, pero no se reprocesa desde
+          IRIS. Corregila en Softland; cuando cambie de status, IRIS la
+          actualiza sola.
+        </p>
+      ) : esperando ? (
         <Button
           text={consultando ? 'Consultando…' : 'Consultar nuevo resultado'}
           color={colors.label.purple.text}
@@ -123,11 +139,13 @@ function ErrorActionsCard({
           {avisoConsulta}
         </p>
       )}
-      <Nota>
-        {esperando
-          ? 'Ya se marcó como corregido. “Consultar nuevo resultado” le pide a Softland el status actual: si ya terminó, pasa a Resuelto (S) o vuelve a “A corregir” (E).'
-          : 'Al marcar como corregido, la transacción se reprocesa y vuelve a estado N. Si el reproceso finaliza en S, quedará resuelta. Si no, deberá corregirse nuevamente.'}
-      </Nota>
+      {!(diferencia && !esperando) && (
+        <Nota>
+          {esperando
+            ? 'Ya se marcó como corregido. “Consultar nuevo resultado” le pide a Softland el status actual: si ya terminó, pasa a Resuelto (S) o vuelve a “A corregir” (E).'
+            : 'Al marcar como corregido, la transacción se reprocesa y vuelve a estado N. Si el reproceso finaliza en S, quedará resuelta. Si no, deberá corregirse nuevamente.'}
+        </Nota>
+      )}
 
       {estado !== 'RESUELTO' && (
         <div

@@ -211,11 +211,13 @@ export interface MiEspacio {
 
 /** GET /dashboard/stats */
 export interface DashboardStats {
-  /** Sin los de status X: esos van en `excluidasAbiertas`. */
+  /** Sin los de status X ni D: van en `excluidasAbiertas` y `diferenciasAbiertas`. */
   erroresAbiertos: number
   erroresAbiertosDelta: number
   /** Abiertos con status X (excluidos del proceso en Softland). */
   excluidasAbiertas: number
+  /** Abiertos con status D (diferencias: se miran, no se reprocesan). */
+  diferenciasAbiertas: number
   pendientesReproceso: number
   resueltosHoy: number
   resueltosHoyDelta: number
@@ -298,6 +300,18 @@ export interface Metricas {
     sinResponsable: number
     reprocesando: number
   }
+  /** Diferencias (D) y excluidas (X): fuera de todo lo de arriba. */
+  aparte: {
+    diferencias: ResumenAparte
+    excluidas: ResumenAparte
+  }
+}
+
+/** Lo que llegó y se resolvió en el período, y cuántas siguen abiertas. */
+export interface ResumenAparte {
+  llegadas: number
+  resoluciones: number
+  abiertas: number
 }
 
 export type TipoObjetivo = 'NSM' | 'KR'

@@ -105,6 +105,17 @@ export function ExcluidaTag() {
   )
 }
 
+/** Status D de Softland: una diferencia para revisar, no un error en rojo. */
+export function DiferenciaTag() {
+  return (
+    <Tag
+      text="Diferencia"
+      color={colors.label.orange.text}
+      backgroundColor={colors.label.orange.background}
+    />
+  )
+}
+
 /** No interesa (p. ej. restos de pruebas): queda fuera de la bandeja. */
 export function DescartadoTag() {
   return (

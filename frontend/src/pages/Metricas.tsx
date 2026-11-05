@@ -14,12 +14,14 @@ import PageHeader from '../components/PageHeader'
 import Panel from '../components/Panel'
 import StatCard from '../components/StatCard'
 import Tabs, { type TabItem } from '../components/Tabs'
+import { prepararBandeja } from '../hooks/useBandejaErrores'
 import { useMetricas } from '../hooks/useMetricas'
 import { colors } from '../styles'
 import type {
   AppPage,
   GrupoMetricas,
   PuntoMetricas,
+  ResumenAparte,
   TotalesMetricas,
 } from '../types'
 import { cn } from '../utils/cn'
@@ -390,7 +392,74 @@ function Metricas({ onNavigate }: { onNavigate: (page: AppPage) => void }) {
           </span>
         </button>
       </div>
+
+      {/* Las D y las X no suman en nada de lo de arriba: se ven acá. */}
+      <Panel
+        titulo="Diferencias y excluidas"
+        subtitulo="Aparte de los errores: no suman en lo de arriba"
+        padding="none"
+      >
+        <ul className="flex flex-col gap-xs px-sm pb-sm">
+          <Aparte
+            titulo="Diferencias (D)"
+            color={colors.label.orange.text}
+            resumen={data?.aparte.diferencias}
+            onIr={() => {
+              prepararBandeja({}, 'diferencias')
+              onNavigate('bandeja')
+            }}
+          />
+          <Aparte
+            titulo="Excluidas (X)"
+            color={colors.gray.default}
+            resumen={data?.aparte.excluidas}
+            onIr={() => {
+              prepararBandeja({}, 'excluidas')
+              onNavigate('bandeja')
+            }}
+          />
+        </ul>
+      </Panel>
     </AppLayout>
+  )
+}
+
+/** Una fila de "Diferencias y excluidas": lleva a su pestaña de la bandeja. */
+function Aparte({
+  titulo,
+  color,
+  resumen,
+  onIr,
+}: {
+  titulo: string
+  color: string
+  resumen: ResumenAparte | undefined
+  onIr: () => void
+}) {
+  return (
+    <li>
+      <button
+        type="button"
+        onClick={onIr}
+        aria-label={`Ver ${titulo} en la bandeja`}
+        className="group grid w-full cursor-pointer grid-cols-[minmax(0,1fr)_repeat(3,4.5rem)_2rem] items-center gap-md rounded-full px-md py-sm text-left transition-colors hover:bg-background-subtle"
+      >
+        <span className="flex min-w-0 items-center gap-sm">
+          <span
+            aria-hidden
+            style={{ backgroundColor: color }}
+            className="h-2.5 w-2.5 shrink-0 rounded-full"
+          />
+          <span className="truncate text-body font-semibold text-gray-darkest">
+            {titulo}
+          </span>
+        </span>
+        <Cifra valor={resumen?.llegadas} label="llegaron" />
+        <Cifra valor={resumen?.resoluciones} label="resueltas" />
+        <Cifra valor={resumen?.abiertas} label="abiertas" />
+        <ArrowUpRightIcon className="h-4 w-4 justify-self-end text-gray-default transition-transform duration-200 group-hover:rotate-45" />
+      </button>
+    </li>
   )
 }
 
@@ -556,11 +625,11 @@ function Grupos({
   )
 }
 
-function Cifra({ valor, label }: { valor: number; label: string }) {
+function Cifra({ valor, label }: { valor: number | undefined; label: string }) {
   return (
     <span className="flex flex-col items-end">
       <span className="text-body font-semibold text-gray-darkest tabular-nums">
-        {valor}
+        {valor ?? '—'}
       </span>
       <span className="text-caption text-gray-medium">{label}</span>
     </span>

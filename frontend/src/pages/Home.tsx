@@ -16,7 +16,7 @@ import Panel from '../components/Panel'
 import StatCard from '../components/StatCard'
 import Tabs from '../components/Tabs'
 import {
-  esExcluida,
+  cuentaComoError,
   estadoLabels,
   estadoTagByEstado,
 } from '../constants/estados'
@@ -24,6 +24,7 @@ import { estiloDe } from '../constants/trazabilidad'
 import {
   prepararBandeja,
   type BandejaFilters,
+  type VistaBandeja,
 } from '../hooks/useBandejaErrores'
 import { useHomeData } from '../hooks/useHomeData'
 import { colors } from '../styles'
@@ -69,14 +70,18 @@ function Home({
   const semana = data?.semana
 
   /** Abre la bandeja ya filtrada por lo que se tocó. */
-  function irABandeja(filtros: Partial<BandejaFilters> = {}) {
-    prepararBandeja(filtros)
+  function irABandeja(
+    filtros: Partial<BandejaFilters> = {},
+    vista?: VistaBandeja,
+  ) {
+    prepararBandeja(filtros, vista)
     onNavigate('bandeja')
   }
 
-  // Los excluidos (status X) no son errores a resolver: no suman acá.
+  // Las excluidas (X) y las diferencias (D) no son errores a resolver: no
+  // suman acá.
   const reales = useMemo(
-    () => (data?.abiertos ?? []).filter((e) => !esExcluida(e)),
+    () => (data?.abiertos ?? []).filter(cuentaComoError),
     [data],
   )
   const porEstado = ESTADOS_ABIERTOS.map((item) => ({
@@ -183,6 +188,17 @@ function Home({
                 >
                   <UserIcon className="h-4 w-4" />
                   Repartir los sin responsable
+                </button>
+              )}
+              {stats && stats.diferenciasAbiertas > 0 && (
+                <button
+                  type="button"
+                  onClick={() => irABandeja({}, 'diferencias')}
+                  className="inline-flex cursor-pointer items-center gap-xs rounded-full bg-white/10 px-lg py-sm text-body font-semibold text-white ring-1 ring-white/20 transition-colors hover:bg-white/20"
+                >
+                  {stats.diferenciasAbiertas === 1
+                    ? '1 diferencia para revisar'
+                    : `${stats.diferenciasAbiertas} diferencias para revisar`}
                 </button>
               )}
             </div>

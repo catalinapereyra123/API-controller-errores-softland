@@ -9,8 +9,16 @@ import type {
   Objetivo,
   Prisma,
 } from '../../generated/prisma/client';
-import { IndicadorObjetivo, TipoObjetivo } from '../../generated/prisma/client';
-import { ESTADOS_ABIERTOS, MODULO_LABEL } from '../errores/errores.mapper';
+import {
+  ClaseMetrica,
+  IndicadorObjetivo,
+  TipoObjetivo,
+} from '../../generated/prisma/client';
+import {
+  ESTADOS_ABIERTOS,
+  MODULO_LABEL,
+  STATUS_FUERA_DE_CONTADORES,
+} from '../errores/errores.mapper';
 import { PrismaService } from '../prisma/prisma.service';
 import { estadoDe, progreso, valorDePeriodo, ventanas } from './calculo';
 import {
@@ -44,12 +52,14 @@ export class ObjetivosService {
     });
 
     // Una sola consulta de hitos para todos: desde la ventana anterior del
-    // período más largo hasta ahora.
+    // período más largo hasta ahora. Las metas se miden con los errores: los
+    // hitos de diferencias (D) y excluidas (X) no cuentan.
     const masLargo = Math.max(7, ...objetivos.map((o) => o.periodoDias));
     const [eventos, empresas] = await Promise.all([
       this.prisma.eventoMetrica.findMany({
         where: {
           createdAt: { gte: ventanas(masLargo, ahora).anterior.desde },
+          clase: ClaseMetrica.ERROR,
         },
         orderBy: { createdAt: 'asc' },
       }),
@@ -295,7 +305,7 @@ export class ObjetivosService {
     return this.prisma.transaccionError.count({
       where: {
         estadoApp: { in: ESTADOS_ABIERTOS },
-        statusSoftland: { not: 'X' },
+        statusSoftland: { notIn: STATUS_FUERA_DE_CONTADORES },
         ...(o.modulo ? { modulo: o.modulo } : {}),
         ...(o.empresaCodigo ? { empresaCodigo: o.empresaCodigo } : {}),
         ...(o.indicador === IndicadorObjetivo.SIN_RESPONSABLE

@@ -896,6 +896,16 @@ describe('ErroresService — DESCARTADO', () => {
     expect(repo.intentos).toHaveLength(0);
   });
 
+  it('una diferencia (status D) no se puede marcar como corregida', async () => {
+    await service.sync([registro({ statusSoftland: 'D' })]);
+
+    await expect(service.solicitarReproceso('t1', {})).rejects.toThrow(
+      /diferencias/i,
+    );
+    expect(repo.transacciones[0].estadoApp).toBe('ERROR');
+    expect(repo.intentos).toHaveLength(0);
+  });
+
   it('reabrirlo deja el evento "Reabierto"', async () => {
     await service.sync([registro()]);
     await service.cambiarEstado('t1', { estado: 'DESCARTADO' });
@@ -1365,10 +1375,16 @@ describe('ErroresService — historial y mi espacio', () => {
   });
 });
 
-describe('ErroresService.dashboard — status X', () => {
-  it('no cuenta los X como errores abiertos y los informa aparte', async () => {
+describe('ErroresService.dashboard — status X y D', () => {
+  it('no cuenta los X ni las D como errores abiertos y los informa aparte', async () => {
     const contar = jest.fn((where: { statusSoftland?: unknown }) =>
-      Promise.resolve(where.statusSoftland === 'X' ? 13 : 19),
+      Promise.resolve(
+        where.statusSoftland === 'X'
+          ? 13
+          : where.statusSoftland === 'D'
+            ? 6
+            : 19,
+      ),
     );
     const repo = {
       contarPorEstado: jest.fn().mockResolvedValue([]),
@@ -1388,12 +1404,67 @@ describe('ErroresService.dashboard — status X', () => {
     expect(res.erroresAbiertos).toBe(19);
     expect(res.sinResponsable).toBe(19);
     expect(res.excluidasAbiertas).toBe(13);
+    expect(res.diferenciasAbiertas).toBe(6);
     expect(contar).toHaveBeenCalledWith(
       expect.objectContaining({
-        statusSoftland: { not: 'X' },
+        statusSoftland: { notIn: ['X', 'D'] },
         responsableId: null,
       }),
     );
+  });
+});
+
+describe('ErroresService.metricas — D y X aparte', () => {
+  it('mide el rendimiento con los errores e informa las D y las X por separado', async () => {
+    const hito = (tipo: string, clase: string) => ({
+      id: `${tipo}-${clase}`,
+      tipo,
+      clase,
+      transaccionId: 't1',
+      empresaCodigo: 'AMCARG',
+      modulo: 'COMPRAS',
+      usuarioId: null,
+      usuarioNombre: null,
+      origenCierre: null,
+      minutosDesdeDeteccion: 30,
+      createdAt: new Date(),
+    });
+    const repo = {
+      metricasEntre: jest
+        .fn()
+        .mockResolvedValueOnce([
+          hito('LLEGADA', 'ERROR'),
+          hito('RESOLUCION', 'ERROR'),
+          hito('LLEGADA', 'DIFERENCIA'),
+          hito('RESOLUCION', 'EXCLUIDA'),
+        ])
+        .mockResolvedValueOnce([]),
+      listarEmpresas: jest.fn().mockResolvedValue([]),
+      contar: jest.fn((where: { statusSoftland?: unknown }) =>
+        Promise.resolve(
+          where.statusSoftland === 'D'
+            ? 4
+            : where.statusSoftland === 'X'
+              ? 2
+              : 10,
+        ),
+      ),
+    };
+    const moduleRef = await Test.createTestingModule({
+      providers: [
+        ErroresService,
+        { provide: ErroresRepository, useValue: repo },
+      ],
+    }).compile();
+
+    const res = await moduleRef.get(ErroresService).metricas(7);
+
+    expect(res.totales.llegadas).toBe(1);
+    expect(res.totales.resoluciones).toBe(1);
+    expect(res.aparte).toEqual({
+      diferencias: { llegadas: 1, resoluciones: 0, abiertas: 4 },
+      excluidas: { llegadas: 0, resoluciones: 1, abiertas: 2 },
+    });
   });
 });
 
@@ -1428,6 +1499,20 @@ describe('ErroresService — hitos de métricas', () => {
       empresaCodigo: 'AMCARG',
       modulo: 'COMPRAS',
     });
+  });
+
+  it('la clase del hito sale del status: E error, D diferencia, X excluida', async () => {
+    await service.sync([
+      registro({ identi: 'LIQ1', statusSoftland: 'E' }),
+      registro({ identi: 'LIQ2', statusSoftland: 'D' }),
+      registro({ identi: 'LIQ3', statusSoftland: 'X' }),
+    ]);
+
+    expect(repo.metricas.map((m) => m.clase)).toEqual([
+      'ERROR',
+      'DIFERENCIA',
+      'EXCLUIDA',
+    ]);
   });
 
   it('asignar deja una ASIGNACION a nombre del responsable, no del autor', async () => {

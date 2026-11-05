@@ -15,10 +15,12 @@ import {
   SendIcon,
 } from '../components/icons'
 import AppLayout from '../components/AppLayout'
+import { DiferenciaTag } from '../components/Tag'
 import Tabs, { type TabItem } from '../components/Tabs'
 import Timeline from '../components/Timeline'
 import {
   ESTADOS_CERRADOS,
+  esDiferencia,
   estadoLabels,
   estadoTagByEstado,
 } from '../constants/estados'
@@ -188,7 +190,14 @@ function ErrorDetail({
   }
 
   const detalle = data?.detalle
-  const EstadoTag = detalle ? estadoTagByEstado[detalle.estado] : null
+  // Una diferencia (D) se muestra en naranja, no como un error en rojo.
+  const diferencia = detalle ? esDiferencia(detalle) : false
+  const EstadoTag = detalle
+    ? diferencia
+      ? DiferenciaTag
+      : estadoTagByEstado[detalle.estado]
+    : null
+  const tonoMensaje = diferencia ? colors.label.orange : colors.label.red
   const responsable = data?.usuarios.find(
     (usuario) => usuario.id === detalle?.responsableId,
   )
@@ -426,18 +435,20 @@ function ErrorDetail({
                 {/* Columna principal */}
                 <div className="flex flex-col gap-lg">
                   <Card
-                    backgroundColor={colors.label.red.background}
+                    backgroundColor={tonoMensaje.background}
                     shadow={false}
                     radiusSize="lg"
                     style={{
-                      borderLeft: `4px solid ${colors.label.red.outline}`,
+                      borderLeft: `4px solid ${tonoMensaje.outline}`,
                     }}
                   >
                     <div className="flex gap-sm">
                       <span
                         style={{
                           color: colors.gray.white,
-                          backgroundColor: colors.status.error,
+                          backgroundColor: diferencia
+                            ? colors.status.warning
+                            : colors.status.error,
                         }}
                         className="mt-xxs flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-caption font-semibold"
                       >
@@ -448,7 +459,7 @@ function ErrorDetail({
                           style={{
                             ...textStyles.overline,
                             fontWeight: fontWeight.semibold,
-                            color: colors.label.red.text,
+                            color: tonoMensaje.text,
                           }}
                           className="uppercase"
                         >
@@ -772,6 +783,7 @@ function ErrorDetail({
 
                   <ErrorActionsCard
                     estado={detalle.estado}
+                    diferencia={detalle.statusSoftland === 'D'}
                     disabled={saving}
                     onMarkAsFixed={() => void reprocesar()}
                     onConsultarResultado={() => void handleConsultarResultado()}

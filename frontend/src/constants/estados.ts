@@ -54,3 +54,23 @@ export function esExcluida(
     error.statusSoftland === 'X' && !ESTADOS_CERRADOS.includes(error.estado)
   )
 }
+
+/**
+ * Status D de Softland: diferencia o inconsistencia (importes, impuestos). Se
+ * mira aparte y no suma en los contadores; no se reprocesa desde la app porque
+ * el flujo de reproceso no pasa las D a N.
+ */
+export function esDiferencia(
+  error: Pick<ErrorTransaccion, 'statusSoftland' | 'estado'>,
+): boolean {
+  return (
+    error.statusSoftland === 'D' && !ESTADOS_CERRADOS.includes(error.estado)
+  )
+}
+
+/** Lo que cuenta como error a resolver: ni excluida (X) ni diferencia (D). */
+export function cuentaComoError(
+  error: Pick<ErrorTransaccion, 'statusSoftland' | 'estado'>,
+): boolean {
+  return !esExcluida(error) && !esDiferencia(error)
+}
