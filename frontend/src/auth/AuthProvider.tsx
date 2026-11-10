@@ -9,10 +9,16 @@ import {
   getPerfil,
   login as loginRequest,
   registrar as registrarRequest,
+  urlLoginMicrosoft,
   type CredencialesLogin,
   type DatosRegistro,
 } from '../services/auth.service'
 import { AuthContext, type AuthContextValue } from './authContext'
+import {
+  canjearCodigoMicrosoft,
+  errorMicrosoft as errorDeLaVuelta,
+  hayCodigoMicrosoft,
+} from './retornoMicrosoft'
 import type { Usuario } from '../types'
 import {
   alExpirarSesion,
@@ -23,20 +29,42 @@ import {
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [usuario, setUsuario] = useState<Usuario | null>(null)
-  const [cargando, setCargando] = useState(() => leerToken() !== null)
+  const [cargando, setCargando] = useState(
+    () => hayCodigoMicrosoft || leerToken() !== null,
+  )
+  const [errorMicrosoft, setErrorMicrosoft] = useState<string | null>(
+    errorDeLaVuelta,
+  )
 
-  // Al abrir la app con un token guardado se pregunta quién es: si el token
-  // venció, /auth/me devuelve 401 y la sesión se limpia sola.
+  // Al abrir la app: si se vuelve de Microsoft, se canjea el código por la
+  // sesión; si no, con un token guardado se pregunta quién es (si venció,
+  // /auth/me devuelve 401 y la sesión se limpia sola).
   useEffect(() => {
-    if (!leerToken()) return
+    const canje = canjearCodigoMicrosoft()
+    if (!canje && !leerToken()) return
 
     let cancelado = false
-    getPerfil()
+    const pedido = canje
+      ? canje.then((sesion) => {
+          guardarToken(sesion.token)
+          return sesion.usuario
+        })
+      : getPerfil()
+
+    pedido
       .then((perfil) => {
         if (!cancelado) setUsuario(perfil)
       })
-      .catch(() => {
-        if (!cancelado) setUsuario(null)
+      .catch((error: unknown) => {
+        if (cancelado) return
+        setUsuario(null)
+        if (canje) {
+          setErrorMicrosoft(
+            error instanceof Error
+              ? error.message
+              : 'No pudimos iniciar sesión con Microsoft.',
+          )
+        }
       })
       .finally(() => {
         if (!cancelado) setCargando(false)
@@ -70,14 +98,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [iniciarSesion],
   )
 
+  const loginMicrosoft = useCallback(() => {
+    setErrorMicrosoft(null)
+    window.location.assign(urlLoginMicrosoft())
+  }, [])
+
   const salir = useCallback(() => {
     borrarToken()
     setUsuario(null)
   }, [])
 
   const value = useMemo<AuthContextValue>(
-    () => ({ usuario, cargando, login, registrar, salir }),
-    [usuario, cargando, login, registrar, salir],
+    () => ({
+      usuario,
+      cargando,
+      login,
+      registrar,
+      loginMicrosoft,
+      errorMicrosoft,
+      salir,
+    }),
+    [
+      usuario,
+      cargando,
+      login,
+      registrar,
+      loginMicrosoft,
+      errorMicrosoft,
+      salir,
+    ],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

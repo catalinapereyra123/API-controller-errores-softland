@@ -1,11 +1,22 @@
 import { leerToken, notificarSesionExpirada } from '../auth/session'
 
-const API_URL = (
+export const API_URL = (
   import.meta.env.VITE_API_URL ?? 'http://localhost:3000'
 ).replace(/\/$/, '')
 
 /** Rutas que no llevan token ni disparan el "sesión expirada". */
-const RUTAS_PUBLICAS = ['/auth/login', '/auth/registro']
+const RUTAS_PUBLICAS = [
+  '/auth/login',
+  '/auth/registro',
+  '/auth/microsoft/sesion',
+  '/auth/microsoft/config',
+]
+
+/**
+ * La única ruta que usa cookie: el código del login con Microsoft. En local el
+ * front y la API están en puertos distintos, por eso `include`.
+ */
+const RUTAS_CON_COOKIE = ['/auth/microsoft/sesion']
 
 async function request<T>(
   path: string,
@@ -17,6 +28,9 @@ async function request<T>(
 
   const res = await fetch(`${API_URL}${path}`, {
     method,
+    ...(RUTAS_CON_COOKIE.includes(path)
+      ? { credentials: 'include' as const }
+      : {}),
     headers: {
       'Content-Type': 'application/json',
       ...(token ? { Authorization: `Bearer ${token}` } : {}),

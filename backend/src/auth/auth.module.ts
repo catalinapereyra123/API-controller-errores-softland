@@ -3,6 +3,7 @@ import { JwtModule } from '@nestjs/jwt';
 import { AuthController } from './auth.controller';
 import { AuthService, TOKEN_EXPIRA_EN_SEGUNDOS } from './auth.service';
 import { JwtAuthGuard } from './jwt-auth.guard';
+import { MicrosoftTokenService } from './microsoft-token.service';
 import { PasswordService } from './password.service';
 
 const SECRET_DE_DESARROLLO = 'dev-secret-cambiar-en-produccion';
@@ -35,7 +36,12 @@ function resolverSecret(): string {
     }),
   ],
   controllers: [AuthController],
-  providers: [AuthService, PasswordService, JwtAuthGuard],
+  providers: [
+    AuthService,
+    PasswordService,
+    MicrosoftTokenService,
+    JwtAuthGuard,
+  ],
   exports: [AuthService, JwtAuthGuard],
 })
 export class AuthModule {}

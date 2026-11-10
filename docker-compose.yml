@@ -30,6 +30,12 @@ services:
       INGEST_API_KEY: "" # poner una clave cuando n8n pegue de verdad
       N8N_REPROCESO_WEBHOOK_URL: ""
       JWT_SECRET: "dev-secret-cambiar-en-produccion" # firma los tokens de login
+      AZURE_TENANT_ID: ${AZURE_TENANT_ID:-} # SSO con Microsoft (opcional)
+      AZURE_CLIENT_ID: ${AZURE_CLIENT_ID:-}
+      AZURE_CLIENT_SECRET: ${AZURE_CLIENT_SECRET:-}
+      AZURE_REDIRECT_URI: ${AZURE_REDIRECT_URI:-}
+      AZURE_DOMINIOS_PERMITIDOS: ${AZURE_DOMINIOS_PERMITIDOS:-iflow21.com}
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:5173}
     ports:
       - "3000:3000"
     depends_on:

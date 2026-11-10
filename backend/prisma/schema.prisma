@@ -48,11 +48,13 @@ model Empresa {
   transacciones TransaccionError[]
 }
 
-/// Usuarios de la app. Se crean con POST /auth/registro y se autentican con JWT.
+/// Usuarios de la app. Se crean con POST /auth/registro o en el primer ingreso
+/// con Microsoft (GET /auth/microsoft/login) y se autentican con JWT.
 model Usuario {
   id              String             @id @default(cuid())
   email           String             @unique
-  passwordHash    String // scrypt: "salt:hash" en hexa (ver auth/password.service.ts)
+  passwordHash    String? // scrypt: "salt:hash" en hexa (ver auth/password.service.ts). null = sólo entra con Microsoft
+  microsoftOid    String?            @unique // Object ID en Entra ID; se completa en el primer ingreso con Microsoft
   nombre          String
   rol             String             @default("Soporte funcional")
   avatarIniciales String

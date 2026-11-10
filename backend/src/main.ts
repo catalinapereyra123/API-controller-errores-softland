@@ -14,7 +14,13 @@ async function bootstrap() {
   const origins = process.env.CORS_ORIGIN?.split(',')
     .map((o) => o.trim())
     .filter(Boolean);
-  app.enableCors({ origin: origins && origins.length ? origins : true });
+  // credentials: el front manda la cookie del login con Microsoft al pedir la
+  // sesión. Sólo con orígenes explícitos (nunca reflejando cualquier origen).
+  const conOrigenes = Boolean(origins && origins.length);
+  app.enableCors({
+    origin: conOrigenes ? origins : true,
+    credentials: conOrigenes,
+  });
 
   app.useGlobalPipes(
     new ValidationPipe({

@@ -8,6 +8,10 @@ export interface AuthContextValue {
   cargando: boolean
   login: (credenciales: CredencialesLogin) => Promise<void>
   registrar: (datos: DatosRegistro) => Promise<void>
+  /** SSO: lleva el navegador a Microsoft (vuelve solo a la app). */
+  loginMicrosoft: () => void
+  /** Por qué falló el último ingreso con Microsoft, para mostrarlo en el login. */
+  errorMicrosoft: string | null
   salir: () => void
 }
 

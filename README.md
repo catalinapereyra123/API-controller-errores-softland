@@ -51,3 +51,46 @@ npx prisma migrate dev --name <nombre>   # contra la DB del compose en :5433
 ```
 
 y cambiar el `CMD` del `backend/Dockerfile` a `prisma migrate deploy`.
+
+## Ingreso con Microsoft (SSO)
+
+Con el SSO configurado el login muestra **sólo** "Ingresar con Microsoft"
+(cuenta de Outlook corporativo, Microsoft Entra ID) y el backend corta el login
+con contraseña y el registro. Sin las variables de Azure (local) queda email y
+contraseña.
+
+Flujo (app **Web** de Azure, con client secret; el secret nunca sale del backend):
+
+1. El botón navega a `GET /auth/microsoft/login`: el backend deja una cookie
+   con `state`, `nonce` y el verificador PKCE y redirige a Microsoft.
+2. Microsoft vuelve a `GET /auth/microsoft/callback` (la Redirect URI). El
+   backend chequea el `state` contra la cookie, canjea el `code` con el secret,
+   valida el ID token (firma, audiencia, tenant, vencimiento, nonce) y busca o
+   crea al usuario (por Object ID; la primera vez lo vincula por email).
+3. Redirige al front con `?ms=<código de un solo uso>` (vive 1 minuto).
+4. El front lo canjea en `POST /auth/microsoft/sesion` por la sesión de
+   siempre (nuestro JWT). Si algo falla vuelve con `?ms_error=<mensaje>`.
+
+### Variables (backend)
+
+| Variable | De dónde sale en Azure (App registration) |
+| --- | --- |
+| `AZURE_TENANT_ID` | Overview → **Directory (tenant) ID** |
+| `AZURE_CLIENT_ID` | Overview → **Application (client) ID** |
+| `AZURE_CLIENT_SECRET` | Certificates & secrets → columna **Value** (no el *Secret ID*). Es secreto. |
+| `AZURE_REDIRECT_URI` | Authentication → la Redirect URI, idéntica. Prod: `https://iris.iflow21.com/api/auth/microsoft/callback` |
+| `FRONTEND_URL` | Sólo en local (`http://localhost:5173`). En prod se usa el dominio de la Redirect URI. |
+
+En Coolify van en las Environment Variables del recurso (el compose ya las
+pasa al backend); después, redeploy. El front no necesita nada.
+
+El secret **vence** (Azure lo crea con fecha de expiración): cuando venza, el
+canje falla con `AADSTS7000215` en los logs del backend; hay que generar uno
+nuevo y reemplazar `AZURE_CLIENT_SECRET`.
+
+Para probar en local hay que agregar en Azure la Redirect URI
+`http://localhost:3000/auth/microsoft/callback`.
+
+Opcional: para que no entre cualquier persona de la empresa, en
+**Enterprise applications** → la app → **Properties** poner *Assignment
+required* en **Yes** y en **Users and groups** asignar a quienes pueden usarla.
