@@ -379,6 +379,28 @@ describe('SyncCaePipe', () => {
     expect(res.empresasConsultadas).toEqual(['IFLOW', 'FLETCO']);
   });
 
+  it('acepta el JSON armado por FOR JSON como texto, solo o dentro de un campo', async () => {
+    const json = JSON.stringify({
+      empresasConsultadas: ['IFLOW'],
+      comprobantes: [{ empresa: 'IFLOW', codfor: 'FE0019', nrofor: 31 }],
+    });
+
+    for (const body of [json, { body: json }]) {
+      const res = await pipe.transform(body, meta);
+      expect(res.parcial).toBe(false);
+      expect(res.comprobantes[0]).toMatchObject({
+        codfor: 'FE0019',
+        nrofor: '31',
+      });
+    }
+  });
+
+  it('un texto que no es JSON se rechaza con un mensaje claro', async () => {
+    await expect(pipe.transform({ body: '{roto' }, meta)).rejects.toThrow(
+      /no es un JSON válido/,
+    );
+  });
+
   it('rechaza un comprobante sin código', async () => {
     await expect(
       pipe.transform({ empresa: 'IFLOW', nrofor: 1 }, meta),

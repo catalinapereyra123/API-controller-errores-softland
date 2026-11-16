@@ -3,8 +3,11 @@ import express, { type RequestHandler } from 'express';
 
 const logger = new Logger('JsonTolerante');
 
-/** Mismo límite que el parser JSON que Nest registra por defecto. */
-const LIMITE_BODY = '100kb';
+/**
+ * El default de Nest es 100kb. El workflow de Sin CAE manda en una sola
+ * llamada los comprobantes de todas las bases (unos cientos de filas).
+ */
+const LIMITE_BODY = '2mb';
 
 const ESCAPE_DE_CONTROL: Record<string, string> = {
   '\n': '\\n',
