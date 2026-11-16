@@ -55,6 +55,21 @@ export class ErroresController {
     return this.service.prioritarios();
   }
 
+  /**
+   * Pantalla Sin CAE: comprobantes sin CAE con su diagnóstico e indicadores.
+   * GET /sin-cae?soloAbiertos=false trae también los cerrados.
+   */
+  @Get('sin-cae')
+  sinCae(@Query('soloAbiertos') soloAbiertos?: string) {
+    return this.service.sinCae(soloAbiertos !== 'false');
+  }
+
+  /** Contador del menú. GET /sin-cae/resumen */
+  @Get('sin-cae/resumen')
+  resumenSinCae() {
+    return this.service.resumenSinCae();
+  }
+
   /** Detalle de un error (incluye observaciones y trazabilidad). */
   @Get('errores/:id')
   detalle(@Param('id') id: string) {

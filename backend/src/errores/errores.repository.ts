@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import type { Modulo, Prisma } from '../../generated/prisma/client';
+import { TipoTransaccion } from '../../generated/prisma/client';
 import {
   ESTADOS_ABIERTOS,
   ESTADOS_VERIFICABLES,
@@ -8,6 +9,14 @@ import {
 } from './errores.mapper';
 
 type Db = PrismaService | Prisma.TransactionClient;
+
+/**
+ * Todo lo de la bandeja de errores (sync, contadores, verificación, historial)
+ * mira sólo los errores de integración: los comprobantes sin CAE tienen sus
+ * propios métodos al final.
+ */
+const INTEGRACION = { tipo: TipoTransaccion.INTEGRACION };
+const SIN_CAE = { tipo: TipoTransaccion.SIN_CAE };
 
 /**
  * Acceso a datos de la bandeja de errores. Todo lo que toca la base pasa
@@ -39,7 +48,7 @@ export class ErroresRepository {
   /** Marca como "no vista" toda transacción de las empresas indicadas. */
   marcarNoPresentes(empresaCodigos: string[], tx: Prisma.TransactionClient) {
     return tx.transaccionError.updateMany({
-      where: { empresaCodigo: { in: empresaCodigos } },
+      where: { empresaCodigo: { in: empresaCodigos }, ...INTEGRACION },
       data: { presenteEnUltimaSync: false },
     });
   }
@@ -51,7 +60,14 @@ export class ErroresRepository {
     db: Db = this.prisma,
   ) {
     return db.transaccionError.findUnique({
-      where: { origenUnico: { empresaCodigo, modulo, identi } },
+      where: {
+        origenUnico: {
+          empresaCodigo,
+          tipo: TipoTransaccion.INTEGRACION,
+          modulo,
+          identi,
+        },
+      },
     });
   }
 
@@ -125,6 +141,7 @@ export class ErroresRepository {
   contarDesaparecidos(empresaCodigos: string[], tx: Prisma.TransactionClient) {
     return tx.transaccionError.count({
       where: {
+        ...INTEGRACION,
         empresaCodigo: { in: empresaCodigos },
         presenteEnUltimaSync: false,
         estadoApp: { in: ESTADOS_ABIERTOS.filter((e) => e !== 'REPROCESANDO') },
@@ -142,6 +159,7 @@ export class ErroresRepository {
   ) {
     return tx.transaccionError.findMany({
       where: {
+        ...INTEGRACION,
         empresaCodigo: { in: empresaCodigos },
         estadoApp: 'REPROCESANDO',
         presenteEnUltimaSync: false,
@@ -163,7 +181,7 @@ export class ErroresRepository {
    */
   listarParaVerificar(limite?: number) {
     return this.prisma.transaccionError.findMany({
-      where: { estadoApp: { in: ESTADOS_VERIFICABLES } },
+      where: { estadoApp: { in: ESTADOS_VERIFICABLES }, ...INTEGRACION },
       select: {
         id: true,
         empresaCodigo: true,
@@ -193,7 +211,7 @@ export class ErroresRepository {
 
   listar(where: Prisma.TransaccionErrorWhereInput) {
     return this.prisma.transaccionError.findMany({
-      where,
+      where: { ...where, ...INTEGRACION },
       include: { responsable: true, empresa: true },
       orderBy: { fechaDeteccion: 'desc' },
     });
@@ -220,7 +238,10 @@ export class ErroresRepository {
       { createdAt: 'asc' },
     ],
   ) {
-    return this.prisma.transaccionError.findFirst({ where, orderBy });
+    return this.prisma.transaccionError.findFirst({
+      where: { ...where, ...INTEGRACION },
+      orderBy,
+    });
   }
 
   /**
@@ -232,6 +253,7 @@ export class ErroresRepository {
     const desde = new Date(Date.now() - horas * 60 * 60 * 1000);
     return this.prisma.transaccionError.findMany({
       where: {
+        ...INTEGRACION,
         estadoApp: { in: ESTADOS_ABIERTOS },
         // Los X (excluidos del proceso) y las D (diferencias) no requieren atención.
         statusSoftland: { notIn: STATUS_FUERA_DE_CONTADORES },
@@ -277,6 +299,7 @@ export class ErroresRepository {
     return this.prisma.transaccionError.findMany({
       where: {
         ...where,
+        ...INTEGRACION,
         OR: [
           { estadoApp: 'RESUELTO', fechaResolucion: { gte: fecha } },
           { fechaCorreccion: { gte: fecha } },
@@ -316,25 +339,84 @@ export class ErroresRepository {
   contarPorEstado(where: Prisma.TransaccionErrorWhereInput = {}) {
     return this.prisma.transaccionError.groupBy({
       by: ['estadoApp'],
-      where,
+      where: { ...where, ...INTEGRACION },
       _count: { _all: true },
     });
   }
 
   contar(where: Prisma.TransaccionErrorWhereInput) {
-    return this.prisma.transaccionError.count({ where });
+    return this.prisma.transaccionError.count({
+      where: { ...where, ...INTEGRACION },
+    });
   }
 
   resueltosDesde(fecha: Date) {
     return this.prisma.transaccionError.findMany({
-      where: { estadoApp: 'RESUELTO', fechaResolucion: { gte: fecha } },
+      where: {
+        ...INTEGRACION,
+        estadoApp: 'RESUELTO',
+        fechaResolucion: { gte: fecha },
+      },
       select: { fechaDeteccion: true, fechaResolucion: true },
+    });
+  }
+
+  // ---------- Sin CAE ----------
+
+  /** Crea la empresa si no existe; el nombre sólo se pisa si viene. */
+  asegurarEmpresa(codigo: string, nombre: string | null, db: Db = this.prisma) {
+    return db.empresa.upsert({
+      where: { codigo },
+      create: { codigo, nombre: nombre ?? codigo },
+      update: nombre ? { nombre } : {},
+    });
+  }
+
+  buscarSinCae(empresaCodigo: string, identi: string, db: Db = this.prisma) {
+    return db.transaccionError.findUnique({
+      where: {
+        origenUnico: {
+          empresaCodigo,
+          tipo: TipoTransaccion.SIN_CAE,
+          modulo: 'FACTURACION',
+          identi,
+        },
+      },
+    });
+  }
+
+  /** Antes de una foto completa: lo que no vuelva a llegar queda "no visto". */
+  marcarSinCaeNoPresentes(
+    empresaCodigos: string[],
+    tx: Prisma.TransactionClient,
+  ) {
+    return tx.transaccionError.updateMany({
+      where: { empresaCodigo: { in: empresaCodigos }, ...SIN_CAE },
+      data: { presenteEnUltimaSync: false },
+    });
+  }
+
+  listarSinCae(where: Prisma.TransaccionErrorWhereInput = {}) {
+    return this.prisma.transaccionError.findMany({
+      where: { ...where, ...SIN_CAE },
+      include: { responsable: true, empresa: true },
+      orderBy: { fechaDeteccion: 'desc' },
+    });
+  }
+
+  contarSinCae(where: Prisma.TransaccionErrorWhereInput = {}) {
+    return this.prisma.transaccionError.count({
+      where: { ...where, ...SIN_CAE },
     });
   }
 
   resueltosParaPromedio() {
     return this.prisma.transaccionError.findMany({
-      where: { estadoApp: 'RESUELTO', fechaResolucion: { not: null } },
+      where: {
+        ...INTEGRACION,
+        estadoApp: 'RESUELTO',
+        fechaResolucion: { not: null },
+      },
       select: { fechaDeteccion: true, fechaResolucion: true },
     });
   }

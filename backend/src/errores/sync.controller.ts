@@ -11,10 +11,12 @@ import {
 } from '@nestjs/common';
 import { ApiKeyGuard } from '../common/api-key.guard';
 import { ResultadoReprocesoDto } from './dto/resultado-reproceso.dto';
+import type { SyncCaeSolicitud } from './dto/sync-cae.dto';
 import { SyncErrorDto } from './dto/sync-error.dto';
 import { SyncRequestDto } from './dto/sync-request.dto';
 import { VerificacionDto } from './dto/verificacion.dto';
 import { ErroresService } from './errores.service';
+import { SyncCaePipe } from './pipes/sync-cae.pipe';
 import { SyncRequestPipe } from './pipes/sync-request.pipe';
 
 /**
@@ -107,6 +109,20 @@ export class SyncController {
   @HttpCode(200)
   sync(@Body(SyncRequestPipe) request: SyncRequestDto) {
     return this.service.sync(request.errores, request.empresasConsultadas);
+  }
+
+  /**
+   * Workflow Sin CAE: comprobantes de VTRMVH sin CAE (y los recién
+   * autorizados, para cerrarlos). Ver SyncCaePipe por los formatos.
+   */
+  @Post('sync-cae')
+  @HttpCode(200)
+  syncCae(@Body(SyncCaePipe) request: SyncCaeSolicitud) {
+    return this.service.syncCae(
+      request.comprobantes,
+      request.empresasConsultadas,
+      { parcial: request.parcial },
+    );
   }
 
   @Post('resultado-reproceso')

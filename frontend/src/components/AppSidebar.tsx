@@ -1,6 +1,7 @@
 import iflowGlobo from '../assets/iflow-globo.png'
 import { useAuth } from '../auth/useAuth'
 import { useResumenBandeja } from '../hooks/useResumenBandeja'
+import { useResumenSinCae } from '../hooks/useResumenSinCae'
 import { colors } from '../styles'
 import { ArrowUpRightIcon } from './icons'
 import Sidebar, { type SidebarItemId, type SidebarNavItem } from './Sidebar'
@@ -26,6 +27,7 @@ function AppSidebar({
 }: AppSidebarProps) {
   const { usuario, salir } = useAuth()
   const stats = useResumenBandeja()
+  const sinCae = useResumenSinCae()
 
   return (
     <Sidebar
@@ -47,7 +49,10 @@ function AppSidebar({
       itemActiveBackground={colors.primary.default}
       activeItem={activeItem}
       onItemSelect={onItemSelect}
-      badges={stats ? { bandeja: stats.sinResponsable } : undefined}
+      badges={{
+        ...(stats ? { bandeja: stats.sinResponsable } : {}),
+        ...(sinCae ? { 'sin-cae': sinCae.abiertos } : {}),
+      }}
       destacado={
         stats && (
           <TarjetaPendientes

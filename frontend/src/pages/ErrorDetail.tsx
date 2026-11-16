@@ -35,7 +35,15 @@ import {
   spacing,
   textStyles,
 } from '../styles'
-import { ESTADOS_MANUALES, type AppPage, type ErrorEstado } from '../types'
+import { CLASE_CAE_LABEL } from '../constants/sinCae'
+import DiagnosticosSinCae from '../components/DiagnosticosSinCae'
+import {
+  ESTADOS_MANUALES,
+  type AppPage,
+  type DatosSinCae,
+  type ErrorEstado,
+  type ErrorTransaccion,
+} from '../types'
 import {
   formatDate,
   formatDetectedAt,
@@ -115,9 +123,89 @@ function StatusSoftland({ status }: { status: string }) {
   )
 }
 
+/** "Datos de la transacción" de un comprobante sin CAE. */
+function DatosComprobante({
+  detalle,
+  sinCae,
+}: {
+  detalle: ErrorTransaccion
+  sinCae: DatosSinCae
+}) {
+  const ultimoAutorizado = sinCae.ultimoAutorizadoNro
+    ? `${sinCae.ultimoAutorizadoNro}${sinCae.ultimoAutorizadoFecha ? `, del ${formatDate(sinCae.ultimoAutorizadoFecha)}` : ''}`
+    : '—'
+
+  return (
+    <Card>
+      <div className="flex items-center justify-between gap-md">
+        <span style={{ ...textStyles.h3, color: colors.gray.darkest }}>
+          Datos del comprobante
+        </span>
+        <span
+          style={{
+            ...textStyles.caption,
+            fontFamily: fontFamily.mono.join(', '),
+            fontWeight: fontWeight.semibold,
+            color: colors.gray.default,
+          }}
+        >
+          {detalle.empresaId} · VTRMVH
+        </span>
+      </div>
+
+      <div className="mt-lg grid grid-cols-2 gap-lg @xl:grid-cols-3">
+        <Field label="Comprobante" value={detalle.codigo} mono />
+        <Field
+          label="Clase"
+          value={sinCae.clase ? CLASE_CAE_LABEL[sinCae.clase] : '—'}
+        />
+        <Field
+          label="Fecha del comprobante"
+          value={formatDate(detalle.fechaMovimiento)}
+        />
+        <Field
+          label="Alta en Softland"
+          value={
+            sinCae.fechaAlta
+              ? `${formatDetectedAt(sinCae.fechaAlta)}${sinCae.usuarioAlta ? ` · ${sinCae.usuarioAlta}` : ''}`
+              : '—'
+          }
+        />
+        <Field label="Último autorizado" value={ultimoAutorizado} mono />
+        <Field
+          label="Último envío a ARCA"
+          value={
+            sinCae.clase !== 'FCE'
+              ? 'Softland no lo registra'
+              : sinCae.ultimoEnvioArca
+                ? formatDetectedAt(sinCae.ultimoEnvioArca)
+                : 'No se envió'
+          }
+        />
+        <Field
+          label="Última sincronización"
+          value={formatDetectedAt(detalle.ultimaDeteccion)}
+        />
+        <Field
+          label="¿Sigue en Softland?"
+          value={detalle.presenteEnUltimaSync ? 'Sí' : 'Ya no figura'}
+        />
+        {sinCae.nroCae && <Field label="CAE" value={sinCae.nroCae} mono />}
+        {detalle.fechaResolucion && (
+          <Field
+            label="Obtuvo CAE"
+            value={formatDetectedAt(detalle.fechaResolucion)}
+          />
+        )}
+      </div>
+    </Card>
+  )
+}
+
 const TEXTO_VOLVER: Record<Exclude<AppPage, 'detalle'>, string> = {
   home: 'Volver al inicio',
   bandeja: 'Volver a la bandeja de errores',
+  'sin-cae': 'Volver a Sin CAE',
   metricas: 'Volver a rendimiento',
   objetivos: 'Volver a objetivos',
   historial: 'Volver a mi historial',
@@ -197,7 +285,19 @@ function ErrorDetail({
       ? DiferenciaTag
       : estadoTagByEstado[detalle.estado]
     : null
-  const tonoMensaje = diferencia ? colors.label.orange : colors.label.red
+  // Un comprobante sin CAE: otra sección, otros datos y sin reproceso.
+  const sinCae = detalle?.sinCae ?? null
+  const sinCaeGrave =
+    sinCae?.diagnosticos.some((d) =>
+      ['TRABA_PV', 'FECHA_ANTERIOR', 'RECHAZO_ARCA'].includes(d),
+    ) ?? false
+  const tonoMensaje =
+    diferencia || (sinCae && !sinCaeGrave)
+      ? colors.label.orange
+      : colors.label.red
+  const tabs = sinCae ? TABS.filter((t) => t.id !== 'reprocesos') : TABS
+  // Mientras carga, se guía por desde dónde se abrió.
+  const enSinCae = detalle ? sinCae !== null : volverA === 'sin-cae'
   const responsable = data?.usuarios.find(
     (usuario) => usuario.id === detalle?.responsableId,
   )
@@ -223,11 +323,13 @@ function ErrorDetail({
 
   return (
     <AppLayout
-      activeItem="bandeja"
+      activeItem={enSinCae ? 'sin-cae' : 'bandeja'}
       onNavigate={onNavigate}
       migas={[
         { label: 'Inicio', page: 'home' },
-        { label: 'Bandeja de errores', page: 'bandeja' },
+        enSinCae
+          ? { label: 'Sin CAE', page: 'sin-cae' }
+          : { label: 'Bandeja de errores', page: 'bandeja' },
         { label: detalle?.codigo ?? '…', mono: true },
       ]}
       maxWidth="70rem"
@@ -291,22 +393,43 @@ function ErrorDetail({
             </div>
 
             <InfoStrip
-              items={[
-                { label: 'Empresa', value: detalle.empresaNombre },
-                { label: 'Proceso', value: detalle.modulo },
-                { label: 'Cuenta', value: detalle.cuenta?.trim() || '—' },
-                {
-                  label: 'Detectado',
-                  value: formatDetectedAt(detalle.abiertoDesde),
-                },
-                {
-                  label: 'Tiempo abierto',
-                  value: ESTADOS_CERRADOS.includes(detalle.estado)
-                    ? '—'
-                    : formatElapsedSince(detalle.abiertoDesde),
-                },
-                { label: 'Intentos', value: detalle.intentos },
-              ]}
+              items={
+                sinCae
+                  ? [
+                      { label: 'Empresa', value: detalle.empresaNombre },
+                      {
+                        label: 'Clase',
+                        value: sinCae.clase
+                          ? CLASE_CAE_LABEL[sinCae.clase]
+                          : '—',
+                      },
+                      {
+                        label: 'Fecha',
+                        value: formatDate(detalle.fechaMovimiento),
+                      },
+                      {
+                        label: 'Último autorizado',
+                        value: sinCae.ultimoAutorizadoNro ?? '—',
+                      },
+                      { label: 'Días sin CAE', value: sinCae.diasSinCae },
+                    ]
+                  : [
+                      { label: 'Empresa', value: detalle.empresaNombre },
+                      { label: 'Proceso', value: detalle.modulo },
+                      { label: 'Cuenta', value: detalle.cuenta?.trim() || '—' },
+                      {
+                        label: 'Detectado',
+                        value: formatDetectedAt(detalle.abiertoDesde),
+                      },
+                      {
+                        label: 'Tiempo abierto',
+                        value: ESTADOS_CERRADOS.includes(detalle.estado)
+                          ? '—'
+                          : formatElapsedSince(detalle.abiertoDesde),
+                      },
+                      { label: 'Intentos', value: detalle.intentos },
+                    ]
+              }
             />
 
             <EstadoAviso error={detalle} />
@@ -317,7 +440,7 @@ function ErrorDetail({
                 alineado con la columna lateral y las tarjetas arrancan parejas. */}
             <div className="sticky top-14 z-10 -mx-xs grid items-center gap-sm bg-background-page/85 px-xs py-sm backdrop-blur-md @4xl:grid-cols-[minmax(0,1fr)_20rem] @4xl:gap-lg">
               <Tabs
-                items={TABS}
+                items={tabs}
                 value={tab}
                 onChange={setTab}
                 activeColor={colors.primary.dark}
@@ -325,19 +448,22 @@ function ErrorDetail({
                 dividerColor={colors.background.border}
                 className="justify-self-start"
               />
-              <Button
-                text="Ver posibles estados"
-                color={colors.gray.default}
-                variant="outline"
-                icon={<InfoIcon className="h-4 w-4" />}
-                onClick={() => setEstadosOpen(true)}
-                size={{
-                  ...textStyles.bodySmall,
-                  fontWeight: fontWeight.semibold,
-                  padding: `${spacing.xs} ${spacing.md}`,
-                }}
-                className="justify-self-start"
-              />
+              {/* Los status de Softland son de los errores de integración. */}
+              {!sinCae && (
+                <Button
+                  text="Ver posibles estados"
+                  color={colors.gray.default}
+                  variant="outline"
+                  icon={<InfoIcon className="h-4 w-4" />}
+                  onClick={() => setEstadosOpen(true)}
+                  size={{
+                    ...textStyles.bodySmall,
+                    fontWeight: fontWeight.semibold,
+                    padding: `${spacing.xs} ${spacing.md}`,
+                  }}
+                  className="justify-self-start"
+                />
+              )}
             </div>
 
             {tab === 'trazabilidad' && (
@@ -463,7 +589,11 @@ function ErrorDetail({
                           }}
                           className="uppercase"
                         >
-                          Mensaje de Softland
+                          {!sinCae
+                            ? 'Mensaje de Softland'
+                            : sinCae.mensajeArca
+                              ? 'Respuesta de ARCA'
+                              : 'Por qué no tiene CAE'}
                         </span>
                         <p
                           style={{
@@ -472,95 +602,107 @@ function ErrorDetail({
                             color: colors.gray.darkest,
                           }}
                         >
-                          “{detalle.descripcion}”
+                          {sinCae && !sinCae.mensajeArca
+                            ? detalle.descripcion
+                            : `“${detalle.descripcion}”`}
                         </p>
+                        {sinCae && (
+                          <DiagnosticosSinCae
+                            diagnosticos={sinCae.diagnosticos}
+                            className="mt-xs"
+                          />
+                        )}
                       </div>
                     </div>
                   </Card>
 
-                  <Card>
-                    <div className="flex items-center justify-between gap-md">
-                      <span
-                        style={{
-                          ...textStyles.h3,
-                          color: colors.gray.darkest,
-                        }}
-                      >
-                        Datos de la transacción
-                      </span>
-                      <span
-                        style={{
-                          ...textStyles.caption,
-                          fontFamily: fontFamily.mono.join(', '),
-                          fontWeight: fontWeight.semibold,
-                          color: colors.gray.default,
-                        }}
-                      >
-                        {detalle.empresaId} · {detalle.moduloCodigo}
-                      </span>
-                    </div>
+                  {sinCae ? (
+                    <DatosComprobante detalle={detalle} sinCae={sinCae} />
+                  ) : (
+                    <Card>
+                      <div className="flex items-center justify-between gap-md">
+                        <span
+                          style={{
+                            ...textStyles.h3,
+                            color: colors.gray.darkest,
+                          }}
+                        >
+                          Datos de la transacción
+                        </span>
+                        <span
+                          style={{
+                            ...textStyles.caption,
+                            fontFamily: fontFamily.mono.join(', '),
+                            fontWeight: fontWeight.semibold,
+                            color: colors.gray.default,
+                          }}
+                        >
+                          {detalle.empresaId} · {detalle.moduloCodigo}
+                        </span>
+                      </div>
 
-                    <div className="mt-lg grid grid-cols-2 gap-lg @xl:grid-cols-3">
-                      <Field label="IDENTI" value={detalle.codigo} mono />
-                      <Field
-                        label="Cuenta"
-                        value={detalle.cuenta?.trim() || '—'}
-                        mono
-                      />
-                      <Field
-                        label="Fecha del movimiento"
-                        value={formatDate(detalle.fechaMovimiento)}
-                      />
-                      <Field
-                        label="Status en Softland"
-                        value={
-                          <StatusSoftland status={detalle.statusSoftland} />
-                        }
-                      />
-                      <Field
-                        label="Última sincronización"
-                        value={formatDetectedAt(detalle.ultimaDeteccion)}
-                      />
-                      <Field
-                        label="¿Sigue en el feed?"
-                        value={detalle.presenteEnUltimaSync ? 'Sí' : 'No'}
-                      />
-                      {detalle.corregidoPor && (
+                      <div className="mt-lg grid grid-cols-2 gap-lg @xl:grid-cols-3">
+                        <Field label="IDENTI" value={detalle.codigo} mono />
                         <Field
-                          label="Corregido por"
-                          value={detalle.corregidoPor}
-                        />
-                      )}
-                      {detalle.fechaCorreccion && (
-                        <Field
-                          label="Mandado a reprocesar"
-                          value={formatDetectedAt(detalle.fechaCorreccion)}
-                        />
-                      )}
-                      {detalle.fechaResolucion && (
-                        <Field
-                          label="Resuelto"
-                          value={formatDetectedAt(detalle.fechaResolucion)}
-                        />
-                      )}
-                    </div>
-
-                    {detalle.archivoLog && (
-                      <div
-                        style={{
-                          borderColor: colors.background.border,
-                          borderRadius: radius.lg,
-                        }}
-                        className="mt-lg border p-md"
-                      >
-                        <Field
-                          label="Archivo de log en el servidor"
-                          value={detalle.archivoLog}
+                          label="Cuenta"
+                          value={detalle.cuenta?.trim() || '—'}
                           mono
                         />
+                        <Field
+                          label="Fecha del movimiento"
+                          value={formatDate(detalle.fechaMovimiento)}
+                        />
+                        <Field
+                          label="Status en Softland"
+                          value={
+                            <StatusSoftland status={detalle.statusSoftland} />
+                          }
+                        />
+                        <Field
+                          label="Última sincronización"
+                          value={formatDetectedAt(detalle.ultimaDeteccion)}
+                        />
+                        <Field
+                          label="¿Sigue en el feed?"
+                          value={detalle.presenteEnUltimaSync ? 'Sí' : 'No'}
+                        />
+                        {detalle.corregidoPor && (
+                          <Field
+                            label="Corregido por"
+                            value={detalle.corregidoPor}
+                          />
+                        )}
+                        {detalle.fechaCorreccion && (
+                          <Field
+                            label="Mandado a reprocesar"
+                            value={formatDetectedAt(detalle.fechaCorreccion)}
+                          />
+                        )}
+                        {detalle.fechaResolucion && (
+                          <Field
+                            label="Resuelto"
+                            value={formatDetectedAt(detalle.fechaResolucion)}
+                          />
+                        )}
                       </div>
-                    )}
-                  </Card>
+
+                      {detalle.archivoLog && (
+                        <div
+                          style={{
+                            borderColor: colors.background.border,
+                            borderRadius: radius.lg,
+                          }}
+                          className="mt-lg border p-md"
+                        >
+                          <Field
+                            label="Archivo de log en el servidor"
+                            value={detalle.archivoLog}
+                            mono
+                          />
+                        </div>
+                      )}
+                    </Card>
+                  )}
 
                   <PasosASeguirCard error={detalle} />
 
@@ -784,6 +926,7 @@ function ErrorDetail({
                   <ErrorActionsCard
                     estado={detalle.estado}
                     diferencia={detalle.statusSoftland === 'D'}
+                    sinCae={Boolean(sinCae)}
                     disabled={saving}
                     onMarkAsFixed={() => void reprocesar()}
                     onConsultarResultado={() => void handleConsultarResultado()}

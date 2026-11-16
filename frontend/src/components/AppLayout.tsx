@@ -35,6 +35,7 @@ interface AppLayoutProps {
 const PAGE_POR_ITEM: Record<SidebarItemId, AppPage> = {
   inicio: 'home',
   bandeja: 'bandeja',
+  'sin-cae': 'sin-cae',
   metricas: 'metricas',
   objetivos: 'objetivos',
   historial: 'historial',

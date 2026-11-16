@@ -1,4 +1,4 @@
-import type { ErrorTransaccion } from '../types'
+import type { DatosSinCae, ErrorTransaccion } from '../types'
 import { formatDate } from '../utils/format'
 
 export interface PasoASeguir {
@@ -162,12 +162,102 @@ function revisionGeneral(error: ErrorTransaccion): Recomendacion {
   }
 }
 
+const CIERRE_SOLO =
+  'Cuando el comprobante tenga el CAE, IRIS lo cierra solo: no hace falta marcar nada.'
+
+/**
+ * Pasos para un comprobante sin CAE, según el diagnóstico. La fecha anterior
+ * va primero: mientras no se corrija, reintentar no sirve.
+ */
+function recomendacionSinCae(sinCae: DatosSinCae): Recomendacion {
+  const { diagnosticos } = sinCae
+  if (diagnosticos.includes('FECHA_ANTERIOR')) {
+    return {
+      diagnostico:
+        'La fecha del comprobante es anterior a la del último autorizado',
+      pasos: [
+        {
+          texto: `ARCA no autoriza un comprobante con fecha anterior al último autorizado${sinCae.ultimoAutorizadoNro ? ` (${sinCae.ultimoAutorizadoNro}, del ${formatDate(sinCae.ultimoAutorizadoFecha)})` : ''}.`,
+        },
+        {
+          texto:
+            'Con el OK de contable, cambiá la fecha en Softland a una igual o posterior y pedí el CAE.',
+        },
+        {
+          texto:
+            'No lo anules: ARCA espera este número y el siguiente también quedaría rechazado.',
+        },
+        {
+          texto:
+            'Si entró por la importación de transacciones externas, avisá al origen para que no se repita.',
+        },
+        { texto: CIERRE_SOLO },
+      ],
+    }
+  }
+  if (diagnosticos.includes('RECHAZO_ARCA')) {
+    const tagAuth = /tag auth/i.test(sinCae.mensajeArca ?? '')
+    return {
+      diagnostico: tagAuth
+        ? 'El pedido salió sin autenticación de ARCA'
+        : 'ARCA rechazó el comprobante',
+      pasos: tagAuth
+        ? [
+            { texto: 'Reintentá el CAE desde Softland.' },
+            {
+              texto:
+                'Si se repite, revisá el certificado y el ticket de acceso de factura electrónica.',
+            },
+            { texto: CIERRE_SOLO },
+          ]
+        : [
+            {
+              texto:
+                'Corregí en Softland el dato que indica el mensaje de ARCA.',
+            },
+            { texto: 'Pedí el CAE de nuevo.' },
+            { texto: CIERRE_SOLO },
+          ],
+    }
+  }
+  if (diagnosticos.includes('NO_ENVIADO')) {
+    return {
+      diagnostico: 'No hay registro de que se haya pedido el CAE',
+      pasos: [{ texto: 'Pedí el CAE desde Softland.' }, { texto: CIERRE_SOLO }],
+    }
+  }
+  if (sinCae.clase === 'EXPORTACION') {
+    return {
+      diagnostico: 'Comprobante de exportación sin CAE',
+      pasos: [
+        {
+          texto:
+            'Softland no pide el CAE de exportación: pedilo por la vía que se usa para exportación y cargalo en el comprobante.',
+        },
+        { texto: CIERRE_SOLO },
+      ],
+    }
+  }
+  return {
+    diagnostico: 'Comprobante sin CAE',
+    pasos: [
+      {
+        texto:
+          'Revisá en Softland si se intentó autorizar y con qué resultado: para este tipo de comprobante no queda registro de la respuesta de ARCA.',
+      },
+      { texto: 'Si no se intentó, pedí el CAE.' },
+      { texto: CIERRE_SOLO },
+    ],
+  }
+}
+
 /**
  * Pasos sugeridos para un error: primero por mensaje, después por status de
  * Softland y, si nada encaja, una revisión general. Son heurísticas: para
  * cubrir un caso nuevo, se suma una regla acá.
  */
 export function recomendacionPara(error: ErrorTransaccion): Recomendacion {
+  if (error.sinCae) return recomendacionSinCae(error.sinCae)
   for (const regla of REGLAS_POR_MENSAJE) {
     const recomendacion = regla(error)
     if (recomendacion) return recomendacion

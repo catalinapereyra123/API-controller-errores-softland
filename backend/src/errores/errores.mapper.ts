@@ -7,10 +7,12 @@ import type {
   Usuario,
 } from '../../generated/prisma/client';
 import {
+  ClaseCae,
   ClaseMetrica,
   EstadoApp,
   Modulo,
   OrigenCierre,
+  TipoTransaccion,
 } from '../../generated/prisma/client';
 import type { ErrorCierreDto } from './dto/historial.dto';
 
@@ -171,10 +173,132 @@ export function toErrorTransaccion(t: TransaccionConRelaciones) {
     ultimaVerificacion: t.ultimaVerificacionAt
       ? t.ultimaVerificacionAt.toISOString()
       : null,
+    tipo: t.tipo,
+    sinCae: t.tipo === TipoTransaccion.SIN_CAE ? datosSinCae(t) : null,
   };
 }
 
 export type ErrorTransaccionDto = ReturnType<typeof toErrorTransaccion>;
+
+/** GET /sin-cae: la lista y los indicadores de arriba (sólo abiertos). */
+export interface SinCaeListaDto {
+  items: ErrorTransaccionDto[];
+  indicadores: {
+    total: number;
+    trabanPv: number;
+    masDe2Dias: number;
+    sinAsignar: number;
+  };
+}
+
+// ---------------------------------------------------------------------------
+//  Sin CAE
+// ---------------------------------------------------------------------------
+
+/**
+ * Clase de un comprobante según su CODFOR. La letra del comprobante va
+ * después de FCE/NCE/NDE (FCEA16, NCEE19) o en la segunda posición (FA0011,
+ * FE0019, FAC009). La E es exportación.
+ */
+export function claseCae(codfor: string): ClaseCae {
+  const fce = /^(FCE|NCE|NDE)([A-Z])/.exec(codfor.toUpperCase());
+  if (fce) return fce[2] === 'E' ? ClaseCae.EXPORTACION : ClaseCae.FCE;
+  return codfor.toUpperCase().charAt(1) === 'E'
+    ? ClaseCae.EXPORTACION
+    : ClaseCae.LOCAL;
+}
+
+/** El identi de un sin CAE es "CODFOR NROFOR". */
+export function identiSinCae(codfor: string, nrofor: string): string {
+  return `${codfor.trim()} ${nrofor.trim()}`;
+}
+
+function separarIdenti(identi: string): { codfor: string; nrofor: string } {
+  const espacio = identi.lastIndexOf(' ');
+  return espacio < 0
+    ? { codfor: identi, nrofor: '' }
+    : { codfor: identi.slice(0, espacio), nrofor: identi.slice(espacio + 1) };
+}
+
+export type DiagnosticoSinCae =
+  | 'TRABA_PV'
+  | 'FECHA_ANTERIOR'
+  | 'RECHAZO_ARCA'
+  | 'NO_ENVIADO'
+  | 'SIN_DATOS_ENVIO'
+  | 'YA_NO_FIGURA';
+
+export const DIAGNOSTICO_LABEL: Record<DiagnosticoSinCae, string> = {
+  TRABA_PV: 'Traba el punto de venta',
+  FECHA_ANTERIOR: 'Fecha anterior al último autorizado',
+  RECHAZO_ARCA: 'ARCA lo rechazó',
+  NO_ENVIADO: 'No se envió a ARCA',
+  SIN_DATOS_ENVIO: 'Sin datos del envío',
+  YA_NO_FIGURA: 'Ya no figura en Softland',
+};
+
+const soloDia = (fecha: Date) =>
+  Date.UTC(fecha.getUTCFullYear(), fecha.getUTCMonth(), fecha.getUTCDate());
+
+/**
+ * Lo que IRIS sabe de por qué un comprobante no tiene CAE, comparándolo con
+ * el último autorizado de su CODFOR. Puede haber más de uno.
+ */
+export function diagnosticosSinCae(t: TransaccionError): DiagnosticoSinCae[] {
+  const { nrofor } = separarIdenti(t.identi);
+  const diagnosticos: DiagnosticoSinCae[] = [];
+  const ultimo = Number(t.ultimoAutorizadoNro);
+  if (t.ultimoAutorizadoNro && Number(nrofor) === ultimo + 1) {
+    diagnosticos.push('TRABA_PV');
+  }
+  if (
+    t.fechaMovimiento &&
+    t.ultimoAutorizadoFecha &&
+    soloDia(t.fechaMovimiento) < soloDia(t.ultimoAutorizadoFecha)
+  ) {
+    diagnosticos.push('FECHA_ANTERIOR');
+  }
+  if (t.claseCae === ClaseCae.FCE) {
+    if (t.errorMensaje) diagnosticos.push('RECHAZO_ARCA');
+    else if (!t.ultimoEnvioArca) diagnosticos.push('NO_ENVIADO');
+  } else {
+    diagnosticos.push('SIN_DATOS_ENVIO');
+  }
+  if (!t.presenteEnUltimaSync && !t.nroCae) diagnosticos.push('YA_NO_FIGURA');
+  return diagnosticos;
+}
+
+/** Días desde el alta en Softland (o la detección) hasta hoy o el cierre. */
+function diasSinCae(t: TransaccionError, hoy = new Date()): number {
+  const desde = t.fechaAltaSoftland ?? t.fechaDeteccion;
+  const hasta = t.fechaResolucion ?? hoy;
+  return Math.max(
+    0,
+    Math.floor((hasta.getTime() - desde.getTime()) / (24 * 60 * 60 * 1000)),
+  );
+}
+
+function datosSinCae(t: TransaccionError) {
+  const { codfor, nrofor } = separarIdenti(t.identi);
+  const diagnosticos = diagnosticosSinCae(t);
+  return {
+    codfor,
+    nrofor,
+    clase: t.claseCae,
+    nroCae: t.nroCae,
+    fechaAlta: t.fechaAltaSoftland ? t.fechaAltaSoftland.toISOString() : null,
+    usuarioAlta: t.usuarioAltaSoftland,
+    ultimoEnvioArca: t.ultimoEnvioArca ? t.ultimoEnvioArca.toISOString() : null,
+    mensajeArca: t.errorMensaje,
+    ultimoAutorizadoNro: t.ultimoAutorizadoNro,
+    ultimoAutorizadoFecha: t.ultimoAutorizadoFecha
+      ? t.ultimoAutorizadoFecha.toISOString()
+      : null,
+    diasSinCae: diasSinCae(t),
+    diagnosticos,
+    trabaPv: diagnosticos.includes('TRABA_PV'),
+  };
+}
 
 /**
  * Error del Historial / Mi espacio: `resuelto` si quedó en S desde `desde`;
@@ -217,6 +341,10 @@ export function promedio(valores: number[]): number {
 
 function descripcionDe(t: TransaccionError): string {
   if (t.errorMensaje) return t.errorMensaje;
+  if (t.tipo === TipoTransaccion.SIN_CAE) {
+    const [principal] = diagnosticosSinCae(t);
+    return principal ? DIAGNOSTICO_LABEL[principal] : 'Sin CAE';
+  }
   if (t.statusSoftland === 'X') return 'Transacción excluida del proceso.';
   if (t.statusSoftland === 'D')
     return 'Diferencia o inconsistencia en la transacción.';

@@ -40,6 +40,21 @@ enum OrigenCierre {
   VERIFICACION_AUTOMATICA // se arregló por fuera de la app; lo detectó la verificación
 }
 
+/// Qué se está siguiendo: un error de integración (tablas SAR) o un
+/// comprobante de VTRMVH sin CAE de ARCA. Se ven en pantallas distintas.
+enum TipoTransaccion {
+  INTEGRACION
+  SIN_CAE
+}
+
+/// Clase de un comprobante sin CAE, según su CODFOR. Define qué se sabe de su
+/// envío a ARCA: Softland sólo guarda la respuesta de las FCE (GRTXML).
+enum ClaseCae {
+  FCE
+  LOCAL
+  EXPORTACION
+}
+
 model Empresa {
   codigo        String             @id
   nombre        String
@@ -66,7 +81,8 @@ model Usuario {
 /// Un error de integración. La identidad viene de Softland (empresa+módulo+identi)
 /// pero el histórico funcional (estado, intentos, quién lo corrigió) es de esta DB.
 model TransaccionError {
-  id String @id @default(cuid())
+  id   String          @id @default(cuid())
+  tipo TipoTransaccion @default(INTEGRACION)
 
   // --- Origen (Softland, vía n8n /errores/sync) ---
   empresa         Empresa   @relation(fields: [empresaCodigo], references: [codigo])
@@ -101,6 +117,17 @@ model TransaccionError {
   /// Última vez que se confirmó el status contra Softland, aunque siga en error.
   ultimaVerificacionAt DateTime?
 
+  // --- Sin CAE (tipo SIN_CAE, vía /errores/sync-cae) ---
+  // identi = "CODFOR NROFOR"; fechaMovimiento = fecha del comprobante;
+  // errorMensaje = respuesta de ARCA (sólo FCE).
+  claseCae              ClaseCae?
+  nroCae                String? // se completa cuando el comprobante obtiene CAE
+  fechaAltaSoftland     DateTime? // VTRMVH_FECALT
+  usuarioAltaSoftland   String? // VTRMVH_USERID
+  ultimoEnvioArca       DateTime? // GRTXML_FECALT del último envío (sólo FCE)
+  ultimoAutorizadoNro   String? // último NROFOR con CAE del mismo CODFOR
+  ultimoAutorizadoFecha DateTime?
+
   // --- Fechas / sync ---
   fechaDeteccion       DateTime  @default(now())
   fechaResolucion      DateTime?
@@ -116,10 +143,11 @@ model TransaccionError {
   metricas          EventoMetrica[]
 
   // Clave natural del registro de origen: si vuelve a llegar el mismo
-  // (empresa, módulo, identi) se actualiza en vez de duplicarse.
-  @@unique([empresaCodigo, modulo, identi], name: "origenUnico")
+  // (empresa, tipo, módulo, identi) se actualiza en vez de duplicarse.
+  @@unique([empresaCodigo, tipo, modulo, identi], name: "origenUnico")
   @@index([empresaCodigo, modulo])
   @@index([estadoApp])
+  @@index([tipo, estadoApp])
 }
 
 /// Un intento de reproceso. Queda en esta DB aunque n8n se caiga o cambie.

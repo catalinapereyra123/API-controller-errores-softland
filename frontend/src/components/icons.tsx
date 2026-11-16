@@ -32,6 +32,17 @@ export function InboxIcon(props: SVGProps<SVGSVGElement>) {
   )
 }
 
+/** Comprobante con el borde de abajo cortado (sección Sin CAE). */
+export function ReceiptIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <BaseIcon {...props}>
+      <path d="M6 3h12v18l-3-2-3 2-3-2-3 2V3Z" />
+      <path d="M9 8h6" />
+      <path d="M9 12h6" />
+    </BaseIcon>
+  )
+}
+
 export function HistoryIcon(props: SVGProps<SVGSVGElement>) {
   return (
     <BaseIcon {...props}>

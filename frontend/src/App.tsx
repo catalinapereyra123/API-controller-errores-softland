@@ -10,6 +10,7 @@ import Login from './pages/Login'
 import Metricas from './pages/Metricas'
 import Objetivos from './pages/Objetivos'
 import Registro from './pages/Registro'
+import SinCae from './pages/SinCae'
 import type { AppPage } from './types'
 
 function App() {
@@ -52,6 +53,7 @@ const VISTA_INICIO: Vista = { page: 'home', errorId: null, origen: null }
 const PAGES: AppPage[] = [
   'home',
   'bandeja',
+  'sin-cae',
   'detalle',
   'metricas',
   'objetivos',
@@ -98,6 +100,10 @@ function AppAutenticada() {
 
   if (vista.page === 'bandeja') {
     return <BandejaErrores onNavigate={navegar} onOpenError={abrirDetalle} />
+  }
+
+  if (vista.page === 'sin-cae') {
+    return <SinCae onNavigate={navegar} onOpenError={abrirDetalle} />
   }
 
   if (vista.page === 'detalle') {

@@ -28,6 +28,7 @@ export type ModuloCodigo = 'FACTURACION' | 'COMPRAS' | 'COBRANZAS'
 export type AppPage =
   | 'home'
   | 'bandeja'
+  | 'sin-cae'
   | 'detalle'
   | 'metricas'
   | 'objetivos'
@@ -79,6 +80,60 @@ export interface ErrorTransaccion {
   presenteEnUltimaSync: boolean
   /** Cómo se cerró, si está RESUELTO. */
   origenCierre: 'MANUAL' | 'VERIFICACION_AUTOMATICA' | null
+  /** Error de integración (bandeja) o comprobante sin CAE (sección Sin CAE). */
+  tipo: 'INTEGRACION' | 'SIN_CAE'
+  /** Sólo en los SIN_CAE: el comprobante, su envío a ARCA y el diagnóstico. */
+  sinCae: DatosSinCae | null
+}
+
+/** Clase según el CODFOR: define qué se sabe del envío a ARCA. */
+export type ClaseCae = 'FCE' | 'LOCAL' | 'EXPORTACION'
+
+/** Por qué IRIS cree que un comprobante no tiene CAE (puede haber varios). */
+export type DiagnosticoSinCae =
+  | 'TRABA_PV'
+  | 'FECHA_ANTERIOR'
+  | 'RECHAZO_ARCA'
+  | 'NO_ENVIADO'
+  | 'SIN_DATOS_ENVIO'
+  | 'YA_NO_FIGURA'
+
+export interface DatosSinCae {
+  codfor: string
+  nrofor: string
+  clase: ClaseCae | null
+  /** Con valor cuando ya obtuvo el CAE (y se cerró). */
+  nroCae: string | null
+  /** ISO. Alta del comprobante en Softland. */
+  fechaAlta: string | null
+  usuarioAlta: string | null
+  /** ISO. Último envío a ARCA (sólo FCE). */
+  ultimoEnvioArca: string | null
+  /** Respuesta de ARCA (sólo FCE). */
+  mensajeArca: string | null
+  ultimoAutorizadoNro: string | null
+  /** ISO. */
+  ultimoAutorizadoFecha: string | null
+  diasSinCae: number
+  diagnosticos: DiagnosticoSinCae[]
+  trabaPv: boolean
+}
+
+/** GET /sin-cae */
+export interface SinCaeLista {
+  items: ErrorTransaccion[]
+  indicadores: {
+    total: number
+    trabanPv: number
+    masDe2Dias: number
+    sinAsignar: number
+  }
+}
+
+/** GET /sin-cae/resumen: el contador del menú. */
+export interface ResumenSinCae {
+  abiertos: number
+  trabanPv: number
 }
 
 export interface ErrorObservacion {

@@ -13,6 +13,7 @@ import {
   ClaseMetrica,
   IndicadorObjetivo,
   TipoObjetivo,
+  TipoTransaccion,
 } from '../../generated/prisma/client';
 import {
   ESTADOS_ABIERTOS,
@@ -304,6 +305,7 @@ export class ObjetivosService {
   private fotoBandeja(o: Objetivo): Promise<number> {
     return this.prisma.transaccionError.count({
       where: {
+        tipo: TipoTransaccion.INTEGRACION,
         estadoApp: { in: ESTADOS_ABIERTOS },
         statusSoftland: { notIn: STATUS_FUERA_DE_CONTADORES },
         ...(o.modulo ? { modulo: o.modulo } : {}),

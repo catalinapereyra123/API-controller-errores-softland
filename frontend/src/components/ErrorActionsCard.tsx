@@ -9,6 +9,8 @@ interface ErrorActionsCardProps {
   estado: ErrorEstado
   /** Status D: se mira, no se reprocesa (el flujo no pasa las D a N). */
   diferencia?: boolean
+  /** Comprobante sin CAE: no se reprocesa, se cierra solo al obtener el CAE. */
+  sinCae?: boolean
   /** true mientras se guarda otra acción. */
   disabled?: boolean
   onMarkAsFixed: () => void
@@ -47,6 +49,7 @@ function Nota({ children }: { children: ReactNode }) {
 function ErrorActionsCard({
   estado,
   diferencia = false,
+  sinCae = false,
   disabled,
   onMarkAsFixed,
   onDiscard,
@@ -87,7 +90,20 @@ function ErrorActionsCard({
   return (
     <Card>
       {titulo}
-      {diferencia && !esperando ? (
+      {sinCae ? (
+        <p
+          style={{
+            ...textStyles.bodySmall,
+            color: colors.label.blue.text,
+            backgroundColor: colors.label.blue.background,
+          }}
+          className="mt-md rounded-2xl px-md py-sm"
+        >
+          {estado === 'RESUELTO'
+            ? 'Ya obtuvo el CAE: se cerró solo.'
+            : 'Se arregla en Softland. Cuando el comprobante obtenga el CAE, IRIS lo cierra solo: acá no hay nada que reprocesar.'}
+        </p>
+      ) : diferencia && !esperando ? (
         <p
           style={{
             ...textStyles.bodySmall,
@@ -139,7 +155,7 @@ function ErrorActionsCard({
           {avisoConsulta}
         </p>
       )}
-      {!(diferencia && !esperando) && (
+      {!sinCae && !(diferencia && !esperando) && (
         <Nota>
           {esperando
             ? 'Ya se marcó como corregido. “Consultar nuevo resultado” le pide a Softland el status actual: si ya terminó, pasa a Resuelto (S) o vuelve a “A corregir” (E).'

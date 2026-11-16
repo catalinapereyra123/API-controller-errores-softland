@@ -17,6 +17,7 @@ import {
   Modulo,
   OrigenCierre,
   TipoMetrica,
+  TipoTransaccion,
 } from '../../generated/prisma/client';
 import {
   AsignarDto,
@@ -25,6 +26,7 @@ import {
   SolicitarReprocesoDto,
 } from './dto/mutaciones.dto';
 import { ResultadoReprocesoDto } from './dto/resultado-reproceso.dto';
+import { SyncCaeComprobanteDto, SyncCaeResultadoDto } from './dto/sync-cae.dto';
 import { SyncErrorDto } from './dto/sync-error.dto';
 import { VerificacionDto } from './dto/verificacion.dto';
 import {
@@ -51,8 +53,11 @@ import {
   ESTADOS_MANUALES,
   MODULO_LABEL,
   extractArchivoLog,
+  claseCae,
   claseMetrica,
+  identiSinCae,
   parseModulo,
+  SinCaeListaDto,
   STATUS_FUERA_DE_CONTADORES,
   statusEsError,
   tipoEventoPorEstado,
@@ -130,6 +135,30 @@ function promedioResolucion(cierres: ErrorCierreDto[]): number {
         : [],
     ),
   );
+}
+
+/**
+ * Fecha y hora que manda Studio desde SQL ("2026-10-23 11:35:07.000" o ISO).
+ * Sin zona horaria es hora de Argentina, la del servidor de Softland. null si
+ * no viene o no se entiende.
+ */
+function fechaSql(valor?: string | null): Date | null {
+  if (!valor) return null;
+  const conZona = /([zZ]|[+-]\d{2}:?\d{2})$/.test(valor);
+  const iso = valor.replace(/^(\d{4}-\d{2}-\d{2}) /, '$1T');
+  const fecha = new Date(conZona || !iso.includes('T') ? iso : `${iso}-03:00`);
+  return Number.isNaN(fecha.getTime()) ? null : fecha;
+}
+
+/**
+ * Una fecha sin hora (FCHMOV), guardada a las 12:00 UTC: así se ve el mismo
+ * día en cualquier zona horaria, en vez del día anterior en Argentina.
+ */
+function fechaDia(valor?: string | null): Date | null {
+  const partes = valor ? /^(\d{4})-(\d{2})-(\d{2})/.exec(valor) : null;
+  if (!partes) return null;
+  const [, anio, mes, dia] = partes.map(Number);
+  return new Date(Date.UTC(anio, mes - 1, dia, 12));
 }
 
 function minutosEntre(desde: Date, hasta: Date): number {
@@ -430,6 +459,7 @@ export class ErroresService {
     autorId?: string,
   ) {
     const t = await this.requerir(id);
+    this.rechazarSinCae(t);
     if (t.estadoApp === EstadoApp.DESCARTADO) {
       throw new BadRequestException(
         'El error está descartado: reabrilo antes de marcarlo como corregido.',
@@ -553,6 +583,7 @@ export class ErroresService {
    */
   async consultarResultado(id: string) {
     const t = await this.requerir(id);
+    this.rechazarSinCae(t);
     if (t.estadoApp !== EstadoApp.REPROCESANDO) {
       throw new BadRequestException(
         'Sólo se puede consultar el resultado de un error que se está reprocesando.',
@@ -1552,6 +1583,223 @@ export class ErroresService {
   }
 
   // ==========================================================================
+  //  SIN CAE — comprobantes de VTRMVH sin CAE de ARCA (workflow de Studio)
+  // ==========================================================================
+  /**
+   * Upsert por (empresa, "CODFOR NROFOR"). Un comprobante se cierra sólo
+   * cuando llega con `nroCae`, nunca porque dejó de venir: la consulta de
+   * Studio tiene una ventana de días y un comprobante puede salir de ella sin
+   * haber obtenido el CAE. Si es la foto completa (`parcial` = false), los
+   * abiertos que no vinieron quedan con `presenteEnUltimaSync` = false, que la
+   * pantalla muestra como "Ya no figura en Softland".
+   */
+  async syncCae(
+    comprobantes: SyncCaeComprobanteDto[],
+    empresasConsultadas: string[] = [],
+    { parcial = false }: { parcial?: boolean } = {},
+  ): Promise<SyncCaeResultadoDto> {
+    // El nombre sólo se actualiza si viene: sin él, una empresa que ya existe
+    // (la crea el sync de errores) conserva el suyo en vez de pasar a llamarse
+    // como su código.
+    const empresas = new Map<string, string | null>();
+    for (const c of comprobantes) {
+      empresas.set(c.empresa, c.empresaNombre ?? null);
+    }
+    const empresaCodigos = [
+      ...new Set([
+        ...empresasConsultadas.map((codigo) => codigo.trim()).filter(Boolean),
+        ...empresas.keys(),
+      ]),
+    ];
+
+    let creados = 0;
+    let actualizados = 0;
+    let cerrados = 0;
+    let ignorados = 0;
+
+    await this.repo.transaction(async (tx) => {
+      for (const [codigo, nombre] of empresas) {
+        await this.repo.asegurarEmpresa(codigo, nombre, tx);
+      }
+      if (!parcial) await this.repo.marcarSinCaeNoPresentes(empresaCodigos, tx);
+
+      for (const c of comprobantes) {
+        const ahora = new Date();
+        const identi = identiSinCae(c.codfor, c.nrofor);
+        const existente = await this.repo.buscarSinCae(c.empresa, identi, tx);
+        const datos = {
+          fechaMovimiento: fechaDia(c.fechaComprobante),
+          errorMensaje: c.mensajeArca ?? null,
+          claseCae: claseCae(c.codfor),
+          fechaAltaSoftland: fechaSql(c.fechaAlta),
+          usuarioAltaSoftland: c.usuario ?? null,
+          ultimoEnvioArca: fechaSql(c.ultimoEnvio),
+          ultimoAutorizadoNro: c.ultimoAutorizadoNro ?? null,
+          ultimoAutorizadoFecha: fechaDia(c.ultimoAutorizadoFecha),
+          ultimaDeteccion: ahora,
+          presenteEnUltimaSync: true,
+        };
+
+        if (!existente) {
+          // Ya tiene CAE y IRIS nunca lo vio sin él: no hay nada que seguir.
+          if (c.nroCae) {
+            ignorados++;
+            continue;
+          }
+          const creado = await this.repo.crearTransaccion(
+            {
+              ...datos,
+              tipo: TipoTransaccion.SIN_CAE,
+              empresa: { connect: { codigo: c.empresa } },
+              modulo: Modulo.FACTURACION,
+              moduloOrigen: 'Sin CAE',
+              identi,
+              statusSoftland: 'SIN_CAE',
+              fechaDeteccion: ahora,
+            },
+            tx,
+          );
+          await this.repo.crearEvento(
+            {
+              transaccionId: creado.id,
+              tipo: 'error',
+              titulo: 'Comprobante sin CAE',
+              detalle: c.usuario
+                ? `Cargado en Softland por ${c.usuario}.`
+                : 'Llegó desde Softland sin CAE.',
+            },
+            tx,
+          );
+          creados++;
+          continue;
+        }
+
+        const abierto = ESTADOS_ABIERTOS.includes(existente.estadoApp);
+        if (c.nroCae) {
+          await this.repo.actualizarTransaccion(
+            existente.id,
+            {
+              ...datos,
+              nroCae: c.nroCae,
+              statusSoftland: 'CAE',
+              ...(abierto
+                ? {
+                    estadoApp: EstadoApp.RESUELTO,
+                    fechaResolucion: ahora,
+                    origenCierre: OrigenCierre.VERIFICACION_AUTOMATICA,
+                  }
+                : {}),
+            },
+            tx,
+          );
+          if (abierto) {
+            await this.repo.crearEvento(
+              {
+                transaccionId: existente.id,
+                tipo: 'reproceso',
+                titulo: 'Obtuvo CAE',
+                detalle: `CAE ${c.nroCae}. Se cerró solo.`,
+              },
+              tx,
+            );
+            cerrados++;
+          } else {
+            actualizados++;
+          }
+          continue;
+        }
+
+        // Sigue sin CAE. Si estaba cerrado con CAE, se reabre.
+        const reabrir = existente.estadoApp === EstadoApp.RESUELTO;
+        await this.repo.actualizarTransaccion(
+          existente.id,
+          {
+            ...datos,
+            nroCae: null,
+            statusSoftland: 'SIN_CAE',
+            ...(reabrir
+              ? {
+                  estadoApp: EstadoApp.ERROR,
+                  fechaResolucion: null,
+                  origenCierre: null,
+                }
+              : {}),
+          },
+          tx,
+        );
+        if (reabrir) {
+          await this.repo.crearEvento(
+            {
+              transaccionId: existente.id,
+              tipo: 'error',
+              titulo: 'Volvió a figurar sin CAE',
+              detalle: 'Estaba cerrado y Softland lo muestra otra vez sin CAE.',
+            },
+            tx,
+          );
+        }
+        actualizados++;
+      }
+    });
+
+    const yaNoFiguran = parcial
+      ? 0
+      : await this.repo.contarSinCae({
+          empresaCodigo: { in: empresaCodigos },
+          estadoApp: { in: ESTADOS_ABIERTOS },
+          presenteEnUltimaSync: false,
+        });
+
+    this.logger.log(
+      `Sync sin CAE: ${comprobantes.length} recibidos · ${creados} nuevos · ${actualizados} act. · ${cerrados} cerrados · ${ignorados} ignorados · ${yaNoFiguran} ya no figuran`,
+    );
+
+    return {
+      recibidos: comprobantes.length,
+      creados,
+      actualizados,
+      cerrados,
+      ignorados,
+      yaNoFiguran,
+      procesadoEn: new Date().toISOString(),
+    };
+  }
+
+  /**
+   * Lista de la pantalla Sin CAE: los que traban un punto de venta primero y
+   * después los que llevan más días. Los indicadores cuentan sólo abiertos.
+   */
+  async sinCae(soloAbiertos = true): Promise<SinCaeListaDto> {
+    const items = (
+      await this.repo.listarSinCae(
+        soloAbiertos ? { estadoApp: { in: ESTADOS_ABIERTOS } } : {},
+      )
+    )
+      .map(toErrorTransaccion)
+      .sort(
+        (a, b) =>
+          Number(b.sinCae!.trabaPv) - Number(a.sinCae!.trabaPv) ||
+          b.sinCae!.diasSinCae - a.sinCae!.diasSinCae,
+      );
+    const abiertos = items.filter((i) => ESTADOS_ABIERTOS.includes(i.estado));
+    return {
+      items,
+      indicadores: {
+        total: abiertos.length,
+        trabanPv: abiertos.filter((i) => i.sinCae!.trabaPv).length,
+        masDe2Dias: abiertos.filter((i) => i.sinCae!.diasSinCae > 2).length,
+        sinAsignar: abiertos.filter((i) => i.responsableId === null).length,
+      },
+    };
+  }
+
+  /** El contador del menú: los abiertos y cuántos traban un punto de venta. */
+  async resumenSinCae(): Promise<{ abiertos: number; trabanPv: number }> {
+    const { indicadores } = await this.sinCae(true);
+    return { abiertos: indicadores.total, trabanPv: indicadores.trabanPv };
+  }
+
+  // ==========================================================================
   //  DASHBOARD
   // ==========================================================================
   async dashboard() {
@@ -1628,7 +1876,12 @@ export class ErroresService {
   private registrarMetrica(
     t: Pick<
       TransaccionError,
-      'id' | 'empresaCodigo' | 'modulo' | 'fechaDeteccion' | 'statusSoftland'
+      | 'id'
+      | 'empresaCodigo'
+      | 'modulo'
+      | 'fechaDeteccion'
+      | 'statusSoftland'
+      | 'tipo'
     >,
     tipo: TipoMetrica,
     tx: Prisma.TransactionClient,
@@ -1639,6 +1892,9 @@ export class ErroresService {
       status?: string;
     } = {},
   ) {
+    // Rendimiento y Objetivos miden la bandeja de errores: los sin CAE no
+    // dejan hitos.
+    if (t.tipo === TipoTransaccion.SIN_CAE) return Promise.resolve(null);
     const ahora = new Date();
     return this.repo.crearMetrica(
       {
@@ -1775,6 +2031,15 @@ export class ErroresService {
     const t = await this.repo.obtenerBasico(id);
     if (!t) throw new NotFoundException(`No existe el error ${id}`);
     return t;
+  }
+
+  /** Un sin CAE no se reprocesa: no hay nada que pasar a N en Softland. */
+  private rechazarSinCae(t: Pick<TransaccionError, 'tipo'>) {
+    if (t.tipo === TipoTransaccion.SIN_CAE) {
+      throw new BadRequestException(
+        'Un comprobante sin CAE no se reprocesa desde IRIS: se cierra solo cuando obtiene el CAE.',
+      );
+    }
   }
 
   private async resolverAutor(autorId?: string) {

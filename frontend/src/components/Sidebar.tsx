@@ -5,12 +5,13 @@ import {
   HistoryIcon,
   InboxIcon,
   LogoutIcon,
+  ReceiptIcon,
   TargetIcon,
 } from './icons'
 import { cn } from '../utils/cn'
 
 export type SidebarItemId =
-  'inicio' | 'bandeja' | 'metricas' | 'objetivos' | 'historial'
+  'inicio' | 'bandeja' | 'sin-cae' | 'metricas' | 'objetivos' | 'historial'
 
 export interface SidebarNavItem {
   id: SidebarItemId
@@ -25,6 +26,11 @@ const SIDEBAR_ITEMS: SidebarNavItem[] = [
     id: 'bandeja',
     icon: <InboxIcon className="h-5 w-5" />,
     label: 'Bandeja de errores',
+  },
+  {
+    id: 'sin-cae',
+    icon: <ReceiptIcon className="h-5 w-5" />,
+    label: 'Sin CAE',
   },
   {
     id: 'metricas',
