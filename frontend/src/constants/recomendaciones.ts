@@ -166,11 +166,33 @@ const CIERRE_SOLO =
   'Cuando el comprobante tenga el CAE, IRIS lo cierra solo: no hace falta marcar nada.'
 
 /**
- * Pasos para un comprobante sin CAE, según el diagnóstico. La fecha anterior
- * va primero: mientras no se corrija, reintentar no sirve.
+ * Pasos para un comprobante sin CAE, según el diagnóstico. Exportación va
+ * aparte y primero: esas facturas se hacen en la web de ARCA y el CAE se
+ * carga a mano en Softland, así que los pasos de Softland no le aplican.
+ * Después, la fecha anterior: mientras no se corrija, reintentar no sirve.
  */
 function recomendacionSinCae(sinCae: DatosSinCae): Recomendacion {
   const { diagnosticos } = sinCae
+  if (sinCae.clase === 'EXPORTACION') {
+    return {
+      diagnostico: 'Comprobante de exportación sin CAE',
+      pasos: [
+        {
+          texto:
+            'Las facturas de exportación se hacen en la web de ARCA y el CAE se carga a mano en Softland.',
+        },
+        {
+          texto:
+            'Buscá el comprobante en ARCA. Si ya tiene CAE, cargalo en Softland con el mismo número.',
+        },
+        {
+          texto:
+            'Si todavía no está en ARCA, hacelo ahí primero y después cargá el CAE en Softland.',
+        },
+        { texto: CIERRE_SOLO },
+      ],
+    }
+  }
   if (diagnosticos.includes('FECHA_ANTERIOR')) {
     return {
       diagnostico:
@@ -224,18 +246,6 @@ function recomendacionSinCae(sinCae: DatosSinCae): Recomendacion {
     return {
       diagnostico: 'No hay registro de que se haya pedido el CAE',
       pasos: [{ texto: 'Pedí el CAE desde Softland.' }, { texto: CIERRE_SOLO }],
-    }
-  }
-  if (sinCae.clase === 'EXPORTACION') {
-    return {
-      diagnostico: 'Comprobante de exportación sin CAE',
-      pasos: [
-        {
-          texto:
-            'Softland no pide el CAE de exportación: pedilo por la vía que se usa para exportación y cargalo en el comprobante.',
-        },
-        { texto: CIERRE_SOLO },
-      ],
     }
   }
   return {
