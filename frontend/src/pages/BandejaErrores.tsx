@@ -6,6 +6,8 @@ import { SearchIcon, XIcon } from '../components/icons'
 import Input from '../components/Input'
 import AppLayout from '../components/AppLayout'
 import PageHeader from '../components/PageHeader'
+import ProximaActualizacion from '../components/ProximaActualizacion'
+import { MINUTO_SYNC } from '../constants/sincronizacion'
 import Table from '../components/Table'
 import { DiferenciaTag, ExcluidaTag } from '../components/Tag'
 import Tabs, { type TabItem } from '../components/Tabs'
@@ -382,6 +384,7 @@ function BandejaErrores({
             : 'Errores de integración de Softland'
         }
         titulo="Bandeja de errores"
+        acciones={<ProximaActualizacion minuto={MINUTO_SYNC.errores} />}
       />
 
       {error && (

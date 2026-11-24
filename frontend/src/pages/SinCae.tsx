@@ -5,6 +5,8 @@ import DiagnosticosSinCae from '../components/DiagnosticosSinCae'
 import Dropdown, { type DropdownOption } from '../components/Dropdown'
 import { SearchIcon } from '../components/icons'
 import PageHeader from '../components/PageHeader'
+import ProximaActualizacion from '../components/ProximaActualizacion'
+import { MINUTO_SYNC } from '../constants/sincronizacion'
 import Tabs, { type TabItem } from '../components/Tabs'
 import { estadoTagByEstado } from '../constants/estados'
 import { CLASE_CAE_LABEL } from '../constants/sinCae'
@@ -150,6 +152,7 @@ function SinCae({
             : 'Comprobantes sin la autorización de ARCA'
         }
         titulo="Sin CAE"
+        acciones={<ProximaActualizacion minuto={MINUTO_SYNC.sinCae} />}
       />
 
       {error && (
