@@ -323,6 +323,17 @@ export class ErroresRepository {
     return this.prisma.empresa.findMany({ orderBy: { nombre: 'asc' } });
   }
 
+  /**
+   * Las empresas de la bandeja: las que tienen algún error de integración.
+   * Una empresa que sólo aparece en Sin CAE no tiene pestaña ahí.
+   */
+  listarEmpresasConErrores() {
+    return this.prisma.empresa.findMany({
+      where: { transacciones: { some: INTEGRACION } },
+      orderBy: { nombre: 'asc' },
+    });
+  }
+
   buscarEmpresa(codigo: string) {
     return this.prisma.empresa.findUnique({ where: { codigo } });
   }

@@ -208,6 +208,15 @@ describe('ErroresService — sin CAE', () => {
     expect(repo.eventos.at(-1)).toMatchObject({ titulo: 'Obtuvo CAE' });
   });
 
+  it('los que ya tienen CAE no dan de alta su empresa', async () => {
+    await service.syncCae(
+      [comprobante({ empresa: 'SIWG', empresaNombre: null, nroCae: '8640' })],
+      ['SIWG'],
+    );
+
+    expect(repo.empresas.has('SIWG')).toBe(false);
+  });
+
   it('uno que ya tiene CAE y nunca estuvo sin CAE no se da de alta', async () => {
     const res = await service.syncCae([comprobante({ nroCae: '8640' })]);
 

@@ -1110,7 +1110,7 @@ export class ErroresService {
   }
 
   async empresas(): Promise<{ id: string; nombre: string }[]> {
-    const empresas = await this.repo.listarEmpresas();
+    const empresas = await this.repo.listarEmpresasConErrores();
     return empresas.map((e) => ({ id: e.codigo, nombre: e.nombre }));
   }
 
@@ -1659,10 +1659,11 @@ export class ErroresService {
   ): Promise<SyncCaeResultadoDto> {
     // El nombre sólo se actualiza si viene: sin él, una empresa que ya existe
     // (la crea el sync de errores) conserva el suyo en vez de pasar a llamarse
-    // como su código.
+    // como su código. Sólo hace falta para los sin CAE: los que ya traen CAE
+    // sirven para cerrar y no deben dar de alta una empresa.
     const empresas = new Map<string, string | null>();
     for (const c of comprobantes) {
-      empresas.set(c.empresa, c.empresaNombre ?? null);
+      if (!c.nroCae) empresas.set(c.empresa, c.empresaNombre ?? null);
     }
     const empresaCodigos = [
       ...new Set([
