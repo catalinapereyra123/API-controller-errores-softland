@@ -917,8 +917,9 @@ function ErrorDetail({
                         }}
                         className="mt-xs"
                       >
-                        Está en “{estadoLabels[detalle.estado]}”: ese estado lo
-                        maneja el flujo de reproceso.
+                        {sinCae
+                          ? `Está en “${estadoLabels[detalle.estado]}”. Para cambiarlo, reabrilo desde Acciones.`
+                          : `Está en “${estadoLabels[detalle.estado]}”: ese estado lo maneja el flujo de reproceso.`}
                       </p>
                     )}
                   </Card>
@@ -927,8 +928,14 @@ function ErrorDetail({
                     estado={detalle.estado}
                     diferencia={detalle.statusSoftland === 'D'}
                     sinCae={Boolean(sinCae)}
+                    cerradoAMano={detalle.origenCierre === 'MANUAL'}
                     disabled={saving}
-                    onMarkAsFixed={() => void reprocesar()}
+                    onMarkAsFixed={() =>
+                      // Un sin CAE sólo se cierra en IRIS: no se reprocesa.
+                      void (sinCae
+                        ? cambiarEstadoManual('RESUELTO')
+                        : reprocesar())
+                    }
                     onConsultarResultado={() => void handleConsultarResultado()}
                     consultando={consultando}
                     avisoConsulta={

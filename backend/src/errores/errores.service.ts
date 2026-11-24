@@ -1503,6 +1503,17 @@ export class ErroresService {
   }
 
   async cambiarEstado(id: string, dto: CambiarEstadoDto, autorId?: string) {
+    const t = await this.requerir(id);
+
+    // Un sin CAE se marca como corregido a mano: sólo cambia el estado en
+    // IRIS, no se reprocesa ni se toca nada en Softland.
+    if (
+      dto.estado === EstadoApp.RESUELTO &&
+      t.tipo === TipoTransaccion.SIN_CAE
+    ) {
+      return this.marcarSinCaeCorregido(t, dto, autorId);
+    }
+
     if (!ESTADOS_MANUALES.includes(dto.estado)) {
       throw new BadRequestException(
         `El estado ${dto.estado} lo controla el flujo de reproceso, no se setea a mano. ` +
@@ -1510,7 +1521,6 @@ export class ErroresService {
       );
     }
 
-    const t = await this.requerir(id);
     const autor = await this.resolverAutor(autorId);
 
     const data: Prisma.TransaccionErrorUpdateInput = { estadoApp: dto.estado };
@@ -1548,6 +1558,55 @@ export class ErroresService {
     });
 
     return this.detalle(id);
+  }
+
+  /**
+   * Cierre manual de un sin CAE. Queda RESUELTO con origen MANUAL y el sync
+   * no lo reabre aunque Softland lo siga mostrando sin CAE: quien lo marcó ya
+   * decidió que está resuelto. Se puede reabrir desde la app.
+   */
+  private async marcarSinCaeCorregido(
+    t: TransaccionError,
+    dto: CambiarEstadoDto,
+    autorId?: string,
+  ) {
+    if (t.estadoApp === EstadoApp.RESUELTO) return this.detalle(t.id);
+    const autor = await this.resolverAutor(autorId);
+    const ahora = new Date();
+
+    await this.repo.transaction(async (tx) => {
+      await this.repo.actualizarTransaccion(
+        t.id,
+        {
+          estadoApp: EstadoApp.RESUELTO,
+          fechaResolucion: ahora,
+          origenCierre: OrigenCierre.MANUAL,
+          fechaCorreccion: ahora,
+          ...(autor.id
+            ? { corregidoPor: { connect: { id: autor.id } } }
+            : { corregidoPor: { disconnect: true } }),
+          corregidoPorNombre: autor.nombre,
+        },
+        tx,
+      );
+      await this.repo.crearEvento(
+        {
+          transaccionId: t.id,
+          tipo: 'reproceso',
+          titulo: 'Marcado como corregido',
+          detalle: [
+            dto.nota,
+            `Por ${autor.nombre}`,
+            'Sólo se cerró en IRIS: no se tocó Softland',
+          ]
+            .filter(Boolean)
+            .join(' · '),
+        },
+        tx,
+      );
+    });
+
+    return this.detalle(t.id);
   }
 
   async agregarObservacion(
@@ -1709,8 +1768,11 @@ export class ErroresService {
           continue;
         }
 
-        // Sigue sin CAE. Si estaba cerrado con CAE, se reabre.
-        const reabrir = existente.estadoApp === EstadoApp.RESUELTO;
+        // Sigue sin CAE. Si estaba cerrado con CAE, se reabre; si alguien lo
+        // marcó como corregido a mano (o lo descartó), queda como está.
+        const reabrir =
+          existente.estadoApp === EstadoApp.RESUELTO &&
+          existente.origenCierre !== OrigenCierre.MANUAL;
         await this.repo.actualizarTransaccion(
           existente.id,
           {

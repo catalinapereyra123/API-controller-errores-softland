@@ -9,8 +9,13 @@ interface ErrorActionsCardProps {
   estado: ErrorEstado
   /** Status D: se mira, no se reprocesa (el flujo no pasa las D a N). */
   diferencia?: boolean
-  /** Comprobante sin CAE: no se reprocesa, se cierra solo al obtener el CAE. */
+  /**
+   * Comprobante sin CAE: no se reprocesa. "Marcar como corregido" sólo lo
+   * cierra en IRIS; si obtiene el CAE, se cierra solo.
+   */
   sinCae?: boolean
+  /** Sin CAE cerrado a mano (no por el CAE): se puede reabrir. */
+  cerradoAMano?: boolean
   /** true mientras se guarda otra acción. */
   disabled?: boolean
   onMarkAsFixed: () => void
@@ -50,6 +55,7 @@ function ErrorActionsCard({
   estado,
   diferencia = false,
   sinCae = false,
+  cerradoAMano = false,
   disabled,
   onMarkAsFixed,
   onDiscard,
@@ -69,7 +75,7 @@ function ErrorActionsCard({
       <Card>
         {titulo}
         <Button
-          text="Reabrir error"
+          text={sinCae ? 'Reabrir' : 'Reabrir error'}
           color={colors.primary.default}
           icon={<UndoIcon className="h-4 w-4" />}
           onClick={onReopen}
@@ -78,10 +84,25 @@ function ErrorActionsCard({
           className="mt-md w-full"
         />
         <Nota>
-          Está descartado: no aparece en la bandeja y no se reprocesa. Al
-          reabrirlo vuelve a la bandeja como cualquier otro error.
+          {sinCae
+            ? 'Está descartado: no aparece en la lista de Sin CAE y el sync no lo vuelve a abrir. Al reabrirlo vuelve a la lista.'
+            : 'Está descartado: no aparece en la bandeja y no se reprocesa. Al reabrirlo vuelve a la bandeja como cualquier otro error.'}
         </Nota>
       </Card>
+    )
+  }
+
+  if (sinCae) {
+    return (
+      <AccionesSinCae
+        titulo={titulo}
+        estado={estado}
+        cerradoAMano={cerradoAMano}
+        disabled={disabled}
+        onMarkAsFixed={onMarkAsFixed}
+        onDiscard={onDiscard}
+        onReopen={onReopen}
+      />
     )
   }
 
@@ -90,20 +111,7 @@ function ErrorActionsCard({
   return (
     <Card>
       {titulo}
-      {sinCae ? (
-        <p
-          style={{
-            ...textStyles.bodySmall,
-            color: colors.label.blue.text,
-            backgroundColor: colors.label.blue.background,
-          }}
-          className="mt-md rounded-2xl px-md py-sm"
-        >
-          {estado === 'RESUELTO'
-            ? 'Ya obtuvo el CAE: se cerró solo.'
-            : 'Se arregla en Softland. Cuando el comprobante obtenga el CAE, IRIS lo cierra solo: acá no hay nada que reprocesar.'}
-        </p>
-      ) : diferencia && !esperando ? (
+      {diferencia && !esperando ? (
         <p
           style={{
             ...textStyles.bodySmall,
@@ -155,7 +163,7 @@ function ErrorActionsCard({
           {avisoConsulta}
         </p>
       )}
-      {!sinCae && !(diferencia && !esperando) && (
+      {!(diferencia && !esperando) && (
         <Nota>
           {esperando
             ? 'Ya se marcó como corregido. “Consultar nuevo resultado” le pide a Softland el status actual: si ya terminó, pasa a Resuelto (S) o vuelve a “A corregir” (E).'
@@ -188,6 +196,117 @@ function ErrorActionsCard({
           </Nota>
         </div>
       )}
+    </Card>
+  )
+}
+
+const BOTON_SECUNDARIO = {
+  ...textStyles.bodySmall,
+  fontWeight: fontWeight.semibold,
+  padding: `${spacing.sm} ${spacing.lg}`,
+}
+
+/**
+ * Acciones de un comprobante sin CAE. Marcarlo como corregido o descartarlo
+ * sólo cambia su estado en IRIS: no se reprocesa ni se toca Softland.
+ */
+function AccionesSinCae({
+  titulo,
+  estado,
+  cerradoAMano,
+  disabled,
+  onMarkAsFixed,
+  onDiscard,
+  onReopen,
+}: {
+  titulo: ReactNode
+  estado: ErrorEstado
+  cerradoAMano: boolean
+  disabled?: boolean
+  onMarkAsFixed: () => void
+  onDiscard: () => void
+  onReopen: () => void
+}) {
+  const aviso = (texto: string) => (
+    <p
+      style={{
+        ...textStyles.bodySmall,
+        color: colors.label.blue.text,
+        backgroundColor: colors.label.blue.background,
+      }}
+      className="mt-md rounded-2xl px-md py-sm"
+    >
+      {texto}
+    </p>
+  )
+
+  if (estado === 'RESUELTO') {
+    return (
+      <Card>
+        {titulo}
+        {cerradoAMano ? (
+          <>
+            {aviso('Se marcó como corregido en IRIS.')}
+            <Button
+              text="Reabrir"
+              color={colors.primary.default}
+              variant="outline"
+              icon={<UndoIcon className="h-4 w-4" />}
+              onClick={onReopen}
+              disabled={disabled}
+              size={BOTON_SECUNDARIO}
+              className="mt-md w-full"
+            />
+            <Nota>
+              Al reabrirlo vuelve a la lista de Sin CAE.
+            </Nota>
+          </>
+        ) : (
+          aviso('Ya obtuvo el CAE: se cerró solo.')
+        )}
+      </Card>
+    )
+  }
+
+  return (
+    <Card>
+      {titulo}
+      {aviso(
+        'Se arregla en Softland. Cuando el comprobante obtenga el CAE, IRIS lo cierra solo.',
+      )}
+      <Button
+        text="Marcar como corregido"
+        color={colors.primary.default}
+        icon={<CheckCircleIcon className="h-4 w-4" />}
+        onClick={onMarkAsFixed}
+        disabled={disabled}
+        size={BOTON_PRINCIPAL}
+        className="mt-md w-full"
+      />
+      <Nota>
+        Sólo lo cierra en IRIS: no se reprocesa ni se cambia nada en Softland.
+        El sync no lo vuelve a abrir aunque siga sin CAE.
+      </Nota>
+
+      <div
+        style={{ borderColor: colors.background.border }}
+        className="mt-lg border-t pt-md"
+      >
+        <Button
+          text="Descartar"
+          color={colors.gray.medium}
+          variant="outline"
+          icon={<BanIcon className="h-4 w-4" />}
+          onClick={onDiscard}
+          disabled={disabled}
+          size={BOTON_SECUNDARIO}
+          className="w-full"
+        />
+        <Nota>
+          Para los que no interesan: sale de la lista de Sin CAE y no vuelve.
+          Se puede reabrir.
+        </Nota>
+      </div>
     </Card>
   )
 }

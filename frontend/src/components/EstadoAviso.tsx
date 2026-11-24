@@ -129,8 +129,11 @@ function EstadoAviso({ error }: { error: ErrorDetalle }) {
         icon={<BanIcon className="h-5 w-5" />}
         titulo="Descartado · no interesa"
       >
-        {cuando}No aparece en la bandeja ni en el inicio y no se reprocesa. Se
-        puede reabrir desde Acciones.
+        {cuando}
+        {error.sinCae
+          ? 'No aparece en la lista de Sin CAE y el sync no lo vuelve a abrir.'
+          : 'No aparece en la bandeja ni en el inicio y no se reprocesa.'}{' '}
+        Se puede reabrir desde Acciones.
       </Aviso>
     )
   }

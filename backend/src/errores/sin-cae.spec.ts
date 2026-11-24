@@ -274,6 +274,72 @@ describe('ErroresService — sin CAE', () => {
       /sin CAE/i,
     );
   });
+
+  describe('marcar como corregido / descartar a mano', () => {
+    beforeEach(() => {
+      jest.spyOn(service, 'detalle').mockResolvedValue(null as any);
+    });
+
+    it('marcarlo como corregido sólo lo cierra en IRIS', async () => {
+      await service.syncCae([comprobante()]);
+
+      await service.cambiarEstado('t1', { estado: 'RESUELTO' });
+
+      expect(repo.transacciones[0]).toMatchObject({
+        estadoApp: 'RESUELTO',
+        origenCierre: 'MANUAL',
+        corregidoPorNombre: 'Sistema',
+      });
+      expect(repo.eventos.at(-1)).toMatchObject({
+        titulo: 'Marcado como corregido',
+      });
+      expect(repo.metricas).toHaveLength(0);
+      const { items } = await service.sinCae();
+      expect(items).toHaveLength(0);
+    });
+
+    it('el sync no reabre uno marcado como corregido aunque siga sin CAE', async () => {
+      await service.syncCae([comprobante()]);
+      await service.cambiarEstado('t1', { estado: 'RESUELTO' });
+
+      await service.syncCae([comprobante()]);
+
+      expect(repo.transacciones[0].estadoApp).toBe('RESUELTO');
+      expect(repo.eventos.at(-1)).toMatchObject({
+        titulo: 'Marcado como corregido',
+      });
+    });
+
+    it('el sync sí reabre uno que se cerró solo con CAE y volvió sin CAE', async () => {
+      await service.syncCae([comprobante()]);
+      await service.syncCae([comprobante({ nroCae: '86438968563735' })]);
+
+      await service.syncCae([comprobante()]);
+
+      expect(repo.transacciones[0].estadoApp).toBe('ERROR');
+    });
+
+    it('el sync no reabre uno descartado', async () => {
+      await service.syncCae([comprobante()]);
+      await service.cambiarEstado('t1', { estado: 'DESCARTADO' });
+
+      await service.syncCae([comprobante()]);
+
+      expect(repo.transacciones[0].estadoApp).toBe('DESCARTADO');
+    });
+
+    it('un error de integración sigue sin poder pasarse a RESUELTO a mano', async () => {
+      repo.transacciones.push({
+        id: 'i1',
+        tipo: 'INTEGRACION',
+        estadoApp: 'ERROR',
+      });
+
+      await expect(
+        service.cambiarEstado('i1', { estado: 'RESUELTO' }),
+      ).rejects.toThrow(/flujo de reproceso/);
+    });
+  });
 });
 
 /**
