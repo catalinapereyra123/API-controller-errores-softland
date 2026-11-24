@@ -3,7 +3,7 @@ import AppLayout from '../components/AppLayout'
 import ChevronButton from '../components/ChevronButton'
 import DiagnosticosSinCae from '../components/DiagnosticosSinCae'
 import Dropdown, { type DropdownOption } from '../components/Dropdown'
-import { InfoIcon, SearchIcon } from '../components/icons'
+import { SearchIcon } from '../components/icons'
 import PageHeader from '../components/PageHeader'
 import Tabs, { type TabItem } from '../components/Tabs'
 import { estadoTagByEstado } from '../constants/estados'
@@ -21,12 +21,6 @@ import type {
 import { cn } from '../utils/cn'
 import { formatDate } from '../utils/format'
 import { usuarioNombre } from '../utils/labels'
-
-/**
- * Mientras el workflow de Studio no mande datos, la sección muestra que está
- * en desarrollo. Pasarlo a false cuando empiecen a llegar comprobantes.
- */
-const EN_DESARROLLO = true
 
 type Indicador = 'todos' | 'trabanPv' | 'masDe2Dias' | 'sinAsignar'
 
@@ -158,22 +152,6 @@ function SinCae({
         titulo="Sin CAE"
       />
 
-      {EN_DESARROLLO && (
-        <div className="flex items-start gap-md rounded-xxl bg-label-blue-background px-lg py-md text-label-blue-text">
-          <InfoIcon className="mt-xxs h-5 w-5 shrink-0" />
-          <div className="flex flex-col gap-xxs">
-            <span className="text-body font-semibold">
-              Esta sección está en desarrollo
-            </span>
-            <span className="text-bodySmall">
-              Todavía no está conectada con Softland. Cuando se conecte, acá van
-              a aparecer los comprobantes que no tienen CAE de ARCA, con el
-              motivo y lo que hay que hacer en cada caso.
-            </span>
-          </div>
-        </div>
-      )}
-
       {error && (
         <div className="flex items-center justify-between gap-md rounded-xxl border border-label-red-outline bg-label-red-background px-lg py-md text-bodySmall font-semibold text-label-red-text">
           {error}
@@ -267,9 +245,7 @@ function SinCae({
               <SearchIcon className="h-5 w-5" />
             </span>
             {items.length === 0
-              ? EN_DESARROLLO
-                ? 'Todavía no hay comprobantes para mostrar.'
-                : 'No hay comprobantes sin CAE abiertos.'
+              ? 'No hay comprobantes sin CAE abiertos.'
               : 'No hay comprobantes que coincidan con los filtros.'}
           </div>
         ) : (
