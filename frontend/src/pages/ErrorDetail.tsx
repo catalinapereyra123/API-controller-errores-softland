@@ -101,6 +101,26 @@ function Field({
   )
 }
 
+/** "24/11 a las 10:45", con el "a las" chico y en gris. */
+function FechaHora({ iso }: { iso: string }) {
+  const [dia, hora] = formatDetectedAt(iso).split(' ')
+  return (
+    <>
+      {dia}{' '}
+      <span
+        style={{
+          ...textStyles.caption,
+          fontWeight: fontWeight.regular,
+          color: colors.gray.default,
+        }}
+      >
+        a las
+      </span>{' '}
+      {hora}
+    </>
+  )
+}
+
 /** Círculo con el status crudo de Softland (E, X, N, S…) y su descripción. */
 function StatusSoftland({ status }: { status: string }) {
   const meta = ESTADOS_SOFTLAND.find((estado) => estado.code === status)
@@ -166,9 +186,14 @@ function DatosComprobante({
         <Field
           label="Alta en Softland"
           value={
-            sinCae.fechaAlta
-              ? `${formatDetectedAt(sinCae.fechaAlta)}${sinCae.usuarioAlta ? ` · ${sinCae.usuarioAlta}` : ''}`
-              : '—'
+            sinCae.fechaAlta ? (
+              <>
+                <FechaHora iso={sinCae.fechaAlta} />
+                {sinCae.usuarioAlta ? ` · ${sinCae.usuarioAlta}` : ''}
+              </>
+            ) : (
+              '—'
+            )
           }
         />
         <Field label="Último autorizado" value={ultimoAutorizado} mono />
@@ -178,13 +203,13 @@ function DatosComprobante({
             sinCae.clase !== 'FCE'
               ? 'Softland no lo registra'
               : sinCae.ultimoEnvioArca
-                ? formatDetectedAt(sinCae.ultimoEnvioArca)
+                ? <FechaHora iso={sinCae.ultimoEnvioArca} />
                 : 'No se envió'
           }
         />
         <Field
           label="Última sincronización"
-          value={formatDetectedAt(detalle.ultimaDeteccion)}
+          value={<FechaHora iso={detalle.ultimaDeteccion} />}
         />
         <Field
           label="¿Sigue en Softland?"
@@ -194,7 +219,7 @@ function DatosComprobante({
         {detalle.fechaResolucion && (
           <Field
             label="Obtuvo CAE"
-            value={formatDetectedAt(detalle.fechaResolucion)}
+            value={<FechaHora iso={detalle.fechaResolucion} />}
           />
         )}
       </div>
@@ -527,7 +552,7 @@ function ErrorDetail({
                         />
                         <Field
                           label="Solicitado"
-                          value={formatDetectedAt(intento.fecha)}
+                          value={<FechaHora iso={intento.fecha} />}
                         />
                         <Field
                           label="Por"
@@ -660,7 +685,7 @@ function ErrorDetail({
                         />
                         <Field
                           label="Última sincronización"
-                          value={formatDetectedAt(detalle.ultimaDeteccion)}
+                          value={<FechaHora iso={detalle.ultimaDeteccion} />}
                         />
                         <Field
                           label="¿Sigue en el feed?"
@@ -675,13 +700,13 @@ function ErrorDetail({
                         {detalle.fechaCorreccion && (
                           <Field
                             label="Mandado a reprocesar"
-                            value={formatDetectedAt(detalle.fechaCorreccion)}
+                            value={<FechaHora iso={detalle.fechaCorreccion} />}
                           />
                         )}
                         {detalle.fechaResolucion && (
                           <Field
                             label="Resuelto"
-                            value={formatDetectedAt(detalle.fechaResolucion)}
+                            value={<FechaHora iso={detalle.fechaResolucion} />}
                           />
                         )}
                       </div>
