@@ -4,7 +4,8 @@ import type { Sesion } from '../types'
 /**
  * Vuelta del login con Microsoft: el backend redirige a la app con `?ms=ok`
  * (el código para pedir la sesión quedó en una cookie httpOnly) o con
- * `?ms_error=<motivo>`.
+ * `?ms_error=<motivo>`, más `r` (un valor distinto en cada login para que el
+ * navegador no sirva una copia vieja de la página).
  *
  * Se lee una sola vez al cargar el módulo y se limpia la URL enseguida, así
  * no queda en el historial ni se canjea dos veces (React en modo estricto
@@ -17,6 +18,7 @@ const motivo = params.get('ms_error')
 if (params.has('ms') || motivo !== null) {
   params.delete('ms')
   params.delete('ms_error')
+  params.delete('r')
   const resto = params.toString()
   window.history.replaceState(
     window.history.state,

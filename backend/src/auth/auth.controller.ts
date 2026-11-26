@@ -80,6 +80,10 @@ export class AuthController {
     @Res() res: Response,
   ) {
     const urlFront = this.microsoft.configuracion?.urlFront ?? '';
+    // `r` hace única la URL de vuelta: el navegador no puede tener guardada
+    // una copia vieja de la página (con `?ms=ok` solo, servía la versión
+    // anterior de la app después de cada login).
+    const r = Date.now().toString(36);
     res.clearCookie(COOKIE_LOGIN_MICROSOFT, this.opcionesCookie());
 
     try {
@@ -91,7 +95,7 @@ export class AuthController {
         ...this.opcionesCookie(),
         maxAge: CANJE_VIDA_SEGUNDOS * 1000,
       });
-      res.redirect(`${urlFront}/?ms=ok`);
+      res.redirect(`${urlFront}/?ms=ok&r=${r}`);
     } catch (error) {
       if (typeof query.error_description === 'string') {
         this.logger.warn(`Microsoft devolvió: ${query.error_description}`);
@@ -103,7 +107,7 @@ export class AuthController {
           `Falló el callback de Microsoft: ${(error as Error).message}`,
         );
       }
-      res.redirect(`${urlFront}/?ms_error=${motivo}`);
+      res.redirect(`${urlFront}/?ms_error=${motivo}&r=${r}`);
     }
   }
 
