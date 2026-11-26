@@ -28,11 +28,6 @@ const SIDEBAR_ITEMS: SidebarNavItem[] = [
     label: 'Bandeja de errores',
   },
   {
-    id: 'sin-cae',
-    icon: <ReceiptIcon className="h-5 w-5" />,
-    label: 'Sin CAE',
-  },
-  {
     id: 'metricas',
     icon: <BarChartIcon className="h-5 w-5" />,
     label: 'Rendimiento',
@@ -41,6 +36,13 @@ const SIDEBAR_ITEMS: SidebarNavItem[] = [
     id: 'objetivos',
     icon: <TargetIcon className="h-5 w-5" />,
     label: 'Objetivos',
+  },
+  // Sin CAE va después de Rendimiento y Objetivos: es otro circuito y no entra
+  // en esas cuentas.
+  {
+    id: 'sin-cae',
+    icon: <ReceiptIcon className="h-5 w-5" />,
+    label: 'Sin CAE',
   },
   {
     id: 'historial',
