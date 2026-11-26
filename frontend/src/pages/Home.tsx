@@ -543,7 +543,7 @@ function Home({
         />
         <Acceso
           icon={<HistoryIcon className="h-5 w-5" />}
-          titulo="Mi historial"
+          titulo="Mi actividad"
           texto="Lo que tenés asignado y lo que corregiste"
           onIr={() => onNavigate('historial')}
         />

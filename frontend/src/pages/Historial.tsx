@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import Card from '../components/Card'
 import CierresLista from '../components/CierresLista'
 import Dropdown, { type DropdownOption } from '../components/Dropdown'
@@ -9,6 +9,8 @@ import {
   RefreshIcon,
   SearchIcon,
   TrendingUpIcon,
+  UserIcon,
+  UsersIcon,
   XIcon,
 } from '../components/icons'
 import AppLayout from '../components/AppLayout'
@@ -104,10 +106,90 @@ let estadoGuardado: {
   punto: null,
 }
 
-const VISTAS: TabItem[] = [
-  { id: 'mio', label: 'Mi historial' },
-  { id: 'iris', label: 'Historial de IRIS' },
+const VISTAS: {
+  id: 'mio' | 'iris'
+  titulo: string
+  detalle: string
+  icono: ReactNode
+}[] = [
+  {
+    id: 'mio',
+    titulo: 'Mi actividad',
+    detalle: 'Lo que tenés asignado y lo que corregiste',
+    icono: <UserIcon className="h-5 w-5" />,
+  },
+  {
+    id: 'iris',
+    titulo: 'Todo el equipo',
+    detalle: 'Lo que se corrigió y resolvió entre todos',
+    icono: <UsersIcon className="h-5 w-5" />,
+  },
 ]
+
+/**
+ * De quién es el historial: tarjetas en vez de otra barra de pestañas, para
+ * que no se confunda con el período y se entienda qué muestra cada una.
+ */
+function SelectorVista({
+  vista,
+  onChange,
+}: {
+  vista: 'mio' | 'iris'
+  onChange: (vista: 'mio' | 'iris') => void
+}) {
+  return (
+    <div
+      role="radiogroup"
+      aria-label="De quién es el historial"
+      className="grid grid-cols-1 gap-xs rounded-[28px] bg-slate-900/[0.05] p-xs @md:grid-cols-2 @5xl:max-w-[760px]"
+    >
+      {VISTAS.map((v) => {
+        const activa = v.id === vista
+        return (
+          <button
+            key={v.id}
+            type="button"
+            role="radio"
+            aria-checked={activa}
+            onClick={() => onChange(v.id)}
+            className={cn(
+              'group flex cursor-pointer items-center gap-md rounded-[22px] px-lg py-md text-left transition-all duration-200',
+              activa
+                ? 'bg-background-surface shadow-soft ring-1 ring-slate-900/5'
+                : 'hover:bg-white/60',
+            )}
+          >
+            <span
+              className={cn(
+                'flex h-10 w-10 shrink-0 items-center justify-center rounded-full transition-colors',
+                activa
+                  ? 'bg-primary-dark text-white'
+                  : 'bg-slate-900/[0.06] text-gray-medium group-hover:text-gray-dark',
+              )}
+            >
+              {v.icono}
+            </span>
+            <span className="flex min-w-0 flex-1 flex-col">
+              <span
+                className={cn(
+                  'text-body font-semibold',
+                  activa
+                    ? 'text-gray-darkest'
+                    : 'text-gray-medium group-hover:text-gray-dark',
+                )}
+              >
+                {v.titulo}
+              </span>
+              <span className="truncate text-bodySmall text-gray-medium">
+                {v.detalle}
+              </span>
+            </span>
+          </button>
+        )
+      })}
+    </div>
+  )
+}
 
 /**
  * Historial con dos pestañas: lo propio (asignados, corregidos y cómo te
@@ -133,27 +215,19 @@ function Historial({
           label: 'Historial',
           page: vista === 'iris' ? 'historial' : undefined,
         },
-        ...(vista === 'iris' ? [{ label: 'IRIS' }] : []),
+        ...(vista === 'iris' ? [{ label: 'Todo el equipo' }] : []),
       ]}
       recordarScroll={vista === 'mio' ? 'historial' : 'historial-iris'}
     >
       <PageHeader
-        eyebrow={
-          vista === 'mio'
-            ? 'Lo que tenés asignado, lo que corregiste y cómo te fue'
-            : 'Todo lo que se resolvió, se corrigió y pasó en IRIS'
-        }
+        eyebrow="Lo que pasó con los errores, tuyo o de todo el equipo"
         titulo="Historial"
-        acciones={
-          <Tabs
-            items={VISTAS}
-            value={vista}
-            onChange={(id) =>
-              onNavigate(id === 'mio' ? 'historial' : 'historial-iris')
-            }
-            activeColor={colors.gray.darkest}
-            inactiveColor={colors.gray.medium}
-          />
+      />
+
+      <SelectorVista
+        vista={vista}
+        onChange={(id) =>
+          onNavigate(id === 'mio' ? 'historial' : 'historial-iris')
         }
       />
 
