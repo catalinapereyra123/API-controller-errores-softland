@@ -108,8 +108,8 @@ function Objetivos({ onNavigate }: { onNavigate: (page: AppPage) => void }) {
       recordarScroll="objetivos"
     >
       <PageHeader
-        eyebrow="Hacia dónde va el equipo · North Star y Key Results"
         titulo="Objetivos"
+        descripcion="Las metas del equipo y cómo venimos con cada una"
         acciones={
           <>
             <Button

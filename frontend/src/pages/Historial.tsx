@@ -220,8 +220,8 @@ function Historial({
       recordarScroll={vista === 'mio' ? 'historial' : 'historial-iris'}
     >
       <PageHeader
-        eyebrow="Lo que pasó con los errores, tuyo o de todo el equipo"
         titulo="Historial"
+        descripcion="Qué se corrigió y qué se resolvió en cada período"
       />
 
       <SelectorVista

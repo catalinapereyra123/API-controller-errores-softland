@@ -146,12 +146,8 @@ function SinCae({
       migas={[{ label: 'Inicio', page: 'home' }, { label: 'Sin CAE' }]}
     >
       <PageHeader
-        eyebrow={
-          indicadores
-            ? `${indicadores.total} abiertos · ${indicadores.trabanPv} traban un punto de venta`
-            : 'Comprobantes sin la autorización de ARCA'
-        }
         titulo="Sin CAE"
+        descripcion="Comprobantes que ARCA todavía no autorizó"
         acciones={<ProximaActualizacion minuto={MINUTO_SYNC.sinCae} />}
       />
 

@@ -378,12 +378,8 @@ function BandejaErrores({
       ]}
     >
       <PageHeader
-        eyebrow={
-          data
-            ? `${data.totalAbiertos} abiertos · ${data.bandejaPendientes} sin responsable`
-            : 'Errores de integración de Softland'
-        }
         titulo="Bandeja de errores"
+        descripcion="Las transacciones que Softland no pudo procesar y hay que corregir"
         acciones={<ProximaActualizacion minuto={MINUTO_SYNC.errores} />}
       />
 

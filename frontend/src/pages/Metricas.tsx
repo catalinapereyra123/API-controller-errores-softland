@@ -125,8 +125,8 @@ function Metricas({ onNavigate }: { onNavigate: (page: AppPage) => void }) {
       recordarScroll="metricas"
     >
       <PageHeader
-        eyebrow={`Cómo viene el equipo${data ? ` · ${data.periodo.toLowerCase()}` : ''}`}
         titulo="Rendimiento"
+        descripcion="Cuántos errores llegan, cuánto se tarda y cuántos se resuelven"
         acciones={
           <Tabs
             items={PERIODOS}
