@@ -276,16 +276,16 @@ function Ayuda({ onNavigate }: { onNavigate: (page: AppPage) => void }) {
     <AppLayout
       activeItem="inicio"
       onNavigate={onNavigate}
-      migas={[{ label: 'Inicio', page: 'home' }, { label: 'Ayuda' }]}
+      migas={[{ label: 'Inicio', page: 'home' }, { label: 'Guía' }]}
     >
       <div id="ayuda-arriba" className="scroll-mt-24">
         <PageHeader
-          titulo="Ayuda"
+          titulo="Guía"
           descripcion="Cómo funciona IRIS y qué muestra cada pantalla"
         />
       </div>
 
-      <nav aria-label="Secciones de la ayuda" className="flex flex-wrap gap-sm">
+      <nav aria-label="Secciones de la guía" className="flex flex-wrap gap-sm">
         {SECCIONES.map((s) => (
           <button
             key={s.id}

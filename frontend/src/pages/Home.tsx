@@ -30,12 +30,7 @@ import { useHomeData } from '../hooks/useHomeData'
 import { colors } from '../styles'
 import type { AppPage, ErrorEstado, ErrorTransaccion } from '../types'
 import { cn } from '../utils/cn'
-import {
-  formatDuracion,
-  formatMinutes,
-  formatTodayEs,
-  minutesSince,
-} from '../utils/format'
+import { formatDuracion, formatMinutes, minutesSince } from '../utils/format'
 
 /** Estados abiertos en el orden del circuito, con su color en la barra. */
 const ESTADOS_ABIERTOS: { estado: ErrorEstado; color: string }[] = [
@@ -111,20 +106,15 @@ function Home({
       <PageHeader
         titulo="Inicio"
         acciones={
-          <>
-            <span className="rounded-full bg-background-surface px-md py-xs text-bodySmall font-semibold text-gray-dark shadow-soft ring-1 ring-slate-900/[0.04]">
-              {formatTodayEs()}
-            </span>
-            <button
-              type="button"
-              onClick={() => onNavigate('ayuda')}
-              aria-label="Ayuda"
-              title="Ayuda: cómo funciona IRIS"
-              className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-full bg-background-surface text-gray-dark shadow-soft ring-1 ring-slate-900/[0.04] transition-colors hover:text-primary-dark"
-            >
-              <HelpIcon className="h-5 w-5" />
-            </button>
-          </>
+          <button
+            type="button"
+            onClick={() => onNavigate('ayuda')}
+            title="Cómo funciona IRIS"
+            className="inline-flex cursor-pointer items-center gap-xs rounded-full bg-background-surface py-xs pr-md pl-sm text-bodySmall font-semibold text-gray-dark shadow-soft ring-1 ring-slate-900/[0.04] transition-colors hover:text-primary-dark"
+          >
+            <HelpIcon className="h-5 w-5" />
+            Guía
+          </button>
         }
       />
 

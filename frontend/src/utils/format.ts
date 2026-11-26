@@ -34,17 +34,6 @@ export function formatDetectedAt(isoDate: string): string {
   return `${day}/${month} ${hours}:${minutes}`
 }
 
-export function formatTodayEs(date: Date = new Date()): string {
-  const formatted = new Intl.DateTimeFormat('es-AR', {
-    weekday: 'long',
-    day: 'numeric',
-    month: 'long',
-  })
-    .format(date)
-    .replace(',', '')
-  return formatted.charAt(0).toUpperCase() + formatted.slice(1)
-}
-
 /** HH:mm de una fecha ISO. */
 export function formatTime(isoDate: string): string {
   const date = new Date(isoDate)

@@ -35,7 +35,6 @@ export type AppPage =
   | 'historial'
   | 'historial-iris'
   | 'ayuda'
-  | 'ayuda'
 
 export interface Empresa {
   id: string
