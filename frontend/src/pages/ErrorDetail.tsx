@@ -235,6 +235,7 @@ const TEXTO_VOLVER: Record<Exclude<AppPage, 'detalle'>, string> = {
   objetivos: 'Volver a objetivos',
   historial: 'Volver a mi historial',
   'historial-iris': 'Volver al historial de IRIS',
+  ayuda: 'Volver a la ayuda',
 }
 
 function ErrorDetail({

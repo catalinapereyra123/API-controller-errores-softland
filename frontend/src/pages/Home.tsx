@@ -6,8 +6,8 @@ import {
   BarChartIcon,
   CheckCircleIcon,
   ClockIcon,
+  HelpIcon,
   HistoryIcon,
-  RefreshIcon,
   UserIcon,
   UsersIcon,
 } from '../components/icons'
@@ -64,7 +64,7 @@ function Home({
   onNavigate: (page: AppPage) => void
   onOpenError: (id: string) => void
 }) {
-  const { data, loading, error, refetch } = useHomeData()
+  const { data, error, refetch } = useHomeData()
   const [serie, setSerie] = useState<'llegadas' | 'resoluciones'>('llegadas')
   const stats = data?.stats
   const semana = data?.semana
@@ -117,15 +117,12 @@ function Home({
             </span>
             <button
               type="button"
-              onClick={refetch}
-              disabled={loading}
-              aria-label={loading ? 'Actualizando…' : 'Actualizar'}
-              title="Actualizar"
-              className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-full bg-background-surface text-gray-dark shadow-soft ring-1 ring-slate-900/[0.04] transition-colors hover:text-primary-dark disabled:opacity-60"
+              onClick={() => onNavigate('ayuda')}
+              aria-label="Ayuda"
+              title="Ayuda: cómo funciona IRIS"
+              className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-full bg-background-surface text-gray-dark shadow-soft ring-1 ring-slate-900/[0.04] transition-colors hover:text-primary-dark"
             >
-              <RefreshIcon
-                className={cn('h-4 w-4', loading && 'animate-spin')}
-              />
+              <HelpIcon className="h-5 w-5" />
             </button>
           </>
         }

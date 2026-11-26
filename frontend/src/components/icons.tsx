@@ -197,6 +197,16 @@ export function SendIcon(props: SVGProps<SVGSVGElement>) {
   )
 }
 
+export function HelpIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <BaseIcon {...props}>
+      <circle cx="12" cy="12" r="8.5" />
+      <path d="M9.6 9.4a2.5 2.5 0 0 1 4.8.9c0 1.7-2.4 2.2-2.4 3.7" />
+      <path d="M12 17h.01" />
+    </BaseIcon>
+  )
+}
+
 export function InfoIcon(props: SVGProps<SVGSVGElement>) {
   return (
     <BaseIcon {...props}>

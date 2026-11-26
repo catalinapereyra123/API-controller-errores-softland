@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { AuthProvider } from './auth/AuthProvider'
 import { useAuth } from './auth/useAuth'
 import { colors, textStyles } from './styles'
+import Ayuda from './pages/Ayuda'
 import BandejaErrores from './pages/BandejaErrores'
 import ErrorDetail from './pages/ErrorDetail'
 import Historial from './pages/Historial'
@@ -59,6 +60,7 @@ const PAGES: AppPage[] = [
   'objetivos',
   'historial',
   'historial-iris',
+  'ayuda',
 ]
 
 /** Al recargar, el navegador conserva el estado de la entrada actual. */
@@ -135,6 +137,10 @@ function AppAutenticada() {
 
   if (vista.page === 'objetivos') {
     return <Objetivos onNavigate={navegar} />
+  }
+
+  if (vista.page === 'ayuda') {
+    return <Ayuda onNavigate={navegar} />
   }
 
   return <Home onNavigate={navegar} onOpenError={abrirDetalle} />
